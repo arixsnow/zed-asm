@@ -1,0 +1,165 @@
+================================================================================
+Directives with arguments
+================================================================================
+
+.text
+.globl main
+.section .rodata,"a"
+.size main, .-main
+
+--------------------------------------------------------------------------------
+
+(source_file
+  (directive
+    name: (directive_name))
+  (directive
+    name: (directive_name)
+    argument: (identifier))
+  (directive
+    name: (directive_name)
+    argument: (identifier)
+    argument: (string))
+  (directive
+    name: (directive_name)
+    argument: (identifier)
+    argument: (binary_expression
+      left: (location_counter)
+      right: (identifier))))
+
+================================================================================
+Strings, escapes and characters
+================================================================================
+
+.asciz "hello\n"
+mov x0, 'a
+
+--------------------------------------------------------------------------------
+
+(source_file
+  (directive
+    name: (directive_name)
+    argument: (string
+      (escape_sequence)))
+  (instruction
+    mnemonic: (mnemonic)
+    operand: (identifier)
+    operand: (char)))
+
+================================================================================
+Block comments on their own line and after code
+================================================================================
+
+/* a
+   block */
+nop /* trailing */
+
+--------------------------------------------------------------------------------
+
+(source_file
+  (block_comment)
+  (instruction
+    mnemonic: (mnemonic))
+  (block_comment))
+
+================================================================================
+Symbol types after %
+================================================================================
+
+.type main, %function
+
+--------------------------------------------------------------------------------
+
+(source_file
+  (directive
+    name: (directive_name)
+    argument: (identifier)
+    argument: (symbol_type)))
+
+================================================================================
+Relocation glued to a symbol
+================================================================================
+
+bl puts@PLT
+
+--------------------------------------------------------------------------------
+
+(source_file
+  (instruction
+    mnemonic: (mnemonic)
+    operand: (relocation
+      symbol: (identifier)
+      specifier: (identifier))))
+
+================================================================================
+Directive arguments and relocations being typed keep to their own line
+================================================================================
+
+.type f,
+call puts@
+ret
+
+--------------------------------------------------------------------------------
+
+(source_file
+  (directive
+    name: (directive_name)
+    argument: (identifier))
+  (instruction
+    mnemonic: (mnemonic)
+    operand: (relocation
+      symbol: (identifier)))
+  (instruction
+    mnemonic: (mnemonic)))
+
+================================================================================
+Only names starting with .L are local labels
+================================================================================
+
+.Lloop:
+    b .Lloop
+    .section .text
+
+--------------------------------------------------------------------------------
+
+(source_file
+  (label
+    name: (local_identifier))
+  (instruction
+    mnemonic: (mnemonic)
+    operand: (local_identifier))
+  (directive
+    name: (directive_name)
+    argument: (identifier)))
+
+================================================================================
+A location-counter expression being typed keeps to its own line
+================================================================================
+
+.size main, .-
+nop
+
+--------------------------------------------------------------------------------
+
+(source_file
+  (directive
+    name: (directive_name)
+    argument: (identifier)
+    argument: (binary_expression
+      left: (location_counter)))
+  (instruction
+    mnemonic: (mnemonic)))
+
+================================================================================
+A block comment before an operand keeps the operand
+================================================================================
+
+mov x0, /* c */ x1
+
+--------------------------------------------------------------------------------
+
+(source_file
+  (instruction
+    mnemonic: (mnemonic)
+    operand: (identifier)
+    (block_comment)
+    operand: (identifier)))

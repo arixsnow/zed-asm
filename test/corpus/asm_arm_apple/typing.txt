@@ -1,0 +1,21 @@
+================================================================================
+An immediate and a symbol type being typed keep to their own line
+================================================================================
+
+mov x3, #
+.type f, %fu
+nop
+
+--------------------------------------------------------------------------------
+
+(source_file
+  (instruction
+    mnemonic: (mnemonic)
+    operand: (identifier)
+    operand: (immediate))
+  (directive
+    name: (directive_name)
+    argument: (identifier)
+    argument: (symbol_type))
+  (instruction
+    mnemonic: (mnemonic)))

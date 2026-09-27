@@ -1,0 +1,70 @@
+================================================================================
+AT&T registers and immediates
+================================================================================
+
+movq $1, %rax
+addq %rdi, %rax
+
+--------------------------------------------------------------------------------
+
+(source_file
+  (instruction
+    mnemonic: (mnemonic)
+    operand: (immediate
+      value: (integer))
+    operand: (register))
+  (instruction
+    mnemonic: (mnemonic)
+    operand: (register)
+    operand: (register)))
+
+================================================================================
+Hash after a complete operand is a comment
+================================================================================
+
+movq %rax, %rbx #save
+
+--------------------------------------------------------------------------------
+
+(source_file
+  (instruction
+    mnemonic: (mnemonic)
+    operand: (register)
+    operand: (register))
+  (line_comment))
+
+================================================================================
+Symbol types after @
+================================================================================
+
+.type data, @object
+
+--------------------------------------------------------------------------------
+
+(source_file
+  (directive
+    name: (directive_name)
+    argument: (identifier)
+    argument: (symbol_type
+      (identifier))))
+
+================================================================================
+An immediate and a register being typed keep to their own line
+================================================================================
+
+addq $
+movq %rdi, %
+nop
+
+--------------------------------------------------------------------------------
+
+(source_file
+  (instruction
+    mnemonic: (mnemonic)
+    operand: (immediate))
+  (instruction
+    mnemonic: (mnemonic)
+    operand: (register)
+    operand: (register))
+  (instruction
+    mnemonic: (mnemonic)))

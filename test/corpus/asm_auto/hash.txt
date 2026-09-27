@@ -1,0 +1,34 @@
+================================================================================
+A hash immediate needs a value right after the hash
+================================================================================
+
+svc #0
+nop # not an immediate
+
+--------------------------------------------------------------------------------
+
+(source_file
+  (instruction
+    mnemonic: (mnemonic)
+    operand: (immediate
+      value: (integer)))
+  (instruction
+    mnemonic: (mnemonic))
+  (line_comment))
+
+================================================================================
+A hash followed by punctuation that cannot start a value is a comment
+================================================================================
+
+nop #*** banner ***
+nop #=== section ===
+
+--------------------------------------------------------------------------------
+
+(source_file
+  (instruction
+    mnemonic: (mnemonic))
+  (line_comment)
+  (instruction
+    mnemonic: (mnemonic))
+  (line_comment))

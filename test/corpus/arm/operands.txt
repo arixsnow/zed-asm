@@ -1,0 +1,59 @@
+================================================================================
+Immediates
+================================================================================
+
+mov x0, #1
+mov x1, #-1
+mov x2, #(1 << 3)
+
+--------------------------------------------------------------------------------
+
+(source_file
+  (instruction
+    mnemonic: (mnemonic)
+    operand: (identifier)
+    operand: (immediate
+      value: (integer)))
+  (instruction
+    mnemonic: (mnemonic)
+    operand: (identifier)
+    operand: (immediate
+      value: (unary_expression
+        argument: (integer))))
+  (instruction
+    mnemonic: (mnemonic)
+    operand: (identifier)
+    operand: (immediate
+      value: (parenthesized_expression
+        (binary_expression
+          left: (integer)
+          right: (integer))))))
+
+================================================================================
+Shifted register operand is not a comment
+================================================================================
+
+add x0, x1, x2, lsl #32
+ADD X0, X1, X2, LSL #32
+
+--------------------------------------------------------------------------------
+
+(source_file
+  (instruction
+    mnemonic: (mnemonic)
+    operand: (identifier)
+    operand: (identifier)
+    operand: (identifier)
+    operand: (shift
+      operator: (shift_operator)
+      amount: (immediate
+        value: (integer))))
+  (instruction
+    mnemonic: (mnemonic)
+    operand: (identifier)
+    operand: (identifier)
+    operand: (identifier)
+    operand: (shift
+      operator: (shift_operator)
+      amount: (immediate
+        value: (integer)))))

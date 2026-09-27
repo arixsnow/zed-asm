@@ -1,0 +1,32 @@
+id = "asm"
+name = "Asm"
+version = "0.1.0"
+schema_version = 1
+authors = ["Arka Mondal <arka@arkamondal.net>"]
+description = "ARM (GNU/LLVM and Apple) and x86 (AT&T, Intel and NASM) assembly: precise highlighting, label indentation and comment continuation."
+repository = "https://github.com/arixsnow/zed-asm"
+
+[grammars.asm_auto]
+repository = "https://github.com/arixsnow/zed-asm"
+rev = "0000000000000000000000000000000000000000"
+path = "tree-sitter/asm_auto"
+
+[grammars.asm_arm]
+repository = "https://github.com/arixsnow/zed-asm"
+rev = "0000000000000000000000000000000000000000"
+path = "tree-sitter/asm_arm"
+
+[grammars.asm_arm_apple]
+repository = "https://github.com/arixsnow/zed-asm"
+rev = "0000000000000000000000000000000000000000"
+path = "tree-sitter/asm_arm_apple"
+
+[grammars.asm_x86_gas]
+repository = "https://github.com/arixsnow/zed-asm"
+rev = "0000000000000000000000000000000000000000"
+path = "tree-sitter/asm_x86_gas"
+
+[grammars.asm_x86_nasm]
+repository = "https://github.com/arixsnow/zed-asm"
+rev = "0000000000000000000000000000000000000000"
+path = "tree-sitter/asm_x86_nasm"

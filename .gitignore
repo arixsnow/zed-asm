@@ -1,0 +1,3 @@
+/grammars/
+/.build/
+/tree-sitter/*/test/

@@ -1,0 +1,35 @@
+================================================================================
+A percent word being typed reads as a register until it names a symbol type
+================================================================================
+
+.type f, %fu
+.type f, %function
+
+--------------------------------------------------------------------------------
+
+(source_file
+  (directive
+    name: (directive_name)
+    argument: (identifier)
+    argument: (register))
+  (directive
+    name: (directive_name)
+    argument: (identifier)
+    argument: (symbol_type)))
+
+================================================================================
+A hash at the end of a line being typed is a comment
+================================================================================
+
+mov x3, #
+nop
+
+--------------------------------------------------------------------------------
+
+(source_file
+  (instruction
+    mnemonic: (mnemonic)
+    operand: (identifier)
+    (line_comment))
+  (instruction
+    mnemonic: (mnemonic)))

@@ -1,0 +1,22 @@
+name = "ARM Assembly"
+grammar = "asm_arm"
+modeline_aliases = ["arm", "arm64", "aarch64", "aarch32", "thumb"]
+line_comments = ["// ", "# ", "@ "]
+block_comment = { start = "/*", prefix = "", end = "*/", tab_size = 1 }
+documentation_comment = { start = "/*", prefix = "* ", end = "*/", tab_size = 1 }
+autoclose_before = ",;)]}"
+brackets = [
+  { start = "{", end = "}", close = true, newline = false },
+  { start = "[", end = "]", close = true, newline = false },
+  { start = "(", end = ")", close = true, newline = false },
+  { start = "\"", end = "\"", close = true, newline = false, not_in = ["string"] },
+  { start = "'", end = "'", close = true, newline = false, not_in = ["string", "comment"] },
+  { start = "/*", end = " */", close = true, newline = false, not_in = ["string", "comment"] },
+]
+word_characters = [".", "$", "%"]
+increase_indent_pattern = "^\\s*(?:[A-Za-z_.][A-Za-z0-9_.$]*|[0-9]+):"
+decrease_indent_pattern = "^\\s*(?:[A-Za-z_.][A-Za-z0-9_.$]*|[0-9]+):"
+debuggers = ["CodeLLDB", "GDB"]
+
+[overrides.preproc]
+line_comments = ["// "]

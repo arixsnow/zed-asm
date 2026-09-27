@@ -1,0 +1,87 @@
+{
+  "exclude": [
+    ".build/",
+    "grammars/",
+    "tree-sitter/tree-sitter.json",
+    "tree-sitter/*/grammar.js",
+    "tree-sitter/*/src/"
+  ],
+  "tasks": {
+    "build": {
+      "description": "Write the files generated from languages.config.cjs and queries/",
+      "command": "deno run --allow-read=. --allow-write=extension.toml,languages,tree-sitter/tree-sitter.json,tree-sitter/asm_auto,tree-sitter/asm_arm,tree-sitter/asm_arm_apple,tree-sitter/asm_x86_gas,tree-sitter/asm_x86_nasm scripts/build.ts write"
+    },
+    "generate": {
+      "description": "Write the generated files, then regenerate all five parsers",
+      "command": "deno task build && deno run --allow-read=. --allow-run=tree-sitter scripts/tree-sitter.ts generate"
+    },
+    "set-grammar-rev": {
+      "description": "Pin the commit Zed fetches the grammars from: deno task set-grammar-rev <sha>",
+      "command": "deno run --allow-read=. --allow-write=extension.toml,languages,tree-sitter/tree-sitter.json,tree-sitter/asm_auto,tree-sitter/asm_arm,tree-sitter/asm_arm_apple,tree-sitter/asm_x86_gas,tree-sitter/asm_x86_nasm,languages.config.cjs scripts/build.ts set-grammar-rev"
+    },
+    "fmt": {
+      "description": "Format TypeScript, JavaScript, JSON, Markdown and YAML",
+      "command": "deno fmt"
+    },
+    "lint": {
+      "description": "Lint with the recommended rules plus eqeqeq and asm/curly",
+      "command": "deno lint"
+    },
+    "check:types": {
+      "description": "Type-check every TypeScript file",
+      "command": "deno check"
+    },
+    "check:generated": {
+      "description": "Fail if a generated file or parser is out of date",
+      "command": "deno run --allow-read=. scripts/build.ts check && deno run --allow-read=. --allow-write=.build --allow-run=tree-sitter scripts/tree-sitter.ts check"
+    },
+    "check:queries": {
+      "description": "Compile every generated query against its grammar",
+      "command": "deno run --allow-read=. --allow-write=.build --allow-run=tree-sitter scripts/check-queries.ts"
+    },
+    "test:unit": {
+      "description": "Unit, highlight and grammar tests",
+      "command": "deno test --allow-read=. --allow-write=.build --allow-run=tree-sitter"
+    },
+    "corpus": {
+      "description": "Compose each grammar's corpus tests from test/corpus",
+      "command": "deno run --allow-read=. --allow-write=tree-sitter/asm_auto/test,tree-sitter/asm_arm/test,tree-sitter/asm_arm_apple/test,tree-sitter/asm_x86_gas/test,tree-sitter/asm_x86_nasm/test scripts/build.ts corpus"
+    },
+    "test:corpus": {
+      "description": "Compose the corpus tests and run them for all five grammars",
+      "command": "deno task corpus && deno run --allow-read=. --allow-run=tree-sitter scripts/tree-sitter.ts test"
+    },
+    "test": {
+      "description": "Every check",
+      "command": "deno fmt --check && deno task lint && deno task check:types && deno task check:generated && deno task test:unit && deno task test:corpus && deno task check:queries"
+    }
+  },
+  "fmt": {
+    "lineWidth": 100,
+    "singleQuote": true,
+    "proseWrap": "preserve",
+    "useBraces": "always"
+  },
+  "lint": {
+    "plugins": [
+      "./scripts/lint/curly.ts"
+    ],
+    "rules": {
+      "tags": [
+        "recommended"
+      ],
+      "include": [
+        "eqeqeq"
+      ]
+    }
+  },
+  "imports": {
+    "@std/assert": "jsr:@std/assert@1.0.19",
+    "@std/fs": "jsr:@std/fs@1.0.24",
+    "@std/path": "jsr:@std/path@1.1.6",
+    "@std/toml": "jsr:@std/toml@1.0.11"
+  },
+  "lock": {
+    "frozen": true
+  }
+}

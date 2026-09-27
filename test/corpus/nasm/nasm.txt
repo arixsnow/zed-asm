@@ -1,0 +1,87 @@
+================================================================================
+NASM strings in three quote styles
+================================================================================
+
+db 'single', "double", `back\n`
+
+--------------------------------------------------------------------------------
+
+(source_file
+  (instruction
+    mnemonic: (mnemonic)
+    operand: (string)
+    operand: (string)
+    operand: (string)))
+
+================================================================================
+NASM integer suffixes
+================================================================================
+
+mov eax, 0FFh
+mov ebx, 1010b
+
+--------------------------------------------------------------------------------
+
+(source_file
+  (instruction
+    mnemonic: (mnemonic)
+    operand: (identifier)
+    operand: (integer))
+  (instruction
+    mnemonic: (mnemonic)
+    operand: (identifier)
+    operand: (integer)))
+
+================================================================================
+NASM strings keep comment characters
+================================================================================
+
+db "; not a comment", '; nor this'
+
+--------------------------------------------------------------------------------
+
+(source_file
+  (instruction
+    mnemonic: (mnemonic)
+    operand: (string)
+    operand: (string)))
+
+================================================================================
+Every dot name is a local label
+================================================================================
+
+.loop:
+    jmp .loop
+
+--------------------------------------------------------------------------------
+
+(source_file
+  (label
+    name: (local_identifier))
+  (instruction
+    mnemonic: (mnemonic)
+    operand: (local_identifier)))
+
+================================================================================
+NASM strings being typed end at the line end
+================================================================================
+
+db 'abc
+db "abc
+db `abc
+nop
+
+--------------------------------------------------------------------------------
+
+(source_file
+  (instruction
+    mnemonic: (mnemonic)
+    operand: (string))
+  (instruction
+    mnemonic: (mnemonic)
+    operand: (string))
+  (instruction
+    mnemonic: (mnemonic)
+    operand: (string))
+  (instruction
+    mnemonic: (mnemonic)))

@@ -1,0 +1,15 @@
+================================================================================
+Apple compiler output: immediate followed by a semicolon comment
+================================================================================
+
+mov w0, #0 ; =0x0
+
+--------------------------------------------------------------------------------
+
+(source_file
+  (instruction
+    mnemonic: (mnemonic)
+    operand: (identifier)
+    operand: (immediate
+      value: (integer)))
+  (line_comment))

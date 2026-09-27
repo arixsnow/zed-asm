@@ -1,0 +1,237 @@
+================================================================================
+Empty file
+================================================================================
+
+--------------------------------------------------------------------------------
+
+(source_file)
+
+================================================================================
+Label followed by an instruction
+================================================================================
+
+start:
+    mov x0, x1
+
+--------------------------------------------------------------------------------
+
+(source_file
+  (label
+    name: (identifier))
+  (instruction
+    mnemonic: (mnemonic)
+    operand: (identifier)
+    operand: (identifier)))
+
+================================================================================
+Labels and an instruction on one line
+================================================================================
+
+outer: inner: nop
+
+--------------------------------------------------------------------------------
+
+(source_file
+  (label
+    name: (identifier))
+  (label
+    name: (identifier))
+  (instruction
+    mnemonic: (mnemonic)))
+
+================================================================================
+Dot-prefixed label
+================================================================================
+
+.Lloop:
+    dec rcx
+
+--------------------------------------------------------------------------------
+
+(source_file
+  (label
+    name: (local_identifier))
+  (instruction
+    mnemonic: (mnemonic)
+    operand: (identifier)))
+
+================================================================================
+Tabs between mnemonic and operands
+================================================================================
+
+	mov	x0,	x1
+
+--------------------------------------------------------------------------------
+
+(source_file
+  (instruction
+    mnemonic: (mnemonic)
+    operand: (identifier)
+    operand: (identifier)))
+
+================================================================================
+Expressions follow C precedence
+================================================================================
+
+mov x0, (a + b) * 2 - c
+
+--------------------------------------------------------------------------------
+
+(source_file
+  (instruction
+    mnemonic: (mnemonic)
+    operand: (identifier)
+    operand: (binary_expression
+      left: (binary_expression
+        left: (parenthesized_expression
+          (binary_expression
+            left: (identifier)
+            right: (identifier)))
+        right: (integer))
+      right: (identifier))))
+
+================================================================================
+Unary operators bind tighter than binary ones
+================================================================================
+
+mov x0, -1 + ~mask
+
+--------------------------------------------------------------------------------
+
+(source_file
+  (instruction
+    mnemonic: (mnemonic)
+    operand: (identifier)
+    operand: (binary_expression
+      left: (unary_expression
+        argument: (integer))
+      right: (unary_expression
+        argument: (identifier)))))
+
+================================================================================
+Hexadecimal and binary integers
+================================================================================
+
+mov x0, 0x1F
+mov x1, 0b101
+
+--------------------------------------------------------------------------------
+
+(source_file
+  (instruction
+    mnemonic: (mnemonic)
+    operand: (identifier)
+    operand: (integer))
+  (instruction
+    mnemonic: (mnemonic)
+    operand: (identifier)
+    operand: (integer)))
+
+================================================================================
+An operand list being typed keeps to its own line
+================================================================================
+
+mov x0,
+ret
+
+--------------------------------------------------------------------------------
+
+(source_file
+  (instruction
+    mnemonic: (mnemonic)
+    operand: (identifier))
+  (instruction
+    mnemonic: (mnemonic)))
+
+================================================================================
+An expression being typed keeps to its own line
+================================================================================
+
+mov x0, -1 +
+mov x1, (a + b) *
+mov x2, (
+mov x3, -
+nop
+
+--------------------------------------------------------------------------------
+
+(source_file
+  (instruction
+    mnemonic: (mnemonic)
+    operand: (identifier)
+    operand: (binary_expression
+      left: (unary_expression
+        argument: (integer))))
+  (instruction
+    mnemonic: (mnemonic)
+    operand: (identifier)
+    operand: (binary_expression
+      left: (parenthesized_expression
+        (binary_expression
+          left: (identifier)
+          right: (identifier)))))
+  (instruction
+    mnemonic: (mnemonic)
+    operand: (identifier)
+    operand: (parenthesized_expression))
+  (instruction
+    mnemonic: (mnemonic)
+    operand: (identifier)
+    operand: (unary_expression))
+  (instruction
+    mnemonic: (mnemonic)))
+
+================================================================================
+A missing operand between commas leaves the others in place
+================================================================================
+
+mov x0, , x1
+nop
+
+--------------------------------------------------------------------------------
+
+(source_file
+  (instruction
+    mnemonic: (mnemonic)
+    operand: (identifier)
+    operand: (identifier))
+  (instruction
+    mnemonic: (mnemonic)))
+
+================================================================================
+A parenthesis left open before a comma closes there
+================================================================================
+
+mov x0, (a, b
+nop
+
+--------------------------------------------------------------------------------
+
+(source_file
+  (instruction
+    mnemonic: (mnemonic)
+    operand: (identifier)
+    operand: (parenthesized_expression
+      (identifier))
+    operand: (identifier))
+  (instruction
+    mnemonic: (mnemonic)))
+
+================================================================================
+An operator waiting before a closing parenthesis leaves it in place
+================================================================================
+
+mov x0, (a +)
+nop
+
+--------------------------------------------------------------------------------
+
+(source_file
+  (instruction
+    mnemonic: (mnemonic)
+    operand: (identifier)
+    operand: (parenthesized_expression
+      (binary_expression
+        left: (identifier))))
+  (instruction
+    mnemonic: (mnemonic)))

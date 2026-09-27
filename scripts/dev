@@ -1,0 +1,29 @@
+#!/bin/sh
+# SPDX-License-Identifier: MIT
+
+set -eu
+
+root=$(CDPATH='' cd -- "$(dirname -- "$0")/.." && pwd)
+tag=$(sha256sum "$root/Containerfile" | cut -c1-12)
+image="localhost/zed-asm-dev:$tag"
+
+if ! podman image exists "$image"; then
+    podman build --tag "$image" --file "$root/Containerfile" "$root"
+fi
+
+tty=false
+if [ -t 0 ] && [ -t 1 ]; then
+    tty=true
+fi
+if [ "$#" -eq 0 ]; then
+    set -- bash
+fi
+
+exec podman run --rm --interactive --tty="$tty" \
+    --userns=keep-id \
+    --volume "$root:/work:Z" \
+    --volume zed-asm-cache:/cache:U \
+    --env HOME=/cache \
+    --env XDG_CACHE_HOME=/cache \
+    --workdir /work \
+    "$image" "$@"

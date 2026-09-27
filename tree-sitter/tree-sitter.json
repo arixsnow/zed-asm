@@ -1,0 +1,90 @@
+{
+  "grammars": [
+    {
+      "name": "asm_auto",
+      "camelcase": "AsmAuto",
+      "scope": "source.asm.auto",
+      "path": "asm_auto",
+      "file-types": [
+        "s",
+        "S",
+        "sx"
+      ],
+      "highlights": "../languages/asm/highlights.scm",
+      "external-files": [
+        "common/scanner.h"
+      ]
+    },
+    {
+      "name": "asm_arm",
+      "camelcase": "AsmArm",
+      "scope": "source.asm.arm",
+      "path": "asm_arm",
+      "file-types": [],
+      "highlights": "../languages/arm/highlights.scm",
+      "external-files": [
+        "common/scanner.h"
+      ]
+    },
+    {
+      "name": "asm_arm_apple",
+      "camelcase": "AsmArmApple",
+      "scope": "source.asm.arm.apple",
+      "path": "asm_arm_apple",
+      "file-types": [],
+      "highlights": "../languages/arm-apple/highlights.scm",
+      "external-files": [
+        "common/scanner.h"
+      ]
+    },
+    {
+      "name": "asm_x86_gas",
+      "camelcase": "AsmX86Gas",
+      "scope": "source.asm.x86.gas",
+      "path": "asm_x86_gas",
+      "file-types": [],
+      "highlights": "../languages/x86-gas/highlights.scm",
+      "external-files": [
+        "common/scanner.h"
+      ]
+    },
+    {
+      "name": "asm_x86_nasm",
+      "camelcase": "AsmX86Nasm",
+      "scope": "source.asm.x86.nasm",
+      "path": "asm_x86_nasm",
+      "file-types": [
+        "asm",
+        "ASM",
+        "nasm",
+        "yasm"
+      ],
+      "highlights": "../languages/x86-nasm/highlights.scm",
+      "external-files": [
+        "common/scanner.h"
+      ]
+    }
+  ],
+  "metadata": {
+    "version": "0.1.0",
+    "license": "MIT",
+    "description": "ARM (GNU/LLVM and Apple) and x86 (AT&T, Intel and NASM) assembly: precise highlighting, label indentation and comment continuation.",
+    "authors": [
+      {
+        "name": "Arka Mondal",
+        "email": "arka@arkamondal.net"
+      }
+    ],
+    "links": {
+      "repository": "https://github.com/arixsnow/zed-asm"
+    }
+  },
+  "bindings": {
+    "c": false,
+    "go": false,
+    "node": false,
+    "python": false,
+    "rust": false,
+    "swift": false
+  }
+}

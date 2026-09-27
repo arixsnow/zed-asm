@@ -1,0 +1,87 @@
+================================================================================
+Comment characters inside strings are string text
+================================================================================
+
+.asciz "// x"
+.asciz "# of args\n"
+.ascii " # x"
+.ascii "a\n#b"
+.ascii "@(#) id"
+.ascii "; "
+.ascii "/* not a comment */"
+
+--------------------------------------------------------------------------------
+
+(source_file
+  (directive
+    name: (directive_name)
+    argument: (string))
+  (directive
+    name: (directive_name)
+    argument: (string
+      (escape_sequence)))
+  (directive
+    name: (directive_name)
+    argument: (string))
+  (directive
+    name: (directive_name)
+    argument: (string
+      (escape_sequence)))
+  (directive
+    name: (directive_name)
+    argument: (string))
+  (directive
+    name: (directive_name)
+    argument: (string))
+  (directive
+    name: (directive_name)
+    argument: (string)))
+
+================================================================================
+Several string arguments with comment characters
+================================================================================
+
+.ascii "a;b", "c#d", "e@f"
+
+--------------------------------------------------------------------------------
+
+(source_file
+  (directive
+    name: (directive_name)
+    argument: (string)
+    argument: (string)
+    argument: (string)))
+
+================================================================================
+Empty string
+================================================================================
+
+.asciz ""
+
+--------------------------------------------------------------------------------
+
+(source_file
+  (directive
+    name: (directive_name)
+    argument: (string)))
+
+================================================================================
+A string or character being typed ends at the line end
+================================================================================
+
+.asciz "abc
+mov x0, '
+nop
+
+--------------------------------------------------------------------------------
+
+(source_file
+  (directive
+    name: (directive_name)
+    argument: (string))
+  (instruction
+    mnemonic: (mnemonic)
+    operand: (identifier)
+    operand: (char))
+  (instruction
+    mnemonic: (mnemonic)))

@@ -1,0 +1,272 @@
+================================================================================
+A backslash continues a preprocessor line
+================================================================================
+
+#define PAIR(a, b) \
+    a, b
+#endif
+
+--------------------------------------------------------------------------------
+
+(source_file
+  (preproc_line
+    directive: (preproc_directive)
+    argument: (preproc_argument))
+  (preproc_line
+    directive: (preproc_directive)))
+
+================================================================================
+Preprocessor lines own their trailing comments
+================================================================================
+
+#endif /* X */
+#else // !X
+#define X 1 // c
+#include "a//b.h"
+#define SEP ;
+#define STR(x) #x
+/* own line */
+
+--------------------------------------------------------------------------------
+
+(source_file
+  (preproc_line
+    directive: (preproc_directive)
+    (preproc_comment))
+  (preproc_line
+    directive: (preproc_directive)
+    (preproc_comment))
+  (preproc_line
+    directive: (preproc_directive)
+    argument: (preproc_argument)
+    (preproc_comment))
+  (preproc_line
+    directive: (preproc_directive)
+    argument: (preproc_argument))
+  (preproc_line
+    directive: (preproc_directive)
+    argument: (preproc_argument))
+  (preproc_line
+    directive: (preproc_directive)
+    argument: (preproc_argument))
+  (block_comment))
+
+================================================================================
+A block comment spans lines and the argument continues after it
+================================================================================
+
+#if A /* spans
+   lines */ && B
+#define Y 2 /* c */ + 3
+
+--------------------------------------------------------------------------------
+
+(source_file
+  (preproc_line
+    directive: (preproc_directive)
+    argument: (preproc_argument)
+    (preproc_comment)
+    argument: (preproc_argument))
+  (preproc_line
+    directive: (preproc_directive)
+    argument: (preproc_argument)
+    (preproc_comment)
+    argument: (preproc_argument)))
+
+================================================================================
+An apostrophe starts a literal that runs to the end of the line
+================================================================================
+
+#define CH 'a // c
+#define CH2 'b /* c */
+
+--------------------------------------------------------------------------------
+
+(source_file
+  (preproc_line
+    directive: (preproc_directive)
+    argument: (preproc_argument))
+  (preproc_line
+    directive: (preproc_directive)
+    argument: (preproc_argument)))
+
+================================================================================
+A backslash at the end of a line comment continues the comment
+================================================================================
+
+#define X 1 // c \
+nop
+ret
+
+--------------------------------------------------------------------------------
+
+(source_file
+  (preproc_line
+    directive: (preproc_directive)
+    argument: (preproc_argument)
+    (preproc_comment))
+  (instruction
+    mnemonic: (mnemonic)))
+
+================================================================================
+A line comment continues across several backslashes
+================================================================================
+
+#define Z 1 // c \
+nop \
+ret
+
+--------------------------------------------------------------------------------
+
+(source_file
+  (preproc_line
+    directive: (preproc_directive)
+    argument: (preproc_argument)
+    (preproc_comment)))
+
+================================================================================
+A backslash continues a double-quoted literal
+================================================================================
+
+#define Q "a\
+b" // c
+
+--------------------------------------------------------------------------------
+
+(source_file
+  (preproc_line
+    directive: (preproc_directive)
+    argument: (preproc_argument)
+    (preproc_comment)))
+
+================================================================================
+A backslash continues an apostrophe literal
+================================================================================
+
+#define R 'a\
+b // c
+
+--------------------------------------------------------------------------------
+
+(source_file
+  (preproc_line
+    directive: (preproc_directive)
+    argument: (preproc_argument)))
+
+================================================================================
+Outside quotes a backslash only joins lines
+================================================================================
+
+#define W a\// c
+
+--------------------------------------------------------------------------------
+
+(source_file
+  (preproc_line
+    directive: (preproc_directive)
+    argument: (preproc_argument)
+    (preproc_comment)))
+
+================================================================================
+An escaped quote does not end a double-quoted literal
+================================================================================
+
+#define E "x\"y" // c
+
+--------------------------------------------------------------------------------
+
+(source_file
+  (preproc_line
+    directive: (preproc_directive)
+    argument: (preproc_argument)
+    (preproc_comment)))
+
+================================================================================
+A directive after a label or a separator is not a preprocessor line
+================================================================================
+
+foo: #define X 1
+nop; #define Y 2
+
+--------------------------------------------------------------------------------
+
+(source_file
+  (label
+    name: (identifier))
+  (line_comment)
+  (instruction
+    mnemonic: (mnemonic))
+  (line_comment))
+
+================================================================================
+An indented directive is a preprocessor line
+================================================================================
+
+    #define X 1
+
+--------------------------------------------------------------------------------
+
+(source_file
+  (preproc_line
+    directive: (preproc_directive)
+    argument: (preproc_argument)))
+
+================================================================================
+Blanks between a backslash and the newline still join the lines
+================================================================================
+
+#define A 1 \  
+B
+#define Q "a\ 
+b" // c
+#define Z 2 // c \	
+nop
+ret
+
+--------------------------------------------------------------------------------
+
+(source_file
+  (preproc_line
+    directive: (preproc_directive)
+    argument: (preproc_argument))
+  (preproc_line
+    directive: (preproc_directive)
+    argument: (preproc_argument)
+    (preproc_comment))
+  (preproc_line
+    directive: (preproc_directive)
+    argument: (preproc_argument)
+    (preproc_comment))
+  (instruction
+    mnemonic: (mnemonic)))
+
+================================================================================
+After an include directive, angle brackets hold one header name
+================================================================================
+
+#include <a//b.h>
+#include_next <sys//x.h> // c
+#import <a.h>
+#include <sys/
+#define X <a//b.h>
+
+--------------------------------------------------------------------------------
+
+(source_file
+  (preproc_line
+    directive: (preproc_directive)
+    argument: (preproc_argument))
+  (preproc_line
+    directive: (preproc_directive)
+    argument: (preproc_argument)
+    (preproc_comment))
+  (preproc_line
+    directive: (preproc_directive)
+    argument: (preproc_argument))
+  (preproc_line
+    directive: (preproc_directive)
+    argument: (preproc_argument))
+  (preproc_line
+    directive: (preproc_directive)
+    argument: (preproc_argument)
+    (preproc_comment)))
