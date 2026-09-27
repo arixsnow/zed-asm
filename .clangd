@@ -1,0 +1,10 @@
+If:
+  PathMatch: tree-sitter/common/scanner\.h
+CompileFlags:
+  Add:
+    - -xc
+    - -std=c11
+    - -DASM_GRAMMAR_NAME=asm_auto
+    - -DASM_DIALECT_AUTO
+    - -isystem
+    - ../asm_auto/src

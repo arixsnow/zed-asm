@@ -14,7 +14,16 @@ FROM registry.fedoraproject.org/fedora:44
 
 RUN dnf -y install --setopt=install_weak_deps=False \
         gcc \
+        libasan \
+        libubsan \
         glibc-devel \
+        clang \
+        clang-tools-extra \
+        binutils \
+        binutils-aarch64-linux-gnu \
+        arm-none-eabi-binutils-cs \
+        nasm \
+        yasm \
     && dnf clean all
 
 COPY --from=tree-sitter /opt/tree-sitter/bin/tree-sitter /usr/local/bin/tree-sitter

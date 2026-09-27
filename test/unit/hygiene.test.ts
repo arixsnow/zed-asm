@@ -6,7 +6,7 @@ import { join } from '@std/path';
 import { ROOT } from '../../scripts/lib/files.ts';
 import { repositoryFiles } from '../lib/repository.ts';
 
-const TAB_ALLOWED = ['test/corpus/'];
+const TAB_ALLOWED = ['test/corpus/', 'test/fixtures/'];
 
 const contents = repositoryFiles(ROOT).map((path) => ({
   path,

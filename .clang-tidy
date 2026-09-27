@@ -1,0 +1,13 @@
+Checks: >-
+  -*,
+  bugprone-*,
+  cert-*,
+  clang-analyzer-*,
+  concurrency-*,
+  misc-*,
+  performance-*,
+  portability-*,
+  readability-*,
+  -readability-implicit-bool-conversion
+WarningsAsErrors: '*'
+HeaderFilterRegex: '.*common/scanner\.h'
