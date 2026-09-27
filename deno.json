@@ -67,6 +67,10 @@
       "description": "Benchmark parsing, editing and queries for every grammar",
       "command": "deno run --allow-read=. --allow-write=.build --allow-run=tree-sitter scripts/bench.ts"
     },
+    "zed:qa": {
+      "description": "Run the docs/qa.md checks in Zed; start it with scripts/zed, which provides Zed and a display",
+      "command": "deno run --allow-read=.,/home/qa --allow-write=.build,/home/qa --allow-run=clang,Xvfb,xdotool,xclip,xwd,xwdtopnm,pnmtopng,dbus-run-session,zed scripts/zed-qa.ts"
+    },
     "test": {
       "description": "Every check except the sanitizers",
       "command": "deno fmt --check && deno task lint && deno task check:types && deno task check:generated && deno task test:unit && deno task check:c && deno task test:corpus && deno task check:queries && deno task check:fixtures"

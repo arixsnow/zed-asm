@@ -8,7 +8,7 @@ tag=$(sha256sum "$root/Containerfile" | cut -c1-12)
 image="localhost/zed-asm-dev:$tag"
 
 if ! podman image exists "$image"; then
-    podman build --tag "$image" --file "$root/Containerfile" "$root"
+    podman build --target dev --tag "$image" --file "$root/Containerfile" "$root"
 fi
 
 tty=false

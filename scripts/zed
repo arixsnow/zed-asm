@@ -1,0 +1,36 @@
+#!/bin/sh
+# SPDX-License-Identifier: MIT
+
+set -eu
+
+root=$(CDPATH='' cd -- "$(dirname -- "$0")/.." && pwd)
+tag=$(sha256sum "$root/Containerfile" | cut -c1-12)
+image="localhost/zed-asm-zed:$tag"
+
+if [ "${1:-}" = --refresh ]; then
+    shift
+    podman build --target zed --build-arg "ZED_REFRESH=$(date +%s)" --tag "$image" \
+        --file "$root/Containerfile" "$root"
+elif ! podman image exists "$image"; then
+    podman build --target zed --tag "$image" --file "$root/Containerfile" "$root"
+fi
+
+tty=false
+if [ -t 0 ] && [ -t 1 ]; then
+    tty=true
+fi
+if [ "$#" -eq 0 ]; then
+    set -- deno task zed:qa
+fi
+
+exec podman run --rm --interactive --tty="$tty" \
+    --userns=keep-id \
+    --network=none \
+    --volume "$root:/work:Z" \
+    --volume zed-asm-cache:/cache:U \
+    --tmpfs /home/qa:mode=1777 \
+    --env HOME=/home/qa \
+    --env DENO_DIR=/cache/deno \
+    --env DISPLAY=:99 \
+    --workdir /work \
+    "$image" "$@"
