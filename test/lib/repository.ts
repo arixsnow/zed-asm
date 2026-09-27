@@ -4,6 +4,8 @@ import { globToRegExp, join } from '@std/path';
 
 import { readTextIfExists } from '../../scripts/lib/files.ts';
 
+const SCANNED_HIDDEN_DIRECTORIES = new Set(['.github']);
+
 interface IgnorePattern {
   pattern: RegExp;
   directoryOnly: boolean;
@@ -47,7 +49,7 @@ export function repositoryFiles(root: string): string[] {
         continue;
       }
       if (entry.isDirectory) {
-        if (!entry.name.startsWith('.')) {
+        if (!entry.name.startsWith('.') || SCANNED_HIDDEN_DIRECTORIES.has(path)) {
           visit(path);
         }
       } else if (entry.isFile) {

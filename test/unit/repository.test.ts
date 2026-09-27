@@ -21,11 +21,12 @@ function withTree(files: Record<string, string>, body: (root: string) => void): 
   }
 }
 
-Deno.test('repository files skip gitignored paths and hidden directories', () => {
+Deno.test('repository files skip gitignored paths and hidden directories other than .github', () => {
   withTree({
     '.gitignore': '/ignored/\n/tree/*/out/\n',
     '.editorconfig': '',
     '.hidden/secret.txt': '',
+    '.github/workflows/ci.yml': '',
     'a.txt': '',
     'ignored/b.txt': '',
     'tree/one/out/c.txt': '',
@@ -35,6 +36,7 @@ Deno.test('repository files skip gitignored paths and hidden directories', () =>
   }, (root) => {
     assertEquals(repositoryFiles(root), [
       '.editorconfig',
+      '.github/workflows/ci.yml',
       '.gitignore',
       'a.txt',
       'tree/one/keep.txt',
