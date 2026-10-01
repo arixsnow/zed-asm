@@ -36,7 +36,7 @@
       "command": "deno run --allow-read=. scripts/build.ts check && deno run --allow-read=. --allow-write=.build --allow-run=tree-sitter scripts/tree-sitter.ts check"
     },
     "check:c": {
-      "description": "clang-format, strict GCC and Clang warnings, both static analyzers and clang-tidy",
+      "description": "Run clang-format, GCC and clang with strict warnings, both static analyzers and clang-tidy",
       "command": "deno run --allow-read=. --allow-run=clang-format,gcc,clang,clang-tidy scripts/check-c.ts"
     },
     "check:queries": {
@@ -48,7 +48,7 @@
       "command": "deno run --allow-read=. --allow-write=.build --allow-run=tree-sitter,as,aarch64-linux-gnu-as,arm-none-eabi-as,clang,nasm,yasm scripts/verify-fixtures.ts"
     },
     "test:unit": {
-      "description": "Unit, highlight, parse-tree, typing, structure and performance tests",
+      "description": "Run the unit, highlight, parse-tree, typing, structure and performance tests",
       "command": "deno test --allow-read=. --allow-write=.build --allow-run=tree-sitter,gcc,clang,aarch64-linux-gnu-gcc,arm-none-eabi-gcc"
     },
     "corpus": {
@@ -60,7 +60,7 @@
       "command": "deno task corpus && deno run --allow-read=. --allow-run=tree-sitter scripts/tree-sitter.ts test"
     },
     "sanitize": {
-      "description": "Corpus tests and fuzzing against parsers built with ASan and UBSan",
+      "description": "Run the corpus tests and fuzzing against parsers built with ASan and UBSan",
       "command": "deno task corpus && deno run --allow-read=.,/usr/lib64 --allow-write=.build --allow-run scripts/sanitize.ts"
     },
     "bench": {
@@ -72,7 +72,7 @@
       "command": "deno run --allow-read=.,/home/qa --allow-write=.build,/home/qa --allow-run=clang,Xvfb,xdotool,xclip,xwd,xwdtopnm,pnmtopng,dbus-run-session,zed scripts/zed-qa.ts"
     },
     "test": {
-      "description": "Every check except the sanitizers",
+      "description": "Run every check except the sanitizers",
       "command": "deno fmt --check && deno task lint && deno task check:types && deno task check:generated && deno task test:unit && deno task check:c && deno task test:corpus && deno task check:queries && deno task check:fixtures"
     }
   },

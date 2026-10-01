@@ -3,30 +3,30 @@ name = "Asm"
 version = "0.1.0"
 schema_version = 1
 authors = ["Arka Mondal <arka@arkamondal.net>"]
-description = "ARM (GNU/LLVM and Apple) and x86 (AT&T, Intel and NASM) assembly: precise highlighting, label indentation and comment continuation."
+description = "ARM and x86 assembly as GNU as, clang, nasm and yasm read it, Apple arm64 included: dialect-exact highlighting, outline, breadcrumbs, text objects and block indentation."
 repository = "https://github.com/arixsnow/zed-asm"
 
 [grammars.asm_auto]
 repository = "https://github.com/arixsnow/zed-asm"
-rev = "4e407027e1ba8c3585f1bd3e7ca239fe3a5d44cf"
+rev = "76a03a592a320bc8cd928d0d6bf4fc68aa018e6b"
 path = "tree-sitter/asm_auto"
 
 [grammars.asm_arm]
 repository = "https://github.com/arixsnow/zed-asm"
-rev = "4e407027e1ba8c3585f1bd3e7ca239fe3a5d44cf"
+rev = "76a03a592a320bc8cd928d0d6bf4fc68aa018e6b"
 path = "tree-sitter/asm_arm"
 
 [grammars.asm_arm_apple]
 repository = "https://github.com/arixsnow/zed-asm"
-rev = "4e407027e1ba8c3585f1bd3e7ca239fe3a5d44cf"
+rev = "76a03a592a320bc8cd928d0d6bf4fc68aa018e6b"
 path = "tree-sitter/asm_arm_apple"
 
 [grammars.asm_x86_gas]
 repository = "https://github.com/arixsnow/zed-asm"
-rev = "4e407027e1ba8c3585f1bd3e7ca239fe3a5d44cf"
+rev = "76a03a592a320bc8cd928d0d6bf4fc68aa018e6b"
 path = "tree-sitter/asm_x86_gas"
 
 [grammars.asm_x86_nasm]
 repository = "https://github.com/arixsnow/zed-asm"
-rev = "4e407027e1ba8c3585f1bd3e7ca239fe3a5d44cf"
+rev = "76a03a592a320bc8cd928d0d6bf4fc68aa018e6b"
 path = "tree-sitter/asm_x86_nasm"

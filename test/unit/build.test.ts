@@ -195,7 +195,7 @@ Deno.test('the tree-sitter metadata takes its license and authors from the manif
 
 const SCANNER = Deno.readTextFileSync(join(ROOT, 'tree-sitter', 'common', 'scanner.h'));
 
-Deno.test('GNU languages add block openers to the label indent pattern; NASM keeps labels only', () => {
+Deno.test('GNU-syntax languages add block openers to the label indent pattern; NASM keeps labels only', () => {
   for (const language of manifest.languages) {
     const syntax = manifest.syntaxes[language.syntax];
     const { increase_indent_pattern: increase, decrease_indent_pattern: decrease } = languageConfig(

@@ -87,7 +87,7 @@ export const CHECKS: Check[] = [
   {
     id: '1',
     row: 1,
-    title: 'A .s file opens as Assembly',
+    title: 'Opening a .s file',
     file: 'c01.s',
     text: '    mov x0, x1\n',
     steps: [],
@@ -96,7 +96,7 @@ export const CHECKS: Check[] = [
   {
     id: '2',
     row: 2,
-    title: 'A .asm file opens as x86 Assembly (NASM)',
+    title: 'Opening a .asm file',
     file: 'c02.asm',
     text: '    mov eax, 1\n',
     steps: [],
@@ -105,7 +105,7 @@ export const CHECKS: Check[] = [
   {
     id: '3',
     row: 3,
-    title: 'A modeline selects ARM Assembly',
+    title: 'Opening a .s file with an ARM modeline',
     file: 'c03.s',
     text: '// vim: ft=arm\n    mov x0, x1\n',
     steps: [],
@@ -114,7 +114,7 @@ export const CHECKS: Check[] = [
   {
     id: '4',
     row: 4,
-    title: 'lsl #32 is not a comment',
+    title: 'Typing lsl #32 before a // comment',
     file: 'c04.s',
     text: '',
     steps: [{ type: '    add x0, x1, x2, lsl #32 // comment' }],
@@ -123,7 +123,7 @@ export const CHECKS: Check[] = [
   {
     id: '5',
     row: 5,
-    title: '/* then Enter',
+    title: 'Enter after /*',
     file: 'c05.s',
     text: '',
     steps: [{ type: '/*' }, { keys: ['Return'] }],
@@ -156,7 +156,7 @@ export const CHECKS: Check[] = [
   {
     id: '7b',
     row: 7,
-    title: 'Enter after ; note in NASM',
+    title: 'Enter after ; note in x86 (NASM)',
     file: 'c07.asm',
     text: '; note',
     steps: [{ keys: ['ctrl+End', 'Return'] }],
@@ -206,7 +206,7 @@ export const CHECKS: Check[] = [
   {
     id: '8a',
     row: 8,
-    title: 'Toggle comment',
+    title: 'Toggling a comment',
     file: 'c08.s',
     text: 'mov x0, x1',
     steps: [{ keys: ['ctrl+slash'] }],
@@ -216,7 +216,7 @@ export const CHECKS: Check[] = [
   {
     id: '8b',
     row: 8,
-    title: 'Toggle comment in NASM',
+    title: 'Toggling a comment in x86 (NASM)',
     file: 'c08.asm',
     text: 'mov eax, 1',
     steps: [{ keys: ['ctrl+slash'] }],
@@ -226,7 +226,7 @@ export const CHECKS: Check[] = [
   {
     id: '8c',
     row: 8,
-    title: 'Toggle comment in x86 GAS',
+    title: 'Toggling a comment in x86 (GAS)',
     file: 'c08c.s',
     text: '// vim: ft=x86\nmovq %rax, %rbx\n',
     steps: [{ keys: ['ctrl+Home', 'Down', 'ctrl+slash'] }],
@@ -266,7 +266,7 @@ export const CHECKS: Check[] = [
   {
     id: '12',
     row: 12,
-    title: 'loop: on an indented line',
+    title: 'Typing loop: on an indented line',
     file: 'c12.s',
     text: '',
     steps: [{ type: 'main:' }, { keys: ['Return'] }, { type: 'loop:' }],
@@ -276,7 +276,7 @@ export const CHECKS: Check[] = [
   {
     id: '13a',
     row: 13,
-    title: 'Brackets, quotes and /* in code',
+    title: 'Typing brackets, quotes and /* in code',
     file: 'c13.s',
     text: '',
     steps: AUTOCLOSE,
@@ -286,7 +286,7 @@ export const CHECKS: Check[] = [
   {
     id: '13b',
     row: 13,
-    title: 'Brackets, quotes and /* in a comment',
+    title: 'Typing brackets, quotes and /* in a comment',
     file: 'c13b.s',
     text: '// \nnop\n',
     steps: [{ keys: ['ctrl+Home', 'End'] }, ...AUTOCLOSE],
@@ -296,7 +296,7 @@ export const CHECKS: Check[] = [
   {
     id: '14',
     row: 14,
-    title: '( typed before .Lend',
+    title: 'Typing ( before .Lend',
     file: 'c14.s',
     text: 'mov x0, .Lend - .Lstart\n',
     steps: [{ keys: ['ctrl+Home', ...Array(8).fill('Right')] }, { type: '(' }],
@@ -358,7 +358,7 @@ export const CHECKS: Check[] = [
   {
     id: '18',
     row: 18,
-    title: 'Sections stay out of the outline',
+    title: 'Looking for a section in the outline',
     file: 'c18.s',
     text: '    .text\n    .globl main\nmain:\n    ret\n    .data\nvalue:\n    .byte 1\n',
     steps: [{ keys: ['ctrl+End'] }, ...pickInOutline('text')],
@@ -369,7 +369,7 @@ export const CHECKS: Check[] = [
   {
     id: '19',
     row: 19,
-    title: 'Breadcrumbs on a nested local label',
+    title: 'Putting the cursor on a nested local label',
     file: 'c19.s',
     text: FUNCTIONS,
     steps: [{ keys: ['ctrl+Home', 'Down', 'Down'] }],
@@ -408,7 +408,7 @@ export const CHECKS: Check[] = [
   {
     id: '21',
     row: 21,
-    title: '.text typed on an indented line',
+    title: 'Typing .text on an indented line',
     file: 'c21.s',
     text: '',
     steps: typeLines('main:', '.text'),
@@ -418,7 +418,7 @@ export const CHECKS: Check[] = [
   {
     id: '22',
     row: 22,
-    title: 'C colors in an #if condition',
+    title: 'Opening an #if condition in a .S file',
     file: 'c22.S',
     text: '#if defined(SAVE) && LEVEL > 1\n    nop\n#endif\n',
     steps: [],
@@ -427,7 +427,7 @@ export const CHECKS: Check[] = [
   {
     id: '23',
     row: 23,
-    title: 'A macro being closed on the last line, with no newline after it',
+    title: 'Typing . as the last line of an open macro, with no newline after it',
     file: 'c23.s',
     text: '.macro m\n    nop\n',
     steps: [{ keys: ['ctrl+End'] }, { type: '.' }, ...pickInOutline('m')],
@@ -437,7 +437,7 @@ export const CHECKS: Check[] = [
   {
     id: '24a',
     row: 24,
-    title: 'vaf in vim mode',
+    title: 'Yanking vaf in vim mode',
     file: 'c24a.s',
     text: FUNCTIONS,
     steps: [{ keys: ['ctrl+Home', 'Down', 'Down', 'Down'] }, { type: 'vafy' }],
@@ -449,7 +449,7 @@ export const CHECKS: Check[] = [
   {
     id: '24b',
     row: 24,
-    title: 'vif in vim mode',
+    title: 'Yanking vif in vim mode',
     file: 'c24b.s',
     text: FUNCTIONS,
     steps: [{ keys: ['ctrl+Home', 'Down', 'Down', 'Down'] }, { type: 'vify' }],
@@ -461,7 +461,7 @@ export const CHECKS: Check[] = [
   {
     id: '24c',
     row: 24,
-    title: 'vac in vim mode',
+    title: 'Yanking vac in vim mode',
     file: 'c24c.s',
     text: MACRO,
     steps: [{ keys: ['ctrl+Home', 'Down'] }, { type: 'vacy' }],
@@ -676,7 +676,7 @@ async function main() {
     const errors = logErrors(Deno.readTextFileSync(LOG));
     results.push({
       id: String(LOG_ROW),
-      title: 'Zed log',
+      title: 'Reading the Zed log',
       status: errors.length === 0 ? 'PASS' : 'FAIL',
       detail: errors.length === 0
         ? 'no errors about the asm grammars or queries'

@@ -300,7 +300,7 @@ export const OUTLINE_CASES: OutlineCase[] = [
     outline: OUTLINE('LBB0_2'),
   },
   {
-    name: 'NASM: global labels with their dot labels',
+    name: 'x86 (NASM): global labels with their dot labels',
     grammars: ['asm_x86_nasm'],
     source: 'start:\n.loop:\n    dec rcx\n    jnz .loop\nnext:\n    ret\n',
     outline: ['0 start', '1 .loop', '0 next'],
@@ -315,7 +315,7 @@ export const BREADCRUMB_CASES: BreadcrumbCase[] = [
     crumbs: [['.macro m', 'f'], ['first', '.Lx'], ['first']],
   },
   {
-    name: 'NASM: the label block around the cursor',
+    name: 'x86 (NASM): the label block around the cursor',
     grammars: ['asm_x86_nasm'],
     source: 'start:\n.lo<|>op:\n    dec<|> rcx\n',
     crumbs: [['start', '.loop'], ['start']],
@@ -360,7 +360,7 @@ export const TEXT_OBJECT_CASES: TextObjectCase[] = [
     ],
   },
   {
-    name: 'NASM: af and if on a label block',
+    name: 'x86 (NASM): af and if on a label block',
     grammars: ['asm_x86_nasm'],
     source: 'start:\n    mo<|>v eax, 1\n    ret\nnext:\n',
     objects: [

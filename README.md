@@ -5,25 +5,30 @@ assembler's dialect.
 
 ## Languages
 
-| Language             | Covers                                    | Used for                      |
-| -------------------- | ----------------------------------------- | ----------------------------- |
-| Assembly             | ARM and x86 in GNU as or LLVM syntax      | `.s` `.S` `.sx`               |
-| ARM Assembly         | AArch64 and AArch32/Thumb, GNU as or LLVM | chosen per file or project    |
-| ARM Assembly (Apple) | Apple arm64, where `;` starts a comment   | chosen per file or project    |
-| x86 Assembly (GAS)   | AT&T and Intel syntax, GNU as or LLVM     | chosen per file or project    |
-| x86 Assembly (NASM)  | NASM and YASM                             | `.asm` `.ASM` `.nasm` `.yasm` |
+The extension covers two architectures, ARM and x86, in the syntax of the assemblers that read
+them. Zed lists them as five languages:
+
+| Language             | Covers                                                        | Used for                      |
+| -------------------- | ------------------------------------------------------------- | ----------------------------- |
+| Assembly             | ARM and x86 in GNU syntax                                     | `.s` `.S` `.sx`               |
+| ARM Assembly         | AArch64 and AArch32 (A32 and Thumb), for GNU as and clang     | chosen per file or project    |
+| ARM Assembly (Apple) | Apple arm64, where `;` starts a comment                       | chosen per file or project    |
+| x86 Assembly (GAS)   | x86 in GNU syntax, AT&T or Intel flavor, for GNU as and clang | chosen per file or project    |
+| x86 Assembly (NASM)  | x86 in NASM syntax, for nasm and yasm                         | `.asm` `.ASM` `.nasm` `.yasm` |
 
 Assembly handles both architectures without any setup. The other languages follow one dialect
 exactly, which matters for the few characters the dialects disagree on. On Apple platforms `;`
 starts a comment; with GNU as it separates two statements.
 
-To use one for a whole project, add this to `.zed/settings.json`:
+To use one by default, add this to `settings.json`:
 
 ```json
 { "file_types": { "ARM Assembly": ["s", "S"] } }
 ```
 
-For a single file, put a modeline at the top, such as `// vim: ft=arm` or `; vim: ft=nasm`.
+For a single file, put a modeline on its first line: `// -*- mode: arm -*-`, or the Vim form
+`// vim: ft=arm`. The names each language answers to are listed under Languages in
+[docs/architecture.md](docs/architecture.md#languages).
 
 If the older `assembly` extension is installed, uninstall it so the two do not both claim `.s`
 files.
@@ -36,7 +41,7 @@ file keeps its colors and its outline. The roadmap lists what comes next.
 
 | Milestone       | Status       | What it adds                                                                                                                                                                                                                                                                                         |
 | --------------- | ------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Foundation      | done         | five languages; comments, `#` immediates and `@` relocations read per dialect; C preprocessor lines; highlighting; comment continuation; label indentation; typing never breaks later lines                                                                                                          |
+| Foundation      | done         | five languages for ARM and x86; comments, `#` immediates and `@` relocations read per dialect; C preprocessor lines; highlighting; comment continuation; label indentation; typing never breaks later lines                                                                                          |
 | Structure       | this release | outline and breadcrumbs of functions with their local labels, macros and named constants; vim text objects for functions, macros and comments; indentation of `.macro`, `.if` and `.rept` blocks as you type; numeric labels `1:` and `b 1b`; full GNU directive forms; C colors in `#if` conditions |
 | ARM             | next         | registers, memory operands like `[x1, #8]!`, `:lo12:` relocations, `=label` literals, register lists, vector arrangements like `v0.16b`, condition codes, Apple `L` labels in operands                                                                                                               |
 | x86 GAS         | planned      | AT&T memory like `8(%rsp,%rax,4)`, `*` indirect jumps, Intel `dword ptr [rbx]`, `.intel_syntax` switching, AVX-512 masks like `{k1}{z}`, prefixes like `rep movsb`, C macro calls like `FOO(1)` in `.S` operands                                                                                     |

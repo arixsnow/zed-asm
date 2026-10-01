@@ -9,11 +9,11 @@ const extension = {
   name: 'Asm',
   version: '0.1.0',
   description:
-    'ARM (GNU/LLVM and Apple) and x86 (AT&T, Intel and NASM) assembly: precise highlighting, label indentation and comment continuation.',
+    'ARM and x86 assembly as GNU as, clang, nasm and yasm read it, Apple arm64 included: dialect-exact highlighting, outline, breadcrumbs, text objects and block indentation.',
   authors: ['Arka Mondal <arka@arkamondal.net>'],
   license: 'MIT',
   repository,
-  grammarRev: '4e407027e1ba8c3585f1bd3e7ca239fe3a5d44cf',
+  grammarRev: '76a03a592a320bc8cd928d0d6bf4fc68aa018e6b',
 };
 
 const syntaxes = {

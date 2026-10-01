@@ -119,7 +119,7 @@ Deno.test('a row after blank rows takes the last non-empty row as the previous o
   assertEquals(suggest(['a', '', 'b'], 2), { basisRow: 0, delta: 0, withinError: false });
 });
 
-Deno.test('the model refuses settings and queries whose Zed behaviour it does not reproduce', () => {
+Deno.test('the model refuses settings and queries whose Zed behavior it does not reproduce', () => {
   const cases: [LanguageConfig, Partial<LanguageQueries>, string][] = [
     [
       { decrease_indent_patterns: [] } as LanguageConfig,

@@ -1,10 +1,17 @@
 # Architecture
 
-This repository builds a Zed extension with five assembly languages from one manifest and one set of
-grammar modules. A rule is written once and reaches every language that includes its module; a new
-architecture is a new module.
+This repository builds a Zed extension for the assembly code of two architectures, ARM and x86, as
+their assemblers read it. ARM code is written for GNU as and clang on ELF systems, or for Apple's
+clang, which reads `;` as a comment. x86 code is written in GNU syntax, in its AT&T or Intel flavor,
+or in NASM syntax, which yasm reads too. The extension gives Zed five languages for these, built
+from one manifest and one set of grammar modules. A rule is written once and reaches every language
+that includes its module; a new architecture is a new module.
 
 ## Languages
+
+Each language is one grammar for one architecture, one syntax and the rules of one group of
+assemblers. Assembly is the exception: it reads ARM and x86 code in GNU syntax without being told
+which it is. The other four, the exact languages, follow their assemblers exactly.
 
 | Language (Zed picker) | Grammar         | Modules             | Owns by default           | Modeline aliases                           | Toggle comment |
 | --------------------- | --------------- | ------------------- | ------------------------- | ------------------------------------------ | -------------- |
@@ -17,9 +24,22 @@ architecture is a new module.
 Toggling a comment inserts the prefix shown and one space. `sx` is GCC's suffix for assembly that
 goes through the C preprocessor.
 
-A `.s` file opens as Assembly unless a modeline or a project setting selects another language.
-Assembly parses ARM and x86 together. The other GNU-syntax languages follow one dialect exactly;
-select one per file with a modeline (`// vim: ft=arm`) or per project in `.zed/settings.json`:
+The rest of this document uses these terms:
+
+| Term                                              | Meaning                                                                                                      |
+| ------------------------------------------------- | ------------------------------------------------------------------------------------------------------------ |
+| architecture                                      | ARM (AArch64, and AArch32 with its A32 and Thumb instruction sets) or x86 (x86-64 and i386)                  |
+| GNU syntax                                        | the syntax GNU as and clang read; for x86 in its AT&T or Intel flavor                                        |
+| NASM syntax                                       | the syntax nasm and yasm read                                                                                |
+| dialect                                           | the rules one group of assemblers adds to a syntax: GNU as and clang on ELF, Apple's clang, or nasm and yasm |
+| GNU as, clang, nasm, yasm                         | the assemblers, by their program names; GCC is the compiler                                                  |
+| Assembly, ARM, ARM (Apple), x86 (GAS), x86 (NASM) | the five languages, short for their names in Zed's picker                                                    |
+| exact languages                                   | every language except Assembly                                                                               |
+| GNU-syntax languages                              | Assembly, ARM, ARM (Apple) and x86 (GAS)                                                                     |
+
+A `.s` file opens as Assembly unless a modeline or a setting selects another language.
+Select an exact language per file with a modeline on the first line, `// -*- mode: arm -*-` or the
+Vim form `// vim: ft=arm`, or by default in `settings.json`:
 
 ```json
 { "file_types": { "ARM Assembly": ["s", "S"] } }
@@ -60,7 +80,7 @@ come from the x86 module. The ARM grammars have no such rule and read `@note` as
 
 Local labels are their own node, `local_identifier`. They are the names each assembler keeps out of
 the symbol table: `.L` names in the ELF assemblers, every NASM name that starts with `.` or `$.`,
-and `L` names in ARM (Apple), as Apple's Mach-O assembler reads them (checked: `Ltemp` never
+and `L` names in ARM (Apple), as Apple's clang reads them for Mach-O (checked: `Ltemp` never
 reaches the object file, `.Ldot` does). Other names such as `.text` stay ordinary identifiers. In
 ARM (Apple) an `L` name after an instruction is still an identifier. Operands there also hold the
 register `LR` and the conditions `LT`, `LE`, `LS` and `LO` (Apple's clang accepts `mov x0, LR` and
@@ -85,9 +105,9 @@ A second global label on the same line, after another label or after `;`, starts
 own. A label right after a statement on the same line (`nop main:`) is an error, as it is for the
 assemblers.
 
-Macros, conditionals and repeat blocks are blocks too in the GNU languages. NASM gets label blocks
-now, and its `%macro`, `%if`, `%rep`, `struc` and `istruc` blocks with the NASM milestone. Each
-block has a header, a `body` of statements and label blocks, and a closer:
+Macros, conditionals and repeat blocks are blocks too in the GNU-syntax languages. NASM gets label
+blocks now, and its `%macro`, `%if`, `%rep`, `struc` and `istruc` blocks with the NASM milestone.
+Each block has a header, a `body` of statements and label blocks, and a closer:
 
 - `macro_definition`: `.macro` with the name and the parameters, closed by `.endm` or `.endmacro`.
 - `conditional`: any of the `.if` openers with its conditions and its body, then optional
@@ -98,7 +118,7 @@ block has a header, a `body` of statements and label blocks, and a closer:
 A body starts at the end of its header line, with the newline or `;` that ends the header, and runs
 to the next clause or the closer. Zed indents from ranges that start on the line above. Because
 every body starts on its header's line, the editor indents the lines of any block and clause the
-same way (see "Editor behaviour").
+same way (see "Editor behavior").
 
 The words are keywords in any case, as GNU as accepts them. A global label in a body starts a block
 inside it, and a block between two global labels belongs to the label block before it. The header
@@ -168,11 +188,12 @@ input, so recovery ends on its own instead of relying on tree-sitter to ignore t
 
 While a line is being typed its last construct is often still open, and the scanner closes it with
 a zero-width token so that error recovery never pulls in the next line. An operand missing after a
-comma, an expression missing after an operator, `(`, `#` or `$`, and a parenthesis or GAS string
-left open all close at the end of the line, before a separator, or before any character that cannot
-continue them. `mov x0, , x1` keeps both operands, and in `ldr x0, [x1]` only the unsupported `[x1]`
-is an error. NASM strings and GNU character constants end at the closing quote or at the end of the
-line. A relocation may still lack its specifier and a register its name after `%`.
+comma, an expression missing after an operator, `(`, `#` or `$`, and a parenthesis or GNU-syntax
+string left open all close at the end of the line, before a separator, or before any character that
+cannot continue them. `mov x0, , x1` keeps both operands, and in `ldr x0, [x1]` only the
+unsupported `[x1]` is an error. NASM strings and GNU character constants end at the closing quote or
+at the end of the line. A relocation may still lack its specifier and a register its name after
+`%`.
 
 Three tests hold this. The first types every prefix of every line of the fixtures, with and without
 their final newline, and of all corpus examples, and requires every other line to parse exactly as
@@ -192,7 +213,7 @@ Query fragments live in `queries/<source>/` and corpus tests in `test/corpus/<so
 language the sources run from general to specific: `core`, the syntax family, each architecture,
 then `<arch>.<syntax>` for material that only holds for that pair (AT&T operands and `@` symbol
 types live in `x86.gas`). Corpus tests also include a directory named after the grammar for
-behaviour that belongs to one dialect.
+behavior that belongs to one dialect.
 
 Zed allows one file per query kind and paints a character with the last capture pushed for it, so
 the build concatenates fragments from general to specific and later patterns override earlier ones.
@@ -205,18 +226,18 @@ input (see Grammar modules), so incremental reparsing can reuse any subtree befo
 grammar's generated `src/scanner.c` defines `ASM_GRAMMAR_NAME` and one `ASM_DIALECT_*` macro and
 includes it; defining none or two is a compile error.
 
-What the assemblers do, measured with GNU as 2.46 (x86, AArch64) and 2.45 (ARM EABI), clang 22, nasm
-3.02 and yasm 1.3:
+What the assemblers do, measured with GNU as 2.46.1 (x86-64, AArch64) and 2.45 (AArch32), clang
+22.1, nasm 3.02 and yasm 1.3.0:
 
-|                    | GNU x86                   | GNU A64          | GNU A32          | clang ELF         | clang Apple arm64    | NASM / YASM |
-| ------------------ | ------------------------- | ---------------- | ---------------- | ----------------- | -------------------- | ----------- |
-| `;`                | separator                 | separator        | separator        | separator         | comment              | comment     |
-| `//` at line start | comment                   | comment          | comment          | comment           | comment              | error       |
-| `//` after code    | error                     | comment          | comment          | comment           | comment              | error       |
-| `#` at line start  | comment                   | comment          | comment          | comment           | comment              | error       |
-| `#` after code     | comment                   | immediate prefix | immediate prefix | depends on target | immediate prefix     | error       |
-| `@`                | symbol type (`@function`) | error            | comment          | depends on target | relocation (`@PAGE`) | -           |
-| `'a` / `'a'`       | both accepted             | both accepted    | both accepted    | only `'a'`        | only `'a'`           | `'a` warns  |
+|                    | GNU as x86-64             | GNU as AArch64   | GNU as AArch32   | clang ELF         | clang Apple arm64    | nasm and yasm |
+| ------------------ | ------------------------- | ---------------- | ---------------- | ----------------- | -------------------- | ------------- |
+| `;`                | separator                 | separator        | separator        | separator         | comment              | comment       |
+| `//` at line start | comment                   | comment          | comment          | comment           | comment              | error         |
+| `//` after code    | error                     | comment          | comment          | comment           | comment              | error         |
+| `#` at line start  | comment                   | comment          | comment          | comment           | comment              | error         |
+| `#` after code     | comment                   | immediate prefix | immediate prefix | depends on target | immediate prefix     | error         |
+| `@`                | symbol type (`@function`) | error            | comment          | depends on target | relocation (`@PAGE`) | -             |
+| `'a` / `'a'`       | both accepted             | both accepted    | both accepted    | only `'a'`        | only `'a'`           | `'a` warns    |
 
 What the scanner decides:
 
@@ -281,7 +302,7 @@ in proportion to the square of its length. With that earlier rule a line of `nop
 at 4,000 characters and 44 ms at 8,000; it now takes 10 and 19.
 
 String text is read before any comment rule, so `.asciz "# of args"` stays a string in every
-dialect. In ARM (Apple) an `@` that is not a relocation is an error, as it is for Apple's assembler.
+dialect. In ARM (Apple) an `@` that is not a relocation is an error, as it is for Apple's clang.
 `;` alone and `nop;;nop` are empty statements in the dialects where `;` separates.
 
 Assembly has to guess between ARM and x86, which costs three cases: `mov rax, rdi #copy` reads
@@ -305,7 +326,7 @@ label or a `;`, a `#` follows the dialect's comment rules, because the preproces
 directives only at the start of a line.
 
 After the directive the scanner reads the rest of the line the way the preprocessor does in
-assembler-with-cpp mode, measured with GCC 16 and clang 22 (`-E -x assembler-with-cpp`):
+assembler-with-cpp mode, measured with GCC 16.2 and clang 22.1 (`-E -x assembler-with-cpp`):
 
 - Only `//` and `/*` start comments. `#`, `@` and `;` are ordinary text: `#define SEP ;` and
   `#define STR(x) #x` keep their arguments.
@@ -337,8 +358,8 @@ so the grammar ends that comment at the end of its line.
 
 ## Blocks, labels and directive forms
 
-Measured with GNU as 2.46.1 (x86-64, AArch64) and 2.45 (ARMv7-A) and clang 22.1 (x86-64, AArch64,
-ARMv7-A, Apple arm64). Every one of them accepts:
+Measured with GNU as 2.46.1 (x86-64, AArch64) and 2.45 (AArch32) and clang 22.1 (x86-64, AArch64,
+AArch32, Apple arm64). Every one of them accepts:
 
 - `.macro` with the parameters `a, b`, `a=1`, `a = 1`, `a:req` and `rest:vararg`, keyword calls
   such as `m b=2, a=1`, `.exitm` and `.purgem`.
@@ -363,20 +384,20 @@ ARMv7-A, Apple arm64). Every one of them accepts:
 
 Where they differ:
 
-|                                                   | GNU x86       | GNU A64       | GNU A32                                         | clang ELF                                                          | clang Apple arm64    |
-| ------------------------------------------------- | ------------- | ------------- | ----------------------------------------------- | ------------------------------------------------------------------ | -------------------- |
-| Directive names in upper case                     | accepted      | accepted      | accepted                                        | accepted, except `.text`, `.data`, `.section`, `.endm` and `.endr` | same as clang ELF    |
-| `.endmacro`                                       | error         | error         | error                                           | closes a macro                                                     | closes a macro       |
-| Blanks between macro parameters (`.macro m a b`)  | accepted      | accepted      | accepted                                        | accepted                                                           | error                |
-| Blanks between `.irp` and `.irpc` values          | accepted      | accepted      | accepted                                        | error                                                              | error                |
-| One-line blocks (`.rept 2; nop; .endr`)           | accepted      | accepted      | accepted                                        | accepted                                                           | `;` starts a comment |
-| `$0` to `$9` and `$n` in a macro body             | error         | error         | error                                           | error                                                              | positional arguments |
-| Dollar label `1$:`                                | error         | error         | accepted, forgotten at the next non-local label | error                                                              | error                |
-| `.eqv NAME, expr`, `NAME == expr`                 | accepted      | accepted      | accepted                                        | error                                                              | error                |
-| Prefixed floats `0f1.5`, `0d1.5`, `0f+1.5`, `0f1` | accepted      | accepted      | accepted                                        | error                                                              | error                |
-| Hexadecimal float `0x1.8p0`                       | error         | error         | error                                           | accepted                                                           | accepted             |
-| Macro call `m 1 2`                                | two arguments | two arguments | two arguments                                   | two arguments                                                      | one argument `12`    |
-| Macro call `m 1 -2`                               | two arguments | one argument  | one argument                                    | one argument                                                       | one argument         |
+|                                                   | GNU as x86-64 | GNU as AArch64 | GNU as AArch32                                  | clang ELF                                                          | clang Apple arm64    |
+| ------------------------------------------------- | ------------- | -------------- | ----------------------------------------------- | ------------------------------------------------------------------ | -------------------- |
+| Directive names in upper case                     | accepted      | accepted       | accepted                                        | accepted, except `.text`, `.data`, `.section`, `.endm` and `.endr` | same as clang ELF    |
+| `.endmacro`                                       | error         | error          | error                                           | closes a macro                                                     | closes a macro       |
+| Blanks between macro parameters (`.macro m a b`)  | accepted      | accepted       | accepted                                        | accepted                                                           | error                |
+| Blanks between `.irp` and `.irpc` values          | accepted      | accepted       | accepted                                        | error                                                              | error                |
+| One-line blocks (`.rept 2; nop; .endr`)           | accepted      | accepted       | accepted                                        | accepted                                                           | `;` starts a comment |
+| `$0` to `$9` and `$n` in a macro body             | error         | error          | error                                           | error                                                              | positional arguments |
+| Dollar label `1$:`                                | error         | error          | accepted, forgotten at the next non-local label | error                                                              | error                |
+| `.eqv NAME, expr`, `NAME == expr`                 | accepted      | accepted       | accepted                                        | error                                                              | error                |
+| Prefixed floats `0f1.5`, `0d1.5`, `0f+1.5`, `0f1` | accepted      | accepted       | accepted                                        | error                                                              | error                |
+| Hexadecimal float `0x1.8p0`                       | error         | error          | error                                           | accepted                                                           | accepted             |
+| Macro call `m 1 2`                                | two arguments | two arguments  | two arguments                                   | two arguments                                                      | one argument `12`    |
+| Macro call `m 1 -2`                               | two arguments | one argument   | one argument                                    | one argument                                                       | one argument         |
 
 GNU as takes any of `f`, `d`, `e`, `r`, `s`, `x`, `h`, `p` and `b`, in either case, as the letter of
 a prefixed float, and inside a float directive it reads `0x10` as 10.0: the prefix, then a decimal
@@ -422,7 +443,7 @@ measured); such a word alone is an ordinary symbol, and `m x0 #1` has the two op
 `#1`. A blank-separated `.irp` list or macro parameter list never holds a shift, since GNU as ends
 each item at a blank.
 
-NASM names follow the NASM manual and what nasm 3.02 and yasm 1.3 accept: an optional `$`, which
+NASM names follow the NASM manual and what nasm 3.02 and yasm 1.3.0 accept: an optional `$`, which
 turns a reserved word into a name (`$eax` is a symbol, not the register), then a letter, `_`, `?`
 or `.`, then letters, digits and `_ $ # @ ~ . ?`. A name that starts with `.` or `$.` is local.
 Both assemblers accept `.1:`, `.$x:`, `.#x:`, `.@x:`, `$.y:` and `$eax:`. Only nasm accepts the
@@ -431,13 +452,13 @@ bare `.:` (yasm: "label or instruction expected"), and only yasm accepts `..x:` 
 is valid for one of the language's assemblers. A `$` starts a name only before a letter, `_`, `?`
 or `.`, so the scanner looks at the next character before it closes an open operand at a `$`.
 
-## Editor behaviour
+## Editor behavior
 
 Every language lists as comment markers exactly the characters its assemblers accept at the start of
 a line: `//`, `#` and `@` in ARM, `//`, `#` and `;` in ARM (Apple), `//` and `#` in x86 (GAS), all
 four in Assembly, and `;` in NASM. Enter after a full-line comment starts the next line with the
-same marker; a comment after code does not continue. Toggle comment inserts `//`, which every GNU
-and LLVM assembler accepts at the start of a line, and `;` in NASM.
+same marker; a comment after code does not continue. Toggle comment inserts `//`, which GNU as and
+clang accept at the start of a line on every target, and `;` in NASM.
 
 A `#` line that is a C preprocessor directive is not a comment. There the `preproc` scope limits
 the markers to `//`, and Enter after `#define X 1` or `#endif /* X */` inserts nothing. Zed has one
@@ -575,7 +596,7 @@ may start arbitrary programs. `test/unit/permissions.test.ts` enforces all of th
 | Command                    | What it checks                                                                                                                                                            |
 | -------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `deno task test`           | formatting, lint, types, generated files and parsers up to date, unit, highlight, tree, typing and performance tests, C checks, corpus tests, query compilation, fixtures |
-| `deno task check:c`        | clang-format, GCC and Clang with strict warnings as errors, both static analyzers, clang-tidy, and that `scanner.h` rejects zero or two dialect macros                    |
+| `deno task check:c`        | clang-format, GCC and clang with strict warnings as errors, both static analyzers, clang-tidy, and that `scanner.h` rejects zero or two dialect macros                    |
 | `deno task test:corpus`    | the corpus tests of all five grammars                                                                                                                                     |
 | `deno task sanitize`       | corpus and fuzzing against parsers built with AddressSanitizer and UndefinedBehaviorSanitizer                                                                             |
 | `deno task check:fixtures` | every fixture, and a CRLF and a no-final-newline copy of it, assembles with the real toolchains; every fixture parses without errors                                      |
@@ -731,8 +752,8 @@ What keeps it there:
   label follow a statement (`nop main:`). The token took x86 GAS from 205 states to 119.
 - Rules that only name a choice (`_line_content`, `_statement`, `_mnemonic`, `_operand`, `_value`,
   `_symbol`) are inlined. `_mnemonic` alone saves a node per instruction, 4 to 9% of parse time.
-  Inlining `_expression` too parses 5 to 10% faster in the GNU grammars but doubles their parse
-  tables.
+  Inlining `_expression` too parses 5 to 10% faster in the GNU-syntax grammars but doubles their
+  parse tables.
 - A block's header is a rule of its own. tree-sitter turns every `optional` and `choice` in a rule
   into separate productions, and a macro body after an inline header was copied for each header
   shape; the header rule took x86 GAS from 284 states to 240.

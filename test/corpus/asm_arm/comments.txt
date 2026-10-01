@@ -16,7 +16,7 @@ nop @ arm32
   (line_comment))
 
 ================================================================================
-Semicolon separates statements (GNU and LLVM on ELF)
+Semicolon separates statements (GNU as and clang on ELF)
 ================================================================================
 
 nop; nop
