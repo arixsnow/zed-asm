@@ -28,6 +28,11 @@ const syntaxes = {
       { start: '/*', end: ' */', close: true, newline: false, not_in: ['string', 'comment'] },
     ],
     labelPattern: '^\\s*(?:[A-Za-z_.][A-Za-z0-9_.$]*|[0-9]+):',
+    blocks: [
+      { openers: ['macroOpen'], clauses: [], closer: 'MACRO_CLOSE' },
+      { openers: ['ifOpen'], clauses: ['elseif', 'else'], closer: 'CONDITIONAL_CLOSE' },
+      { openers: ['reptOpen', 'irpOpen', 'irpcOpen'], clauses: [], closer: 'REPEAT_CLOSE' },
+    ],
     overrides: { preproc: { line_comments: ['// '] } },
   },
   nasm: {
@@ -41,6 +46,7 @@ const syntaxes = {
       { start: "'", end: "'", close: true, newline: false, not_in: ['string', 'comment'] },
     ],
     labelPattern: '^\\s*[A-Za-z_.?$@][A-Za-z0-9_$#@~.?]*:',
+    blocks: [],
   },
 };
 

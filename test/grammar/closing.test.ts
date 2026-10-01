@@ -20,27 +20,32 @@ const POSITIONS: Position[] = [
     token: '_missing_operand',
     prefix: 'mov r0, ',
     opens: (sets) => sets.first.get('_operand') as TokenSet,
-    externals: ['_hash', '_at_type', '_missing_expression'],
+    externals: ['_hash', '_at_type', '_missing_expression', '_dollar_label', '_darwin_argument'],
   },
   {
     name: 'after an operator',
     token: '_missing_expression',
     prefix: 'mov r0, 1 + ',
     opens: (sets) => sets.first.get('_expression') as TokenSet,
-    externals: ['_missing_expression'],
+    externals: ['_missing_expression', '_dollar_label', '_darwin_argument'],
   },
   {
     name: 'inside a parenthesis',
     token: '_unclosed',
     prefix: 'mov r0, (a ',
     opens: (sets) => sets.continuations('_expression'),
-    externals: ['_unclosed', '_at_attached'],
+    externals: ['_unclosed', '_at_attached', '_glued_argument', '_glued_separator', '_glued_text'],
   },
 ];
 
 const SCANNED: Record<string, string> = { gas: '/#@;', nasm: ';' };
 const FOLLOWERS = ['a', '='];
 const LEX = /^lex_external state:\d+, row:0, column:(\d+)$/;
+
+function afterBlank(set: TokenSet): TokenSet {
+  const terminals = [...set.terminals].filter(([, rule]) => rule.type !== 'IMMEDIATE_TOKEN');
+  return { ...set, terminals: new Map(terminals) };
+}
 
 function closingColumns(log: string, token: string): number[] {
   const columns: number[] = [];
@@ -60,7 +65,9 @@ Deno.test('the scanner closes an open construct exactly before characters the gr
   const failures: string[] = [];
   for (const { grammar, syntax } of manifest.languages) {
     const sets = new GrammarSets(readGrammar(grammar));
-    const opened = new Map(POSITIONS.map((position) => [position, position.opens(sets)]));
+    const opened = new Map(
+      POSITIONS.map((position) => [position, afterBlank(position.opens(sets))]),
+    );
     const checked = PRINTABLE.filter((char) => char !== ' ' && !SCANNED[syntax].includes(char));
     const cases = POSITIONS.flatMap((position) =>
       checked.flatMap((char) => FOLLOWERS.map((follower) => ({ position, typed: char + follower })))

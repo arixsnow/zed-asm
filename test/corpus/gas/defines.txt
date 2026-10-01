@@ -1,0 +1,93 @@
+================================================================================
+Object-like and function-like macro definitions
+================================================================================
+
+#define N 4
+#define ADD(a, b) a + b
+#define P (x)
+#define EMPTY
+#define NONE() 0
+
+--------------------------------------------------------------------------------
+
+(source_file
+  (preproc_define
+    directive: (preproc_directive)
+    name: (identifier)
+    value: (preproc_argument))
+  (preproc_define
+    directive: (preproc_directive)
+    name: (identifier)
+    parameters: (preproc_params
+      (identifier)
+      (identifier))
+    value: (preproc_argument))
+  (preproc_define
+    directive: (preproc_directive)
+    name: (identifier)
+    value: (preproc_argument))
+  (preproc_define
+    directive: (preproc_directive)
+    name: (identifier))
+  (preproc_define
+    directive: (preproc_directive)
+    name: (identifier)
+    parameters: (preproc_params)
+    value: (preproc_argument)))
+
+================================================================================
+Variadic macros and the name characters of C
+================================================================================
+
+#define LOG(fmt, ...) fmt
+#define ALL(args...) args
+#define a.b 1
+#define $x 2
+
+--------------------------------------------------------------------------------
+
+(source_file
+  (preproc_define
+    directive: (preproc_directive)
+    name: (identifier)
+    parameters: (preproc_params
+      (identifier))
+    value: (preproc_argument))
+  (preproc_define
+    directive: (preproc_directive)
+    name: (identifier)
+    parameters: (preproc_params
+      (identifier))
+    value: (preproc_argument))
+  (preproc_define
+    directive: (preproc_directive)
+    name: (identifier)
+    value: (preproc_argument))
+  (preproc_define
+    directive: (preproc_directive)
+    name: (identifier)
+    value: (preproc_argument)))
+
+================================================================================
+Conditions of #if and #elif are nodes of their own
+================================================================================
+
+#if defined(X) && Y > 2
+# elif Z
+#ifdef W
+#endif
+
+--------------------------------------------------------------------------------
+
+(source_file
+  (preproc_line
+    directive: (preproc_directive)
+    condition: (preproc_condition))
+  (preproc_line
+    directive: (preproc_directive)
+    condition: (preproc_condition))
+  (preproc_line
+    directive: (preproc_directive)
+    argument: (preproc_argument))
+  (preproc_line
+    directive: (preproc_directive)))

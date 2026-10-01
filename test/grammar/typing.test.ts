@@ -6,7 +6,7 @@ import { join } from '@std/path';
 import { sourcesOf } from '../../scripts/build.ts';
 import { filesUnder, ROOT } from '../../scripts/lib/files.ts';
 import { type Language, manifest } from '../../scripts/lib/manifest.ts';
-import { FIXTURE_DIALECTS } from '../../scripts/verify-fixtures.ts';
+import { fixtures } from '../../scripts/verify-fixtures.ts';
 import { parseFiles, PRINTABLE, treeText } from '../lib/parse.ts';
 
 interface Node {
@@ -16,39 +16,116 @@ interface Node {
   text: string;
 }
 
-const SPANNING_TYPES = new Set(['block_comment', 'preproc_line']);
-const HEADER = /^ {2}\((\w+) \[(\d+), \d+\] - \[(\d+), \d+\]/;
-function topLevelNodes(tree: string): Node[] {
-  const nodes: Node[] = [];
-  for (const line of tree.split('\n')) {
-    const header = HEADER.exec(line);
-    if (header !== null) {
-      nodes.push({
-        type: header[1],
-        startRow: Number(header[2]),
-        endRow: Number(header[3]),
-        text: line,
-      });
-    } else if (line.startsWith('   ') && nodes.length > 0) {
-      nodes[nodes.length - 1].text += `\n${line}`;
-    }
-  }
-  return nodes;
+interface Block {
+  rows: number[];
+  parent: Block | null;
 }
 
-function parseAll(grammar: string, sources: string[]): Node[][] {
+interface Tree {
+  nodes: Node[];
+  blocks: Block[];
+}
+
+const SPANNING_TYPES = new Set(['block_comment', 'preproc_line', 'preproc_define']);
+const BLOCK_TYPES = new Set(['macro_definition', 'conditional', 'repeat_block']);
+const CLAUSE_TYPES = new Set(['elseif_clause', 'else_clause']);
+const CONTAINER_TYPES = new Set([
+  'label_block',
+  'body',
+  'unclosed_body',
+  ...BLOCK_TYPES,
+  ...CLAUSE_TYPES,
+]);
+const HEADER = /^( *)(?:\w+: )?\((\w+) \[(\d+), \d+\] - \[(\d+), (\d+)\]/;
+
+function lastRow(header: RegExpExecArray): number {
+  const [startRow, endRow, endColumn] = [3, 4, 5].map((group) => Number(header[group]));
+  return endColumn === 0 && endRow > startRow ? endRow - 1 : endRow;
+}
+
+function lineNodes(tree: string): Tree {
+  const nodes: Node[] = [];
+  const blocks: Block[] = [];
+  const containers: { depth: number; block: Block | null }[] = [{ depth: 0, block: null }];
+  let current: { depth: number; node: Node } | null = null;
+  for (const line of tree.split('\n').slice(1).map((text) => text.replace(/\)+$/, ''))) {
+    const header = HEADER.exec(line);
+    const depth = line.search(/\S/);
+    if (current !== null && depth > current.depth) {
+      current.node.text += `\n${line.slice(current.depth)}`;
+      continue;
+    }
+    current = null;
+    if (header === null) {
+      continue;
+    }
+    while (containers[containers.length - 1].depth >= depth) {
+      containers.pop();
+    }
+    if (CONTAINER_TYPES.has(header[2])) {
+      const enclosing = containers.findLast((container) => container.block !== null)?.block ??
+        null;
+      const block = BLOCK_TYPES.has(header[2])
+        ? { rows: [Number(header[3]), lastRow(header)], parent: enclosing }
+        : null;
+      if (block !== null) {
+        blocks.push(block);
+      }
+      if (CLAUSE_TYPES.has(header[2])) {
+        enclosing?.rows.push(Number(header[3]));
+      }
+      containers.push({ depth, block });
+      continue;
+    }
+    const node = {
+      type: header[2],
+      startRow: Number(header[3]),
+      endRow: lastRow(header),
+      text: line.slice(depth),
+    };
+    nodes.push(node);
+    current = { depth, node };
+  }
+  return { nodes, blocks };
+}
+
+function parseAll(grammar: string, sources: string[]): Tree[] {
   const trees = treeText(parseFiles(grammar, 'typing', sources).output)
     .split(/^(?=\(source_file )/m)
-    .filter((tree) => tree.startsWith('(source_file '))
-    .map((tree) => tree.trimEnd().slice(0, -1));
+    .filter((tree) => tree.startsWith('(source_file '));
   assertEquals(trees.length, sources.length, `${grammar}: one tree per variant`);
-  return trees.map(topLevelNodes);
+  return trees.map(lineNodes);
 }
 
-function outside(nodes: Node[], first: number, last: number): string[] {
-  return nodes.filter((node) => node.endRow < first || node.startRow > last).map((node) =>
-    node.text
-  );
+function delimiterRows(blocks: Block[], row: number): number[] {
+  const rows: number[] = [];
+  for (const block of blocks.filter((candidate) => candidate.rows.includes(row))) {
+    for (let current: Block | null = block; current !== null; current = current.parent) {
+      rows.push(...current.rows);
+    }
+  }
+  return rows;
+}
+
+function enclosingRows(blocks: Block[], row: number): number[] {
+  const rows: number[] = [];
+  for (
+    const block of blocks.filter((candidate) =>
+      candidate.rows[0] <= row && row <= candidate.rows[1]
+    )
+  ) {
+    for (let current: Block | null = block; current !== null; current = current.parent) {
+      rows.push(...current.rows);
+    }
+  }
+  return rows;
+}
+
+function outside(nodes: Node[], first: number, last: number, partners: number[]): string[] {
+  return nodes
+    .filter((node) => node.endRow < first || node.startRow > last)
+    .filter((node) => !partners.includes(node.startRow))
+    .map((node) => node.text);
 }
 
 interface Variant {
@@ -79,10 +156,14 @@ function typingFailures(grammar: string, label: string, text: string): string[] 
   ]);
   const failures: string[] = [];
   for (const [index, { row, typed }] of typing.entries()) {
-    const touching = baseline.filter((node) => node.startRow <= row && row <= node.endRow);
+    const touching = baseline.nodes.filter((node) => node.startRow <= row && row <= node.endRow);
     const first = Math.min(row, ...touching.map((node) => node.startRow));
     const last = Math.max(row, ...touching.map((node) => node.endRow));
-    const nodes = parsed[index];
+    const delimiters = delimiterRows(baseline.blocks, row);
+    const partners = delimiters.length === 0
+      ? delimiters
+      : [...delimiters, ...enclosingRows(parsed[index].blocks, row)];
+    const nodes = parsed[index].nodes;
     const spansByDesign = nodes.some((node) =>
       SPANNING_TYPES.has(node.type) && node.startRow <= last && node.endRow > last
     );
@@ -93,7 +174,9 @@ function typingFailures(grammar: string, label: string, text: string): string[] 
       node.startRow <= last && node.endRow >= first && (node.startRow < first || node.endRow > last)
     );
     if (
-      leaked || outside(baseline, first, last).join('\n') !== outside(nodes, first, last).join('\n')
+      leaked ||
+      outside(baseline.nodes, first, last, partners).join('\n') !==
+        outside(nodes, first, last, partners).join('\n')
     ) {
       failures.push(`${grammar} ${label} line ${row + 1}: ${JSON.stringify(typed)}`);
     }
@@ -121,13 +204,13 @@ function corpusExamples(language: Language): [string, string][] {
 
 Deno.test('a line being typed in a fixture never changes how any other line parses', () => {
   const failures: string[] = [];
-  for (const [dialect, { grammars }] of Object.entries(FIXTURE_DIALECTS)) {
-    const directory = join(ROOT, 'test', 'fixtures', dialect);
-    for (const entry of Deno.readDirSync(directory)) {
-      const text = Deno.readTextFileSync(join(directory, entry.name));
-      for (const grammar of grammars) {
-        failures.push(...typingFailures(grammar, `${dialect}/${entry.name}`, text));
-      }
+  for (const { file, grammars } of fixtures()) {
+    const text = Deno.readTextFileSync(join(ROOT, file));
+    for (const grammar of grammars) {
+      failures.push(...typingFailures(grammar, file, text));
+      failures.push(
+        ...typingFailures(grammar, `${file} without a final newline`, text.replace(/\n$/, '')),
+      );
     }
   }
   assertEquals(failures, []);
@@ -136,8 +219,8 @@ Deno.test('a line being typed in a fixture never changes how any other line pars
 const UNSUPPORTED: [string, string[]][] = [
   ['ldr x0, [x1, #8]', ['asm_auto', 'asm_arm', 'asm_arm_apple']],
   ['stp x29, x30, [sp, #-16]!', ['asm_auto', 'asm_arm', 'asm_arm_apple']],
-  ['1:\n  b.ne 1b', ['asm_auto', 'asm_arm', 'asm_arm_apple']],
   ['add x0, x0, #:lo12:sym', ['asm_auto', 'asm_arm']],
+  ['add x0, x0, :lo12:sym', ['asm_auto', 'asm_arm']],
   ['ld1 {v0.16b}, [x0]', ['asm_auto', 'asm_arm', 'asm_arm_apple']],
   ['ldr x1, [x0, _msg@PAGEOFF]', ['asm_arm_apple']],
   ['movq 8(%rsp), %rax', ['asm_auto', 'asm_x86_gas']],
@@ -159,7 +242,7 @@ Deno.test('syntax the grammars do not parse yet keeps its errors on its own line
     const text = `${snippet}\nnop\n`;
     const nopRow = snippet.split('\n').length;
     for (const grammar of grammars) {
-      const [nodes] = parseAll(grammar, [text]);
+      const [{ nodes }] = parseAll(grammar, [text]);
       const onNopRow = nodes.filter((node) => node.startRow <= nopRow && node.endRow >= nopRow);
       if (
         onNopRow.length !== 1 || onNopRow[0].type !== 'instruction' ||
@@ -168,6 +251,32 @@ Deno.test('syntax the grammars do not parse yet keeps its errors on its own line
         failures.push(`${grammar}: ${JSON.stringify(snippet)} reaches the next line`);
       }
       failures.push(...typingFailures(grammar, JSON.stringify(snippet), text));
+    }
+  }
+  assertEquals(failures, []);
+});
+
+const STRAY_LABELS: [string, string[]][] = [
+  ['add x0, x0, :lo12:.LC0 // c', ['asm_auto', 'asm_arm', 'asm_arm_apple']],
+  ['ldr x1, [x0, :got_lo12:sym]', ['asm_auto', 'asm_arm', 'asm_arm_apple']],
+  ['movw r0, #:lower16:sym', ['asm_auto', 'asm_arm']],
+  ['movq %fs:sym@tpoff, %rax', ['asm_auto', 'asm_x86_gas']],
+  ['mov rax, qword ptr fs:[0x28]', ['asm_auto', 'asm_x86_gas']],
+  ['mov rax, [fs:0x28]', ['asm_x86_nasm']],
+  ['mov ax, es:[bx]', ['asm_x86_nasm']],
+];
+
+Deno.test('an operand the grammars do not parse yet never starts a label in the middle of its line', () => {
+  const failures: string[] = [];
+  for (const [snippet, grammars] of STRAY_LABELS) {
+    for (const grammar of grammars) {
+      const tree = treeText(parseFiles(grammar, 'stray', [`f:\n    ${snippet}\n    ret\n`]).output);
+      const blocks = tree.match(/\(label_block /g) ?? [];
+      if (blocks.length !== 1) {
+        failures.push(
+          `${grammar}: ${JSON.stringify(snippet)} starts ${blocks.length - 1} more label block(s)`,
+        );
+      }
     }
   }
   assertEquals(failures, []);
@@ -230,7 +339,7 @@ Deno.test('any character typed into an open construct keeps its effects on its o
   for (const language of manifest.languages) {
     const lines = openLines(language);
     const parsed = parseAll(language.grammar, lines.map((line) => `${line}\nnop\n`));
-    for (const [index, nodes] of parsed.entries()) {
+    for (const [index, { nodes }] of parsed.entries()) {
       const spansByDesign = nodes.some((node) =>
         SPANNING_TYPES.has(node.type) && node.startRow === 0 && node.endRow > 0
       );
@@ -239,6 +348,35 @@ Deno.test('any character typed into an open construct keeps its effects on its o
         !spansByDesign &&
         (onNopRow.length !== 1 || onNopRow[0].type !== 'instruction' || onNopRow[0].startRow !== 1)
       ) {
+        failures.push(`${language.grammar}: ${JSON.stringify(lines[index])}`);
+      }
+    }
+  }
+  assertEquals(failures, []);
+});
+
+const OPEN_BLOCKS: Record<string, string> = {
+  gas: '.if A\n    .rept 2\n    nop\n    ',
+  nasm: 'f:\n    nop\n    ',
+};
+
+Deno.test('any character typed on the last line of a file keeps the blocks around it', () => {
+  const failures: string[] = [];
+  for (const language of manifest.languages) {
+    const prefix = OPEN_BLOCKS[language.syntax];
+    const row = prefix.split('\n').length - 1;
+    const lines = openLines(language);
+    const [baseline, ...parsed] = parseAll(language.grammar, [
+      prefix,
+      ...lines.map((line) => `${prefix}${line}`),
+    ]);
+    const before = (tree: Tree) =>
+      JSON.stringify([
+        tree.nodes.filter((node) => node.endRow < row),
+        tree.blocks.map((block) => block.rows[0]),
+      ]);
+    for (const [index, tree] of parsed.entries()) {
+      if (before(tree) !== before(baseline)) {
         failures.push(`${language.grammar}: ${JSON.stringify(lines[index])}`);
       }
     }

@@ -27,10 +27,17 @@ export interface Bracket {
   not_in?: string[];
 }
 
+export interface Block {
+  openers: string[];
+  clauses: string[];
+  closer: string;
+}
+
 export interface Syntax {
   blockComments: boolean;
   brackets: Bracket[];
   labelPattern: string;
+  blocks: Block[];
   overrides?: Record<string, Record<string, string[]>>;
 }
 
@@ -197,12 +204,22 @@ function tableOf<T>(check: Check<T>): Check<Record<string, T>> {
   };
 }
 
+const block: Check<Block> = (value, path) => {
+  const entry = record(value, path);
+  return {
+    openers: nonEmpty(texts, 'opener')(entry.openers, `${path}.openers`),
+    clauses: texts(entry.clauses, `${path}.clauses`),
+    closer: text(entry.closer, `${path}.closer`),
+  };
+};
+
 const syntax: Check<Syntax> = (value, path) => {
   const entry = record(value, path);
   return {
     blockComments: flag(entry.blockComments, `${path}.blockComments`),
     brackets: list(bracket)(entry.brackets, `${path}.brackets`),
     labelPattern: regularExpression(entry.labelPattern, `${path}.labelPattern`),
+    blocks: list(block)(entry.blocks, `${path}.blocks`),
     overrides: optional(tableOf(tableOf(texts)))(entry.overrides, `${path}.overrides`),
   };
 };

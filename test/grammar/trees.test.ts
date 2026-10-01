@@ -4,7 +4,7 @@ import { assert, assertEquals } from '@std/assert';
 import { join } from '@std/path';
 
 import { ROOT } from '../../scripts/lib/files.ts';
-import { FIXTURE_DIALECTS } from '../../scripts/verify-fixtures.ts';
+import { fixtures } from '../../scripts/verify-fixtures.ts';
 import { parseFiles, treeText } from '../lib/parse.ts';
 
 const SLOT = '{}';
@@ -47,6 +47,19 @@ function parse(grammar: string, source: string): Parse {
   return { clean: ok && !recovered && !/\((ERROR|MISSING)/.test(tree), recovered, tree };
 }
 
+const ROOT_NODE = /^\(source_file \[\d+, \d+\] - \[(\d+), (\d+)\]/;
+const BLOCK_NODE =
+  /\((macro_definition|conditional|repeat_block) \[(\d+), \d+\] - \[(\d+), (\d+)\]/g;
+
+function blocksOpenToEnd(grammar: string, source: string): string[] {
+  const tree = treeText(parseFiles(grammar, 'trees', [source]).output).trim();
+  const end = ROOT_NODE.exec(tree);
+  assert(end !== null, `${grammar}: no tree for ${JSON.stringify(source)}`);
+  return [...tree.matchAll(BLOCK_NODE)]
+    .filter(([, , , row, column]) => row === end[1] && column === end[2])
+    .map(([, type, row]) => `${type} opened on line ${Number(row) + 1}`);
+}
+
 function assertClean(grammar: string, baseline: Parse, label: string): void {
   assert(baseline.clean, `${grammar}: ${label} does not parse cleanly:\n${baseline.tree}`);
 }
@@ -71,25 +84,19 @@ Deno.test('UTF-8 text parses exactly like ASCII text of the same kind', () => {
   }
 });
 
-Deno.test('every fixture parses the same with CRLF line endings and without a final newline', () => {
-  for (const [dialect, { grammars }] of Object.entries(FIXTURE_DIALECTS)) {
-    const directory = join(ROOT, 'test', 'fixtures', dialect);
-    for (const entry of Deno.readDirSync(directory)) {
-      const lf = Deno.readTextFileSync(join(directory, entry.name)).replaceAll('\r\n', '\n');
-      const variants: [string, string][] = [
-        ['CRLF', lf.replaceAll('\n', '\r\n')],
-        ['no final newline', lf.replace(/\n$/, '')],
-      ];
-      for (const grammar of grammars) {
-        const expected = parse(grammar, lf);
-        assertClean(grammar, expected, `${dialect}/${entry.name}`);
-        for (const [label, source] of variants) {
-          assertEquals(
-            parse(grammar, source),
-            expected,
-            `${grammar}: ${dialect}/${entry.name} (${label})`,
-          );
-        }
+Deno.test('every fixture parses cleanly, closes every block it opens, and parses the same with CRLF line endings and without a final newline', () => {
+  for (const { file, grammars } of fixtures()) {
+    const lf = Deno.readTextFileSync(join(ROOT, file)).replaceAll('\r\n', '\n');
+    const variants: [string, string][] = [
+      ['CRLF', lf.replaceAll('\n', '\r\n')],
+      ['no final newline', lf.replace(/\n$/, '')],
+    ];
+    for (const grammar of grammars) {
+      const expected = parse(grammar, lf);
+      assertClean(grammar, expected, file);
+      assertEquals(blocksOpenToEnd(grammar, lf), [], `${grammar}: ${file} leaves blocks open`);
+      for (const [label, source] of variants) {
+        assertEquals(parse(grammar, source), expected, `${grammar}: ${file} (${label})`);
       }
     }
   }

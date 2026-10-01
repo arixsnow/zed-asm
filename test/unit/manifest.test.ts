@@ -48,6 +48,18 @@ Deno.test('an invalid manifest fails with a message naming the field', () => {
       delete copy.syntaxes.nasm.brackets[0].close;
     }, 'syntaxes.nasm.brackets[0].close must be a boolean'],
     [(copy) => {
+      copy.syntaxes.gas.blocks = [{ openers: [], clauses: [], closer: 'MACRO_CLOSE' }];
+    }, 'syntaxes.gas.blocks[0].openers must list at least one opener'],
+    [(copy) => {
+      copy.syntaxes.gas.blocks = [{ openers: ['macroOpen'], clauses: [] }];
+    }, 'syntaxes.gas.blocks[0].closer must be a non-empty string'],
+    [(copy) => {
+      copy.syntaxes.gas.blocks = [{ openers: ['macroOpen'], closer: 'MACRO_CLOSE' }];
+    }, 'syntaxes.gas.blocks[0].clauses must be an array'],
+    [(copy) => {
+      delete copy.syntaxes.nasm.blocks;
+    }, 'syntaxes.nasm.blocks must be an array'],
+    [(copy) => {
       copy.languages = [];
     }, 'languages must list at least one language'],
     [(copy) => {

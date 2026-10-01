@@ -1,0 +1,19 @@
+================================================================================
+A global label after a semicolon starts a block
+================================================================================
+
+first: nop; second: nop
+
+--------------------------------------------------------------------------------
+
+(source_file
+  (label_block
+    label: (label
+      name: (identifier))
+    (instruction
+      mnemonic: (mnemonic)))
+  (label_block
+    label: (label
+      name: (identifier))
+    (instruction
+      mnemonic: (mnemonic))))

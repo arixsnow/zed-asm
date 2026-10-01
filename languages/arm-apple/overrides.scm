@@ -7,3 +7,5 @@
 (char) @string
 
 (preproc_line) @preproc.inclusive
+
+(preproc_define) @preproc.inclusive

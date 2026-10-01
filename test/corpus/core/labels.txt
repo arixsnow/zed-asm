@@ -1,0 +1,63 @@
+================================================================================
+A second global label on the same line starts its own block
+================================================================================
+
+outer: inner: nop
+
+--------------------------------------------------------------------------------
+
+(source_file
+  (label_block
+    label: (label
+      name: (identifier)))
+  (label_block
+    label: (label
+      name: (identifier))
+    (instruction
+      mnemonic: (mnemonic))))
+
+================================================================================
+A label on the line after an error still starts a block
+================================================================================
+
+first:
+    mov x0, )
+second:
+    nop
+
+--------------------------------------------------------------------------------
+
+(source_file
+  (label_block
+    label: (label
+      name: (identifier))
+    (instruction
+      mnemonic: (mnemonic)
+      operand: (identifier))
+    (ERROR))
+  (label_block
+    label: (label
+      name: (identifier))
+    (instruction
+      mnemonic: (mnemonic))))
+
+================================================================================
+A global label right after a statement on the same line is an error
+================================================================================
+
+first:
+    nop main:
+    ret
+
+--------------------------------------------------------------------------------
+
+(source_file
+  (label_block
+    label: (label
+      name: (identifier))
+    (instruction
+      mnemonic: (mnemonic)
+      operand: (identifier))
+    (ERROR)
+    (instruction
+      mnemonic: (mnemonic))))

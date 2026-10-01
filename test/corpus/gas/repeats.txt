@@ -1,0 +1,42 @@
+================================================================================
+Repeat blocks with a count, a list of values and a string of characters
+================================================================================
+
+.rept 3
+    nop
+.endr
+.irp r, a, b
+    .byte \r
+.endr
+.irpc c, 123
+    .byte \c
+.endr
+.REPT 1
+.ENDR
+
+--------------------------------------------------------------------------------
+
+(source_file
+  (repeat_block
+    count: (integer)
+    body: (body
+      (instruction
+        mnemonic: (mnemonic))))
+  (repeat_block
+    parameter: (identifier)
+    value: (identifier)
+    value: (identifier)
+    body: (body
+      (directive
+        name: (directive_name)
+        argument: (macro_argument))))
+  (repeat_block
+    parameter: (identifier)
+    value: (integer)
+    body: (body
+      (directive
+        name: (directive_name)
+        argument: (macro_argument))))
+  (repeat_block
+    count: (integer)
+    body: (body)))

@@ -1,0 +1,138 @@
+================================================================================
+Comments, blank lines and preprocessor lines stay inside the block
+================================================================================
+
+main:
+    // entry
+
+#ifdef DEBUG
+    nop
+#endif
+    ret
+
+--------------------------------------------------------------------------------
+
+(source_file
+  (label_block
+    label: (label
+      name: (identifier))
+    (line_comment)
+    (preproc_line
+      directive: (preproc_directive)
+      argument: (preproc_argument))
+    (instruction
+      mnemonic: (mnemonic))
+    (preproc_line
+      directive: (preproc_directive))
+    (instruction
+      mnemonic: (mnemonic))))
+
+================================================================================
+A directive name followed by a colon is a label
+================================================================================
+
+.text:
+    nop
+
+--------------------------------------------------------------------------------
+
+(source_file
+  (label_block
+    label: (label
+      name: (identifier))
+    (instruction
+      mnemonic: (mnemonic))))
+
+================================================================================
+A global label owns the lines up to the next global label
+================================================================================
+
+first:
+    nop
+1:
+    nop
+second:
+    nop
+
+--------------------------------------------------------------------------------
+
+(source_file
+  (label_block
+    label: (label
+      name: (identifier))
+    (instruction
+      mnemonic: (mnemonic))
+    (label
+      name: (numeric_label))
+    (instruction
+      mnemonic: (mnemonic)))
+  (label_block
+    label: (label
+      name: (identifier))
+    (instruction
+      mnemonic: (mnemonic))))
+
+================================================================================
+Lines before the first global label stay outside any block
+================================================================================
+
+nop
+1:
+    nop
+main:
+    nop
+
+--------------------------------------------------------------------------------
+
+(source_file
+  (instruction
+    mnemonic: (mnemonic))
+  (label
+    name: (numeric_label))
+  (instruction
+    mnemonic: (mnemonic))
+  (label_block
+    label: (label
+      name: (identifier))
+    (instruction
+      mnemonic: (mnemonic))))
+
+================================================================================
+A local label before a global label on one line stays with the block above
+================================================================================
+
+first:
+1: second: nop
+
+--------------------------------------------------------------------------------
+
+(source_file
+  (label_block
+    label: (label
+      name: (identifier))
+    (label
+      name: (numeric_label)))
+  (label_block
+    label: (label
+      name: (identifier))
+    (instruction
+      mnemonic: (mnemonic))))
+
+================================================================================
+A blank may come before the colon
+================================================================================
+
+main :
+1	:
+    nop
+
+--------------------------------------------------------------------------------
+
+(source_file
+  (label_block
+    label: (label
+      name: (identifier))
+    (label
+      name: (numeric_label))
+    (instruction
+      mnemonic: (mnemonic))))

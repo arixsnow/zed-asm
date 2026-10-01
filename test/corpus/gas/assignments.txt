@@ -1,0 +1,51 @@
+================================================================================
+Symbol assignments with = and ==
+================================================================================
+
+A = 1
+B=2
+C == 3
+. = . + 4
+x: E = 5
+
+--------------------------------------------------------------------------------
+
+(source_file
+  (assignment
+    name: (identifier)
+    value: (integer))
+  (assignment
+    name: (identifier)
+    value: (integer))
+  (assignment
+    name: (identifier)
+    value: (integer))
+  (assignment
+    name: (location_counter)
+    value: (binary_expression
+      left: (location_counter)
+      right: (integer)))
+  (label_block
+    label: (label
+      name: (identifier))
+    (assignment
+      name: (identifier)
+      value: (integer))))
+
+================================================================================
+Assignment directives stay directives, so .set also takes options
+================================================================================
+
+    .equ F, 6
+    .set noreorder
+
+--------------------------------------------------------------------------------
+
+(source_file
+  (directive
+    name: (directive_name)
+    argument: (identifier)
+    argument: (integer))
+  (directive
+    name: (directive_name)
+    argument: (identifier)))

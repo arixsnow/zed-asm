@@ -13,6 +13,6 @@ module.exports = () => ({
   },
   choices: {
     _symbol: [($) => alias($._dot_identifier, $.local_identifier)],
-    _operand: [($) => $.string],
+    _value: [($) => $.string],
   },
 });

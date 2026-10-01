@@ -1,0 +1,207 @@
+================================================================================
+A macro definition with parameters, defaults and qualifiers
+================================================================================
+
+.macro save a, b=1, c:req, rest:vararg
+    mov \a, \b
+    .byte \c, \rest
+.endm
+
+--------------------------------------------------------------------------------
+
+(source_file
+  (macro_definition
+    name: (identifier)
+    parameter: (parameter
+      name: (identifier))
+    parameter: (parameter
+      name: (identifier)
+      default: (integer))
+    parameter: (parameter
+      name: (identifier)
+      qualifier: (identifier))
+    parameter: (parameter
+      name: (identifier)
+      qualifier: (identifier))
+    body: (body
+      (instruction
+        mnemonic: (mnemonic)
+        operand: (macro_argument)
+        operand: (macro_argument))
+      (directive
+        name: (directive_name)
+        argument: (macro_argument)
+        argument: (macro_argument)))))
+
+================================================================================
+Macro arguments alone, glued to text, as labels and as mnemonics
+================================================================================
+
+.macro gen name, op, s
+\name\()_start:
+    \op
+    no\s
+    .byte \@, \+
+x\@:
+.endm
+
+--------------------------------------------------------------------------------
+
+(source_file
+  (macro_definition
+    name: (identifier)
+    parameter: (parameter
+      name: (identifier))
+    parameter: (parameter
+      name: (identifier))
+    parameter: (parameter
+      name: (identifier))
+    body: (body
+      (label
+        name: (concatenation
+          (macro_argument)
+          (identifier)))
+      (instruction
+        mnemonic: (macro_argument))
+      (instruction
+        mnemonic: (concatenation
+          (identifier)
+          (macro_argument)))
+      (directive
+        name: (directive_name)
+        argument: (macro_argument)
+        argument: (macro_argument))
+      (label
+        name: (concatenation
+          (identifier)
+          (macro_argument))))))
+
+================================================================================
+A macro inside a function and a function inside a macro
+================================================================================
+
+first:
+.macro m
+inner:
+    nop
+.endm
+    ret
+
+--------------------------------------------------------------------------------
+
+(source_file
+  (label_block
+    label: (label
+      name: (identifier))
+    (macro_definition
+      name: (identifier)
+      body: (body
+        (label_block
+          label: (label
+            name: (identifier))
+          (instruction
+            mnemonic: (mnemonic)))))
+    (instruction
+      mnemonic: (mnemonic))))
+
+================================================================================
+Keyword arguments in a macro call
+================================================================================
+
+    save b=2, a=1
+
+--------------------------------------------------------------------------------
+
+(source_file
+  (instruction
+    mnemonic: (mnemonic)
+    operand: (keyword_argument
+      name: (identifier)
+      value: (integer))
+    operand: (keyword_argument
+      name: (identifier)
+      value: (integer))))
+
+================================================================================
+The macro words in any case, and .endmacro
+================================================================================
+
+.MACRO m
+.ENDM
+.macro n
+.endmacro
+
+--------------------------------------------------------------------------------
+
+(source_file
+  (macro_definition
+    name: (identifier)
+    body: (body))
+  (macro_definition
+    name: (identifier)
+    body: (body)))
+
+================================================================================
+A macro or repeat closer ends the blocks still open inside its block
+================================================================================
+
+.macro if_set x
+.if \x
+.endm
+.macro repeat n
+.rept \n
+.endm
+.rept 2
+.if A
+    nop
+.endr
+
+--------------------------------------------------------------------------------
+
+(source_file
+  (macro_definition
+    name: (identifier)
+    parameter: (parameter
+      name: (identifier))
+    body: (body
+      (conditional
+        condition: (macro_argument)
+        body: (unclosed_body))))
+  (macro_definition
+    name: (identifier)
+    parameter: (parameter
+      name: (identifier))
+    body: (body
+      (repeat_block
+        count: (macro_argument)
+        body: (unclosed_body))))
+  (repeat_block
+    count: (integer)
+    body: (body
+      (conditional
+        condition: (identifier)
+        body: (unclosed_body
+          (instruction
+            mnemonic: (mnemonic)))))))
+
+================================================================================
+A conditional closer inside a repeat block is text of the repeat block
+================================================================================
+
+.if A
+.rept 2
+.endif
+.endr
+.endif
+
+--------------------------------------------------------------------------------
+
+(source_file
+  (conditional
+    condition: (identifier)
+    body: (body
+      (repeat_block
+        count: (integer)
+        body: (body
+          (directive
+            name: (directive_name)))))))

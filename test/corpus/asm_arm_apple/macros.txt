@@ -1,0 +1,37 @@
+================================================================================
+Positional macro arguments of Apple's assembler
+================================================================================
+
+.macro m
+    mov x0, $0
+    .byte $n
+.endm
+
+--------------------------------------------------------------------------------
+
+(source_file
+  (macro_definition
+    name: (identifier)
+    body: (body
+      (instruction
+        mnemonic: (mnemonic)
+        operand: (identifier)
+        operand: (macro_argument))
+      (directive
+        name: (directive_name)
+        argument: (macro_argument)))))
+
+================================================================================
+A blank-separated immediate is its own operand
+================================================================================
+
+m x0 #1
+
+--------------------------------------------------------------------------------
+
+(source_file
+  (instruction
+    mnemonic: (mnemonic)
+    operand: (identifier)
+    operand: (immediate
+      value: (integer))))

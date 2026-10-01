@@ -26,9 +26,16 @@ export function readParseTiming(output: string): ParseTiming | undefined {
   return { parse: Number(parse[1]), edit: edit === null ? undefined : Number(edit[1]) };
 }
 
+const MILLISECONDS_PER_UNIT: Record<string, number> = {
+  ns: 1e-6,
+  '\u00b5s': 1e-3,
+  ms: 1,
+  s: 1000,
+};
+
 export function readQueryTime(output: string): number | undefined {
-  const time = /([\d.]+)ms\s*$/.exec(output);
-  return time === null ? undefined : Number(time[1]);
+  const time = /([\d.]+)(ns|\u00b5s|ms|s)\s*$/.exec(output);
+  return time === null ? undefined : Number(time[1]) * MILLISECONDS_PER_UNIT[time[2]];
 }
 
 export function parseTiming(grammar: string, file: string, options: TimingOptions): ParseTiming {

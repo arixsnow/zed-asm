@@ -1,0 +1,154 @@
+================================================================================
+A conditional with .elseif and .else
+================================================================================
+
+.if SIZE > 4
+    nop
+.elseif SIZE == 2
+    ret
+.else
+    nop
+.endif
+
+--------------------------------------------------------------------------------
+
+(source_file
+  (conditional
+    condition: (binary_expression
+      left: (identifier)
+      right: (integer))
+    body: (body
+      (instruction
+        mnemonic: (mnemonic)))
+    (elseif_clause
+      condition: (binary_expression
+        left: (identifier)
+        right: (integer))
+      body: (body
+        (instruction
+          mnemonic: (mnemonic))))
+    (else_clause
+      body: (body
+        (instruction
+          mnemonic: (mnemonic))))))
+
+================================================================================
+Every kind of condition, in any case
+================================================================================
+
+.ifdef sym
+.endif
+.ifb
+.endif
+.ifc a,b
+.endif
+.ifeqs "a","b"
+.endif
+.IFNDEF sym
+.ENDIF
+
+--------------------------------------------------------------------------------
+
+(source_file
+  (conditional
+    condition: (identifier)
+    body: (body))
+  (conditional
+    body: (body))
+  (conditional
+    condition: (identifier)
+    condition: (identifier)
+    body: (body))
+  (conditional
+    condition: (string)
+    condition: (string)
+    body: (body))
+  (conditional
+    condition: (identifier)
+    body: (body)))
+
+================================================================================
+A conditional inside a function and a function inside a conditional
+================================================================================
+
+first:
+.if 1
+second:
+    nop
+.endif
+    ret
+
+--------------------------------------------------------------------------------
+
+(source_file
+  (label_block
+    label: (label
+      name: (identifier))
+    (conditional
+      condition: (integer)
+      body: (body
+        (label_block
+          label: (label
+            name: (identifier))
+          (instruction
+            mnemonic: (mnemonic)))))
+    (instruction
+      mnemonic: (mnemonic))))
+
+================================================================================
+A conditional on a macro argument inside a macro
+================================================================================
+
+.macro m a
+.ifb \a
+    nop
+.endif
+.endm
+
+--------------------------------------------------------------------------------
+
+(source_file
+  (macro_definition
+    name: (identifier)
+    parameter: (parameter
+      name: (identifier))
+    body: (body
+      (conditional
+        condition: (macro_argument)
+        body: (body
+          (instruction
+            mnemonic: (mnemonic)))))))
+
+================================================================================
+A body that the end of the file closes is an unclosed body
+================================================================================
+
+.macro m
+    .rept 2
+    nop
+    .endr
+.if A
+    nop
+.else
+    nop
+
+--------------------------------------------------------------------------------
+
+(source_file
+  (macro_definition
+    name: (identifier)
+    body: (unclosed_body
+      (repeat_block
+        count: (integer)
+        body: (body
+          (instruction
+            mnemonic: (mnemonic))))
+      (conditional
+        condition: (identifier)
+        body: (body
+          (instruction
+            mnemonic: (mnemonic)))
+        (else_clause
+          body: (unclosed_body
+            (instruction
+              mnemonic: (mnemonic))))))))

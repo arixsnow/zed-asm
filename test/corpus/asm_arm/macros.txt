@@ -1,0 +1,89 @@
+================================================================================
+Blank-separated macro parameters
+================================================================================
+
+.macro m a b=2 c:req
+.endm
+
+--------------------------------------------------------------------------------
+
+(source_file
+  (macro_definition
+    name: (identifier)
+    parameter: (parameter
+      name: (identifier))
+    parameter: (parameter
+      name: (identifier)
+      default: (integer))
+    parameter: (parameter
+      name: (identifier)
+      qualifier: (identifier))
+    body: (body)))
+
+================================================================================
+A macro on one line
+================================================================================
+
+.macro m; nop; .endm; m
+
+--------------------------------------------------------------------------------
+
+(source_file
+  (macro_definition
+    name: (identifier)
+    body: (body
+      (instruction
+        mnemonic: (mnemonic))))
+  (instruction
+    mnemonic: (mnemonic)))
+
+================================================================================
+Blank-separated .irp values
+================================================================================
+
+.irp r a b
+.endr
+
+--------------------------------------------------------------------------------
+
+(source_file
+  (repeat_block
+    parameter: (identifier)
+    value: (identifier)
+    value: (identifier)
+    body: (body)))
+
+================================================================================
+Conditionals and repeat blocks on one line
+================================================================================
+
+.if 1; nop; .endif; .rept 2; nop; .endr
+
+--------------------------------------------------------------------------------
+
+(source_file
+  (conditional
+    condition: (integer)
+    body: (body
+      (instruction
+        mnemonic: (mnemonic))))
+  (repeat_block
+    count: (integer)
+    body: (body
+      (instruction
+        mnemonic: (mnemonic)))))
+
+================================================================================
+A blank-separated immediate is its own operand
+================================================================================
+
+m x0 #1
+
+--------------------------------------------------------------------------------
+
+(source_file
+  (instruction
+    mnemonic: (mnemonic)
+    operand: (identifier)
+    operand: (immediate
+      value: (integer))))

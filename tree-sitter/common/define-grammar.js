@@ -23,13 +23,36 @@ const EXTERNALS = [
   '_preproc_line_end',
   '_preproc_include',
   '_header_name',
+  '_preproc_define',
+  '_preproc_condition',
+  '_preproc_params_open',
   '_missing_operand',
   '_missing_expression',
   '_unclosed',
+  '_global_label_name',
+  '_local_label_name',
+  '_numeric_label_name',
+  '_dollar_label_name',
+  '_dollar_label',
+  '_darwin_argument',
+  '_glued_argument',
+  '_glued_separator',
+  '_glued_text',
+  '_blank',
+  '_prefix_word',
+  '_prefix_semicolon',
+  '_macro_close',
+  '_conditional_close',
+  '_repeat_close',
+  '_elseif',
+  '_else',
+  '_block_end',
+  '_end',
+  '_stray',
   '_error_sentinel',
 ];
 
-const INLINED = ['_line_content', '_statement', '_operand', '_symbol', '_statement_group'];
+const INLINED = ['_line_content', '_statement', '_operand', '_value', '_symbol', '_mnemonic'];
 
 module.exports = function defineGrammar(grammarName, catalog = languages) {
   const language = catalog.find((candidate) => candidate.grammar === grammarName);
@@ -44,7 +67,12 @@ module.exports = function defineGrammar(grammarName, catalog = languages) {
     }
   }
 
-  const ctx = { syntax: language.syntax, archs: language.archs, lexical: lexical[language.syntax] };
+  const ctx = {
+    syntax: language.syntax,
+    archs: language.archs,
+    dialect: language.dialect,
+    lexical: lexical[language.syntax],
+  };
   const rules = {};
   const choices = {};
   const extras = [];

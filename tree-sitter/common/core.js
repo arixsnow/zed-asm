@@ -35,30 +35,33 @@ function operandList($, name) {
   );
 }
 
+function instructionOperands($) {
+  return seq(
+    field('operand', $._operand),
+    repeat(
+      choice(
+        seq(',', choice(field('operand', $._operand), $._missing_operand)),
+        seq($._blank, field('operand', $._operand)),
+      ),
+    ),
+  );
+}
+
 module.exports = (ctx) => ({
   rules: {
-    source_file: ($) => seq(repeat($._line), optional($._line_content)),
+    source_file: ($) => repeat(choice($._item, $.label_block)),
 
-    _line: ($) => seq(optional($._line_content), $._newline),
+    label_block: ($) =>
+      prec.right(seq(field('label', alias($._global_label, $.label)), repeat($._item))),
+
     _newline: () => /\r?\n/,
-    _statements: ($) =>
-      choice(
-        seq(
-          repeat($._separator),
-          $._statement_group,
-          repeat(seq(repeat1($._separator), $._statement_group)),
-          repeat($._separator),
-        ),
-        repeat1($._separator),
-      ),
-    _statement_group: ($) => choice(seq(repeat1($.label), optional($._statement)), $._statement),
 
-    label: ($) => seq(field('name', $._symbol), ':'),
+    _global_label: ($) => seq(field('name', alias($._global_label_name, $.identifier)), ':'),
 
     instruction: ($) =>
       seq(
-        field('mnemonic', alias($.identifier, $.mnemonic)),
-        optional(operandList($, 'operand')),
+        field('mnemonic', $._mnemonic),
+        optional(instructionOperands($)),
       ),
 
     identifier: () => ctx.lexical.identifier,
@@ -86,10 +89,21 @@ module.exports = (ctx) => ({
     parenthesized_expression: ($) => seq('(', $._expression, choice(')', $._unclosed)),
   },
   choices: {
-    _line_content: [($) => $._statements],
+    _item: [
+      ($) => alias($._local_label, $.label),
+      ($) => $._newline,
+      ($) => $._separator,
+      ($) => seq($._line_content, choice($._newline, $._separator, $._end)),
+    ],
+    _line_content: [($) => $._statement],
+    _mnemonic: [($) => alias($.identifier, $.mnemonic)],
+    _local_label: [
+      ($) => seq(field('name', alias($._local_label_name, $.local_identifier)), ':'),
+    ],
     _symbol: [($) => $.identifier],
     _statement: [($) => $.instruction],
-    _operand: [($) => $._expression],
+    _operand: [($) => $._value],
+    _value: [($) => $._expression],
     _expression: [
       ($) => $._symbol,
       ($) => $.integer,

@@ -54,9 +54,32 @@ Deno.test('every language composes a grammar named after it that starts at sourc
       '_preproc_line_end',
       '_preproc_include',
       '_header_name',
+      '_preproc_define',
+      '_preproc_condition',
+      '_preproc_params_open',
       '_missing_operand',
       '_missing_expression',
       '_unclosed',
+      '_global_label_name',
+      '_local_label_name',
+      '_numeric_label_name',
+      '_dollar_label_name',
+      '_dollar_label',
+      '_darwin_argument',
+      '_glued_argument',
+      '_glued_separator',
+      '_glued_text',
+      '_blank',
+      '_prefix_word',
+      '_prefix_semicolon',
+      '_macro_close',
+      '_conditional_close',
+      '_repeat_close',
+      '_elseif',
+      '_else',
+      '_block_end',
+      '_end',
+      '_stray',
       '_error_sentinel',
     ]);
   }
@@ -82,11 +105,17 @@ Deno.test('modules contribute rules only to the languages that include them', ()
 });
 
 Deno.test('choice points merge alternatives from every module without duplicates', () => {
-  const operand: RuleNode = defineGrammar('asm_auto').rules._operand($);
-  const names = (operand.members ?? []).map((member) => member.name);
-  assertEquals(names.filter((name) => name === 'immediate').length, 1);
-  for (const name of ['_expression', 'string', 'symbol_type', 'shift', 'register']) {
-    assert(names.includes(name), `_operand should offer ${name}`);
+  const rules = defineGrammar('asm_auto').rules;
+  const members = (name: string) =>
+    ((rules[name]($) as RuleNode).members ?? []).map((member) => member.name);
+  const value = members('_value');
+  assertEquals(value.filter((name) => name === 'immediate').length, 1);
+  for (const name of ['_expression', 'string', 'symbol_type', 'register']) {
+    assert(value.includes(name), `_value should offer ${name}`);
+  }
+  const operand = members('_operand');
+  for (const name of ['_value', 'shift', 'keyword_argument']) {
+    assert(operand.includes(name), `_operand should offer ${name}`);
   }
 });
 

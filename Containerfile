@@ -22,6 +22,8 @@ RUN dnf -y install --setopt=install_weak_deps=False \
         binutils \
         binutils-aarch64-linux-gnu \
         arm-none-eabi-binutils-cs \
+        gcc-aarch64-linux-gnu \
+        arm-none-eabi-gcc-cs \
         nasm \
         yasm \
     && dnf clean all

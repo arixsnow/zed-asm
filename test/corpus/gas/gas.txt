@@ -112,26 +112,6 @@ ret
     mnemonic: (mnemonic)))
 
 ================================================================================
-Only names starting with .L are local labels
-================================================================================
-
-.Lloop:
-    b .Lloop
-    .section .text
-
---------------------------------------------------------------------------------
-
-(source_file
-  (label
-    name: (local_identifier))
-  (instruction
-    mnemonic: (mnemonic)
-    operand: (local_identifier))
-  (directive
-    name: (directive_name)
-    argument: (identifier)))
-
-================================================================================
 A location-counter expression being typed keeps to its own line
 ================================================================================
 

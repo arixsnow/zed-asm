@@ -1,0 +1,49 @@
+================================================================================
+Apple temporary labels: L names are local, .L names are ordinary labels
+================================================================================
+
+_walk:
+    cmp w0, #1
+    b.lt LBB0_3
+LBB0_2:
+    subs w0, w0, #1
+    b.ne LBB0_2
+LBB0_3:
+    ret
+.Lnot_temporary:
+    ret
+
+--------------------------------------------------------------------------------
+
+(source_file
+  (label_block
+    label: (label
+      name: (identifier))
+    (instruction
+      mnemonic: (mnemonic)
+      operand: (identifier)
+      operand: (immediate
+        value: (integer)))
+    (instruction
+      mnemonic: (mnemonic)
+      operand: (identifier))
+    (label
+      name: (local_identifier))
+    (instruction
+      mnemonic: (mnemonic)
+      operand: (identifier)
+      operand: (identifier)
+      operand: (immediate
+        value: (integer)))
+    (instruction
+      mnemonic: (mnemonic)
+      operand: (identifier))
+    (label
+      name: (local_identifier))
+    (instruction
+      mnemonic: (mnemonic)))
+  (label_block
+    label: (label
+      name: (identifier))
+    (instruction
+      mnemonic: (mnemonic))))

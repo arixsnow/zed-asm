@@ -30,7 +30,7 @@ export const SETTINGS = {
   ensure_final_newline_on_save: false,
 };
 
-export type Step = { type: string } | { keys: string[] };
+export type Step = { type: string } | { keys: string[] } | { pause: number };
 
 export interface Check {
   id: string;
@@ -42,6 +42,7 @@ export interface Check {
   look?: string;
   wants?: string;
   clipboard?: boolean;
+  vim?: boolean;
   expect?: (result: string) => boolean;
 }
 
@@ -50,6 +51,37 @@ const OPENERS = ['[', '(', '{', '"', "'", '/*'];
 const AUTOCLOSE: Step[] = OPENERS.flatMap((opener, index) =>
   index === 0 ? [{ type: opener }] : [{ keys: ['End'] }, { type: ` ${opener}` }]
 );
+const FUNCTIONS = [
+  'main:',
+  '    mov x0, x1',
+  '.Lloop:',
+  '    subs x0, x0, #1',
+  '    b.ne .Lloop',
+  '    ret',
+  'helper:',
+  '    ret',
+  '',
+].join('\n');
+const MACRO = '    .macro m a\n    nop\n    .endm\n    nop\n';
+
+function pickInOutline(query: string): Step[] {
+  return [
+    { keys: ['ctrl+shift+o'] },
+    { pause: 800 },
+    { type: query },
+    { pause: 500 },
+    { keys: ['Return'] },
+    { pause: 500 },
+    { keys: ['Escape'] },
+    { type: 'X' },
+  ];
+}
+
+function typeLines(...typed: string[]): Step[] {
+  return typed.flatMap((text, index) =>
+    index === 0 ? [{ type: text }] : [{ keys: ['Return'] }, { type: text }]
+  );
+}
 
 export const CHECKS: Check[] = [
   {
@@ -303,9 +335,144 @@ export const CHECKS: Check[] = [
     wants: 'the whole name is selected',
     expect: (text) => text === '%function',
   },
+  {
+    id: '17a',
+    row: 17,
+    title: 'Picking a global label in the outline',
+    file: 'c17a.s',
+    text: FUNCTIONS,
+    steps: pickInOutline('helper'),
+    wants: 'the cursor jumps to helper:',
+    expect: (text) => lines(text)[6] === 'Xhelper:',
+  },
+  {
+    id: '17b',
+    row: 17,
+    title: 'Picking a nested local label in the outline',
+    file: 'c17b.s',
+    text: FUNCTIONS,
+    steps: pickInOutline('Lloop'),
+    wants: 'the cursor jumps to .Lloop:',
+    expect: (text) => lines(text)[2] === 'X.Lloop:',
+  },
+  {
+    id: '18',
+    row: 18,
+    title: 'Sections stay out of the outline',
+    file: 'c18.s',
+    text: '    .text\n    .globl main\nmain:\n    ret\n    .data\nvalue:\n    .byte 1\n',
+    steps: [{ keys: ['ctrl+End'] }, ...pickInOutline('text')],
+    wants: 'no entry matches text, so the cursor stays at the end',
+    expect: (text) =>
+      text === '    .text\n    .globl main\nmain:\n    ret\n    .data\nvalue:\n    .byte 1\nX',
+  },
+  {
+    id: '19',
+    row: 19,
+    title: 'Breadcrumbs on a nested local label',
+    file: 'c19.s',
+    text: FUNCTIONS,
+    steps: [{ keys: ['ctrl+Home', 'Down', 'Down'] }],
+    look: 'the breadcrumbs show main and .Lloop',
+  },
+  {
+    id: '20a',
+    row: 20,
+    title: 'Typing a macro',
+    file: 'c20a.s',
+    text: '',
+    steps: typeLines('.macro m', 'nop', '.endm'),
+    wants: 'the body is indented and .endm lines up with .macro',
+    expect: (text) => text === '.macro m\n    nop\n.endm',
+  },
+  {
+    id: '20b',
+    row: 20,
+    title: 'Typing nested conditionals',
+    file: 'c20b.s',
+    text: '',
+    steps: typeLines('.if A', '.if B', 'nop', '.endif', '.else', 'nop', '.endif'),
+    wants: 'each body is indented and each clause and closer lines up with its .if',
+    expect: (text) => text === '.if A\n    .if B\n        nop\n    .endif\n.else\n    nop\n.endif',
+  },
+  {
+    id: '20c',
+    row: 20,
+    title: 'Typing a repeat block',
+    file: 'c20c.s',
+    text: '',
+    steps: typeLines('.rept 3', 'nop', '.endr'),
+    wants: 'the body is indented and .endr lines up with .rept',
+    expect: (text) => text === '.rept 3\n    nop\n.endr',
+  },
+  {
+    id: '21',
+    row: 21,
+    title: '.text typed on an indented line',
+    file: 'c21.s',
+    text: '',
+    steps: typeLines('main:', '.text'),
+    wants: '.text stays where it was typed',
+    expect: (text) => text === 'main:\n    .text',
+  },
+  {
+    id: '22',
+    row: 22,
+    title: 'C colors in an #if condition',
+    file: 'c22.S',
+    text: '#if defined(SAVE) && LEVEL > 1\n    nop\n#endif\n',
+    steps: [],
+    look: 'defined, && and > 1 in the condition have the C colors',
+  },
+  {
+    id: '23',
+    row: 23,
+    title: 'A macro being closed on the last line, with no newline after it',
+    file: 'c23.s',
+    text: '.macro m\n    nop\n',
+    steps: [{ keys: ['ctrl+End'] }, { type: '.' }, ...pickInOutline('m')],
+    wants: 'the outline still lists m and the cursor jumps to it',
+    expect: (text) => text.startsWith('X.macro m\n'),
+  },
+  {
+    id: '24a',
+    row: 24,
+    title: 'vaf in vim mode',
+    file: 'c24a.s',
+    text: FUNCTIONS,
+    steps: [{ keys: ['ctrl+Home', 'Down', 'Down', 'Down'] }, { type: 'vafy' }],
+    clipboard: true,
+    vim: true,
+    wants: 'the whole function, from main: to its ret',
+    expect: (text) => text === FUNCTIONS.split('helper:')[0],
+  },
+  {
+    id: '24b',
+    row: 24,
+    title: 'vif in vim mode',
+    file: 'c24b.s',
+    text: FUNCTIONS,
+    steps: [{ keys: ['ctrl+Home', 'Down', 'Down', 'Down'] }, { type: 'vify' }],
+    clipboard: true,
+    vim: true,
+    wants: 'the body without the label',
+    expect: (text) => text === 'mov x0, x1\n.Lloop:\n    subs x0, x0, #1\n    b.ne .Lloop\n    ret',
+  },
+  {
+    id: '24c',
+    row: 24,
+    title: 'vac in vim mode',
+    file: 'c24c.s',
+    text: MACRO,
+    steps: [{ keys: ['ctrl+Home', 'Down'] }, { type: 'vacy' }],
+    clipboard: true,
+    vim: true,
+    wants: 'the whole macro, from .macro to .endm',
+    expect: (text) => text === '    .macro m a\n    nop\n    .endm\n',
+  },
 ];
 
-export const LOG_ROW = 17;
+export const LOG_ROW = 25;
 export const LOG_PATTERN = /\basm\b|asm_(?:auto|arm|x86)|Assembly|grammar|quer(?:y|ies)/i;
 
 export interface Result {
@@ -410,12 +577,36 @@ function focusZed() {
   runOrThrow('xdotool', ['windowfocus', '--sync', windows[0]]);
 }
 
-function perform(step: Step) {
-  if ('type' in step) {
+async function perform(step: Step) {
+  if ('pause' in step) {
+    await sleep(step.pause);
+  } else if ('type' in step) {
     runOrThrow('xdotool', ['type', '--delay', '60', '--clearmodifiers', '--', step.type]);
   } else {
     runOrThrow('xdotool', ['key', '--delay', '120', '--clearmodifiers', ...step.keys]);
   }
+}
+
+function clipboard(): string | undefined {
+  const { ok, output } = run('xclip', ['-o', '-selection', 'clipboard']);
+  return ok ? output : undefined;
+}
+
+async function changedClipboard(before: string | undefined): Promise<string | undefined> {
+  const deadline = Date.now() + TIMEOUT;
+  let current = clipboard();
+  while (current === before && Date.now() < deadline) {
+    await sleep(100);
+    current = clipboard();
+  }
+  return current;
+}
+
+function writeSettings(settings: Record<string, unknown>) {
+  Deno.writeTextFileSync(
+    join(HOME, '.config', 'zed', 'settings.json'),
+    `${JSON.stringify(settings, null, 2)}\n`,
+  );
 }
 
 async function runCheck(check: Check): Promise<Result> {
@@ -424,16 +615,14 @@ async function runCheck(check: Check): Promise<Result> {
   runOrThrow('zed', [file]);
   await sleep(OPEN_DELAY);
   focusZed();
+  const before = check.clipboard ? clipboard() : undefined;
   for (const step of check.steps) {
-    perform(step);
+    await perform(step);
   }
   await sleep(800);
   let result: string | undefined;
   if (check.clipboard) {
-    result = await waitFor('the clipboard', () => {
-      const { ok, output } = run('xclip', ['-o', '-selection', 'clipboard']);
-      return ok ? output : undefined;
-    });
+    result = await changedClipboard(before);
   } else if (check.expect !== undefined) {
     perform({ keys: ['ctrl+s'] });
     result = await waitFor(`${check.file} to be saved`, () => {
@@ -442,6 +631,9 @@ async function runCheck(check: Check): Promise<Result> {
     });
   }
   const shot = await savePng(check.id.padStart(3, '0'));
+  if (check.expect !== undefined && result === undefined) {
+    return { id: check.id, title: check.title, status: 'FAIL', detail: `no result (${shot})` };
+  }
   if (check.expect === undefined || result === undefined) {
     return { id: check.id, title: check.title, status: 'LOOK', detail: `${check.look} (${shot})` };
   }
@@ -458,10 +650,7 @@ async function main() {
   emptyDirSync(OUT);
   ensureDirSync(WORK);
   ensureDirSync(join(HOME, '.config', 'zed'));
-  Deno.writeTextFileSync(
-    join(HOME, '.config', 'zed', 'settings.json'),
-    `${JSON.stringify(SETTINGS, null, 2)}\n`,
-  );
+  writeSettings(SETTINGS);
   installExtension();
   const version = runOrThrow('zed', ['--version']).split(/\s+/).slice(0, 2).join(' ');
 
@@ -475,7 +664,13 @@ async function main() {
       () => run('xdotool', ['search', '--onlyvisible', '--class', 'zed']).ok || undefined,
     );
     await sleep(OPEN_DELAY);
+    let vim = false;
     for (const check of CHECKS) {
+      if (check.vim === true && !vim) {
+        writeSettings({ ...SETTINGS, vim_mode: true });
+        await sleep(OPEN_DELAY);
+        vim = true;
+      }
       results.push(await runCheck(check));
     }
     const errors = logErrors(Deno.readTextFileSync(LOG));

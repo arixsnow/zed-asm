@@ -4,6 +4,7 @@ import { emptyDirSync, ensureDirSync } from '@std/fs';
 import { dirname, join } from '@std/path';
 
 import { filesUnder, ifExists, readTextIfExists, ROOT } from './lib/files.ts';
+import { increaseIndentPattern } from './lib/indent.ts';
 import { type Language, type Manifest, manifest, parseAuthor } from './lib/manifest.ts';
 
 export const QUERY_KINDS = [
@@ -131,7 +132,7 @@ export function languageConfig(
     autoclose_before: shared.autoclose_before,
     brackets: syntax.brackets,
     word_characters: language.wordCharacters,
-    increase_indent_pattern: syntax.labelPattern,
+    increase_indent_pattern: increaseIndentPattern(language, syntax),
     decrease_indent_pattern: syntax.labelPattern,
     debuggers: shared.debuggers,
     overrides: syntax.overrides,

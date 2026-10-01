@@ -1,0 +1,66 @@
+================================================================================
+Numeric labels and their backward and forward references
+================================================================================
+
+1:
+    b 1b
+    b 1f
+10 :
+0:
+    .long 10b - 0b
+
+--------------------------------------------------------------------------------
+
+(source_file
+  (label
+    name: (numeric_label))
+  (instruction
+    mnemonic: (mnemonic)
+    operand: (numeric_label))
+  (instruction
+    mnemonic: (mnemonic)
+    operand: (numeric_label))
+  (label
+    name: (numeric_label))
+  (label
+    name: (numeric_label))
+  (directive
+    name: (directive_name)
+    argument: (binary_expression
+      left: (numeric_label)
+      right: (numeric_label))))
+
+================================================================================
+A numeric label stays in the block of the global label above it
+================================================================================
+
+main:
+1:  b 1b
+
+--------------------------------------------------------------------------------
+
+(source_file
+  (label_block
+    label: (label
+      name: (identifier))
+    (label
+      name: (numeric_label))
+    (instruction
+      mnemonic: (mnemonic)
+      operand: (numeric_label))))
+
+================================================================================
+Binary and hexadecimal integers are not label references
+================================================================================
+
+    .long 0b101, 0x1f, 0b, 0f
+
+--------------------------------------------------------------------------------
+
+(source_file
+  (directive
+    name: (directive_name)
+    argument: (integer)
+    argument: (integer)
+    argument: (numeric_label)
+    argument: (numeric_label)))

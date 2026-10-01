@@ -9,9 +9,13 @@ A backslash continues a preprocessor line
 --------------------------------------------------------------------------------
 
 (source_file
-  (preproc_line
+  (preproc_define
     directive: (preproc_directive)
-    argument: (preproc_argument))
+    name: (identifier)
+    parameters: (preproc_params
+      (identifier)
+      (identifier))
+    value: (preproc_argument))
   (preproc_line
     directive: (preproc_directive)))
 
@@ -36,19 +40,24 @@ Preprocessor lines own their trailing comments
   (preproc_line
     directive: (preproc_directive)
     (preproc_comment))
-  (preproc_line
+  (preproc_define
     directive: (preproc_directive)
-    argument: (preproc_argument)
+    name: (identifier)
+    value: (preproc_argument)
     (preproc_comment))
   (preproc_line
     directive: (preproc_directive)
     argument: (preproc_argument))
-  (preproc_line
+  (preproc_define
     directive: (preproc_directive)
-    argument: (preproc_argument))
-  (preproc_line
+    name: (identifier)
+    value: (preproc_argument))
+  (preproc_define
     directive: (preproc_directive)
-    argument: (preproc_argument))
+    name: (identifier)
+    parameters: (preproc_params
+      (identifier))
+    value: (preproc_argument))
   (block_comment))
 
 ================================================================================
@@ -64,14 +73,15 @@ A block comment spans lines and the argument continues after it
 (source_file
   (preproc_line
     directive: (preproc_directive)
-    argument: (preproc_argument)
+    condition: (preproc_condition)
     (preproc_comment)
-    argument: (preproc_argument))
-  (preproc_line
+    condition: (preproc_condition))
+  (preproc_define
     directive: (preproc_directive)
-    argument: (preproc_argument)
+    name: (identifier)
+    value: (preproc_argument)
     (preproc_comment)
-    argument: (preproc_argument)))
+    value: (preproc_argument)))
 
 ================================================================================
 An apostrophe starts a literal that runs to the end of the line
@@ -83,12 +93,14 @@ An apostrophe starts a literal that runs to the end of the line
 --------------------------------------------------------------------------------
 
 (source_file
-  (preproc_line
+  (preproc_define
     directive: (preproc_directive)
-    argument: (preproc_argument))
-  (preproc_line
+    name: (identifier)
+    value: (preproc_argument))
+  (preproc_define
     directive: (preproc_directive)
-    argument: (preproc_argument)))
+    name: (identifier)
+    value: (preproc_argument)))
 
 ================================================================================
 A backslash at the end of a line comment continues the comment
@@ -101,9 +113,10 @@ ret
 --------------------------------------------------------------------------------
 
 (source_file
-  (preproc_line
+  (preproc_define
     directive: (preproc_directive)
-    argument: (preproc_argument)
+    name: (identifier)
+    value: (preproc_argument)
     (preproc_comment))
   (instruction
     mnemonic: (mnemonic)))
@@ -119,9 +132,10 @@ ret
 --------------------------------------------------------------------------------
 
 (source_file
-  (preproc_line
+  (preproc_define
     directive: (preproc_directive)
-    argument: (preproc_argument)
+    name: (identifier)
+    value: (preproc_argument)
     (preproc_comment)))
 
 ================================================================================
@@ -134,9 +148,10 @@ b" // c
 --------------------------------------------------------------------------------
 
 (source_file
-  (preproc_line
+  (preproc_define
     directive: (preproc_directive)
-    argument: (preproc_argument)
+    name: (identifier)
+    value: (preproc_argument)
     (preproc_comment)))
 
 ================================================================================
@@ -149,9 +164,10 @@ b // c
 --------------------------------------------------------------------------------
 
 (source_file
-  (preproc_line
+  (preproc_define
     directive: (preproc_directive)
-    argument: (preproc_argument)))
+    name: (identifier)
+    value: (preproc_argument)))
 
 ================================================================================
 Outside quotes a backslash only joins lines
@@ -162,9 +178,10 @@ Outside quotes a backslash only joins lines
 --------------------------------------------------------------------------------
 
 (source_file
-  (preproc_line
+  (preproc_define
     directive: (preproc_directive)
-    argument: (preproc_argument)
+    name: (identifier)
+    value: (preproc_argument)
     (preproc_comment)))
 
 ================================================================================
@@ -176,9 +193,10 @@ An escaped quote does not end a double-quoted literal
 --------------------------------------------------------------------------------
 
 (source_file
-  (preproc_line
+  (preproc_define
     directive: (preproc_directive)
-    argument: (preproc_argument)
+    name: (identifier)
+    value: (preproc_argument)
     (preproc_comment)))
 
 ================================================================================
@@ -191,12 +209,13 @@ nop; #define Y 2
 --------------------------------------------------------------------------------
 
 (source_file
-  (label
-    name: (identifier))
-  (line_comment)
-  (instruction
-    mnemonic: (mnemonic))
-  (line_comment))
+  (label_block
+    label: (label
+      name: (identifier))
+    (line_comment)
+    (instruction
+      mnemonic: (mnemonic))
+    (line_comment)))
 
 ================================================================================
 An indented directive is a preprocessor line
@@ -207,9 +226,10 @@ An indented directive is a preprocessor line
 --------------------------------------------------------------------------------
 
 (source_file
-  (preproc_line
+  (preproc_define
     directive: (preproc_directive)
-    argument: (preproc_argument)))
+    name: (identifier)
+    value: (preproc_argument)))
 
 ================================================================================
 Blanks between a backslash and the newline still join the lines
@@ -226,16 +246,19 @@ ret
 --------------------------------------------------------------------------------
 
 (source_file
-  (preproc_line
+  (preproc_define
     directive: (preproc_directive)
-    argument: (preproc_argument))
-  (preproc_line
+    name: (identifier)
+    value: (preproc_argument))
+  (preproc_define
     directive: (preproc_directive)
-    argument: (preproc_argument)
+    name: (identifier)
+    value: (preproc_argument)
     (preproc_comment))
-  (preproc_line
+  (preproc_define
     directive: (preproc_directive)
-    argument: (preproc_argument)
+    name: (identifier)
+    value: (preproc_argument)
     (preproc_comment))
   (instruction
     mnemonic: (mnemonic)))
@@ -266,7 +289,8 @@ After an include directive, angle brackets hold one header name
   (preproc_line
     directive: (preproc_directive)
     argument: (preproc_argument))
-  (preproc_line
+  (preproc_define
     directive: (preproc_directive)
-    argument: (preproc_argument)
+    name: (identifier)
+    value: (preproc_argument)
     (preproc_comment)))

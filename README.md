@@ -28,25 +28,22 @@ For a single file, put a modeline at the top, such as `// vim: ft=arm` or `; vim
 If the older `assembly` extension is installed, uninstall it so the two do not both claim `.s`
 files.
 
-This is an early release. Syntax that is not parsed yet, such as memory operands, numeric local
-labels and NASM directives, shows up as an error, but an error never spreads past its own line, so
-the rest of the file keeps its colors. The roadmap lists what comes next.
+This is an early release. Syntax that is not parsed yet, such as memory operands and NASM
+directives, shows up as an error, but an error never spreads past its own line, so the rest of the
+file keeps its colors and its outline. The roadmap lists what comes next.
 
 ## Roadmap
 
-| Milestone  | Status       | What it adds                                                                                                                                                                                |
-| ---------- | ------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Foundation | this release | five languages; comments, `#` immediates and `@` relocations read per dialect; C preprocessor lines; highlighting; comment continuation; label indentation; typing never breaks later lines |
-| Structure  | next         | outline and breadcrumbs, text objects, indentation of `.macro`, `.if` and `%macro` blocks, numeric labels `1:` and `b 1b`, full directive forms                                             |
-| ARM        | planned      | registers, memory operands like `[x1, #8]!`, `:lo12:` relocations, `=label` literals, register lists, vector arrangements like `v0.16b`, condition codes                                    |
-| x86 GAS    | planned      | AT&T memory like `8(%rsp,%rax,4)`, `*` indirect jumps, Intel `dword ptr [rbx]`, `.intel_syntax` switching, AVX-512 masks like `{k1}{z}`                                                     |
-| NASM       | planned      | directives such as `section`, `bits` and `times`, the `%` preprocessor, `struc`, `$` and `$$`                                                                                               |
-| RISC-V     | planned      | a RISC-V language: registers `x0` to `x31` and ABI names like `a0`, `%hi()` and `%lo()` relocations, memory operands like `8(sp)`                                                           |
-| Hardening  | planned      | Linux, glibc and FFmpeg sources parse without errors; benchmark budgets checked in CI                                                                                                       |
-| Release    | planned      | snippets, screenshots, a listing in the Zed extension registry                                                                                                                              |
-
-MIPS is a candidate after the first release, as a language of its own: its `$t0` registers clash
-with x86 immediates such as `$1`, so it cannot join Assembly.
+| Milestone       | Status       | What it adds                                                                                                                                                                                                                                                                                         |
+| --------------- | ------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Foundation      | done         | five languages; comments, `#` immediates and `@` relocations read per dialect; C preprocessor lines; highlighting; comment continuation; label indentation; typing never breaks later lines                                                                                                          |
+| Structure       | this release | outline and breadcrumbs of functions with their local labels, macros and named constants; vim text objects for functions, macros and comments; indentation of `.macro`, `.if` and `.rept` blocks as you type; numeric labels `1:` and `b 1b`; full GNU directive forms; C colors in `#if` conditions |
+| ARM             | next         | registers, memory operands like `[x1, #8]!`, `:lo12:` relocations, `=label` literals, register lists, vector arrangements like `v0.16b`, condition codes, Apple `L` labels in operands                                                                                                               |
+| x86 GAS         | planned      | AT&T memory like `8(%rsp,%rax,4)`, `*` indirect jumps, Intel `dword ptr [rbx]`, `.intel_syntax` switching, AVX-512 masks like `{k1}{z}`, prefixes like `rep movsb`, C macro calls like `FOO(1)` in `.S` operands                                                                                     |
+| RISC-V and MIPS | planned      | a RISC-V and a MIPS language: registers like `x0`, `a0` and `$t0`, `%hi()` and `%lo()` relocations, memory operands like `8(sp)`; not part of Assembly, where `$t0` would read as an x86 immediate                                                                                                   |
+| NASM            | planned      | directives such as `section`, `bits` and `times`, the `%` preprocessor, `%macro`, `%if`, `%rep`, `struc` and `istruc` blocks, `$` and `$$`                                                                                                                                                           |
+| Hardening       | planned      | Linux, glibc and FFmpeg sources parse without errors; benchmark budgets checked in CI                                                                                                                                                                                                                |
+| Release         | planned      | snippets, screenshots, a listing in the Zed extension registry                                                                                                                                                                                                                                       |
 
 ## Development
 

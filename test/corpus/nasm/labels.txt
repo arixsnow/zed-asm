@@ -1,0 +1,175 @@
+================================================================================
+NASM dot labels are local to the global label above them
+================================================================================
+
+start:
+.loop:
+    dec rcx
+..@done:
+    ret
+
+--------------------------------------------------------------------------------
+
+(source_file
+  (label_block
+    label: (label
+      name: (identifier))
+    (label
+      name: (local_identifier))
+    (instruction
+      mnemonic: (mnemonic)
+      operand: (identifier))
+    (label
+      name: (local_identifier))
+    (instruction
+      mnemonic: (mnemonic))))
+
+================================================================================
+NASM names may start with a question mark
+================================================================================
+
+?entry: nop
+
+--------------------------------------------------------------------------------
+
+(source_file
+  (label_block
+    label: (label
+      name: (identifier))
+    (instruction
+      mnemonic: (mnemonic))))
+
+================================================================================
+NASM: a global label owns the lines up to the next global label
+================================================================================
+
+first:
+    nop
+.loop:
+    nop
+second:
+    nop
+
+--------------------------------------------------------------------------------
+
+(source_file
+  (label_block
+    label: (label
+      name: (identifier))
+    (instruction
+      mnemonic: (mnemonic))
+    (label
+      name: (local_identifier))
+    (instruction
+      mnemonic: (mnemonic)))
+  (label_block
+    label: (label
+      name: (identifier))
+    (instruction
+      mnemonic: (mnemonic))))
+
+================================================================================
+NASM: lines before the first global label stay outside any block
+================================================================================
+
+nop
+.start:
+    nop
+main:
+    nop
+
+--------------------------------------------------------------------------------
+
+(source_file
+  (instruction
+    mnemonic: (mnemonic))
+  (label
+    name: (local_identifier))
+  (instruction
+    mnemonic: (mnemonic))
+  (label_block
+    label: (label
+      name: (identifier))
+    (instruction
+      mnemonic: (mnemonic))))
+
+================================================================================
+NASM: a local label before a global label on one line stays with the block above
+================================================================================
+
+first:
+.end: second: nop
+
+--------------------------------------------------------------------------------
+
+(source_file
+  (label_block
+    label: (label
+      name: (identifier))
+    (label
+      name: (local_identifier)))
+  (label_block
+    label: (label
+      name: (identifier))
+    (instruction
+      mnemonic: (mnemonic))))
+
+================================================================================
+NASM: a blank may come before the colon
+================================================================================
+
+main :
+.loop	:
+    nop
+
+--------------------------------------------------------------------------------
+
+(source_file
+  (label_block
+    label: (label
+      name: (identifier))
+    (label
+      name: (local_identifier))
+    (instruction
+      mnemonic: (mnemonic))))
+
+================================================================================
+Names as nasm and yasm read them
+================================================================================
+
+f:
+.1:
+    jmp .1
+.$x:
+$.y:
+.:
+    jmp .
+$eax:
+    jmp $eax
+
+--------------------------------------------------------------------------------
+
+(source_file
+  (label_block
+    label: (label
+      name: (identifier))
+    (label
+      name: (local_identifier))
+    (instruction
+      mnemonic: (mnemonic)
+      operand: (local_identifier))
+    (label
+      name: (local_identifier))
+    (label
+      name: (local_identifier))
+    (label
+      name: (local_identifier))
+    (instruction
+      mnemonic: (mnemonic)
+      operand: (local_identifier)))
+  (label_block
+    label: (label
+      name: (identifier))
+    (instruction
+      mnemonic: (mnemonic)
+      operand: (identifier))))

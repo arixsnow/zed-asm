@@ -1,0 +1,37 @@
+================================================================================
+Blank-separated macro parameters
+================================================================================
+
+.macro m a b=2 c:req
+.endm
+
+--------------------------------------------------------------------------------
+
+(source_file
+  (macro_definition
+    name: (identifier)
+    parameter: (parameter
+      name: (identifier))
+    parameter: (parameter
+      name: (identifier)
+      default: (integer))
+    parameter: (parameter
+      name: (identifier)
+      qualifier: (identifier))
+    body: (body)))
+
+================================================================================
+Blank-separated .irp values
+================================================================================
+
+.irp r a b
+.endr
+
+--------------------------------------------------------------------------------
+
+(source_file
+  (repeat_block
+    parameter: (identifier)
+    value: (identifier)
+    value: (identifier)
+    body: (body)))

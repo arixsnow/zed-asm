@@ -1,0 +1,41 @@
+================================================================================
+A macro argument as an AT&T immediate
+================================================================================
+
+.macro m val
+    movq $\val, %rax
+.endm
+
+--------------------------------------------------------------------------------
+
+(source_file
+  (macro_definition
+    name: (identifier)
+    parameter: (parameter
+      name: (identifier))
+    body: (body
+      (instruction
+        mnemonic: (mnemonic)
+        operand: (immediate
+          value: (macro_argument))
+        operand: (register)))))
+
+================================================================================
+Registers as .irp values
+================================================================================
+
+.irp reg, %rax, %rbx
+    push \reg
+.endr
+
+--------------------------------------------------------------------------------
+
+(source_file
+  (repeat_block
+    parameter: (identifier)
+    value: (register)
+    value: (register)
+    body: (body
+      (instruction
+        mnemonic: (mnemonic)
+        operand: (macro_argument)))))

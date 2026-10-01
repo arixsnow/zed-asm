@@ -1,0 +1,51 @@
+================================================================================
+Decimal floats
+================================================================================
+
+    .float 1.5, .5, 1., 1e3, 1.5e+3, -1.5, inf
+
+--------------------------------------------------------------------------------
+
+(source_file
+  (directive
+    name: (directive_name)
+    argument: (float)
+    argument: (float)
+    argument: (float)
+    argument: (float)
+    argument: (float)
+    argument: (unary_expression
+      argument: (float))
+    argument: (identifier)))
+
+================================================================================
+GNU prefixed floats and hexadecimal floats
+================================================================================
+
+    .float 0f1.5, 0d1.5e3, 0f+1.5, 0f1, 0x1.5, 0x1.8p0
+
+--------------------------------------------------------------------------------
+
+(source_file
+  (directive
+    name: (directive_name)
+    argument: (float)
+    argument: (float)
+    argument: (float)
+    argument: (float)
+    argument: (float)
+    argument: (float)))
+
+================================================================================
+Hexadecimal and binary integers without a point stay integers
+================================================================================
+
+    .long 0x10, 0b11
+
+--------------------------------------------------------------------------------
+
+(source_file
+  (directive
+    name: (directive_name)
+    argument: (integer)
+    argument: (integer)))

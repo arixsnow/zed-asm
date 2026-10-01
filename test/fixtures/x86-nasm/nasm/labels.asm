@@ -1,0 +1,5 @@
+section .text
+
+dot:
+.:
+    jmp     .

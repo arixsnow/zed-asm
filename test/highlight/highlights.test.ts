@@ -46,7 +46,7 @@ function captures(grammar: string, query: string, source: string): Capture[] {
   return output
     .split('\n')
     .map((line) => CAPTURE_LINE.exec(line))
-    .filter((match) => match !== null)
+    .filter((match): match is RegExpExecArray => match !== null && !match[1].startsWith('_'))
     .map(([, name, startRow, startColumn, endRow, endColumn]) => ({
       name: name.replace(/\.inclusive$/, ''),
       inclusive: name.endsWith('.inclusive'),

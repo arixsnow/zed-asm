@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: MIT
 
-import { assertEquals, assertMatch, assertNotMatch } from '@std/assert';
+import { assertEquals, assertMatch, assertNotMatch, assertThrows } from '@std/assert';
+import { join } from '@std/path';
 import { parse } from '@std/toml';
 
 import {
@@ -12,6 +13,8 @@ import {
   sourcesOf,
   toToml,
 } from '../../scripts/build.ts';
+import { blockClosers, blockIndentPattern, statementLexing } from '../../scripts/lib/indent.ts';
+import { ROOT } from '../../scripts/lib/files.ts';
 import { type Language, manifest, parseAuthor } from '../../scripts/lib/manifest.ts';
 
 const outputs = renderAll(manifest, () => undefined);
@@ -187,5 +190,77 @@ Deno.test('the tree-sitter metadata takes its license and authors from the manif
   assertEquals(
     metadata.authors,
     manifest.extension.authors.map((author, index) => parseAuthor(author, `authors[${index}]`)),
+  );
+});
+
+const SCANNER = Deno.readTextFileSync(join(ROOT, 'tree-sitter', 'common', 'scanner.h'));
+
+Deno.test('GNU languages add block openers to the label indent pattern; NASM keeps labels only', () => {
+  for (const language of manifest.languages) {
+    const syntax = manifest.syntaxes[language.syntax];
+    const { increase_indent_pattern: increase, decrease_indent_pattern: decrease } = languageConfig(
+      language,
+      manifest,
+    );
+    assertEquals(decrease, syntax.labelPattern, language.name);
+    if (language.syntax === 'nasm') {
+      assertEquals(increase, syntax.labelPattern);
+    } else {
+      assertEquals(increase, `${syntax.labelPattern}|${blockIndentPattern(language, syntax)}`);
+    }
+  }
+});
+
+Deno.test("the indent pattern reads each dialect's ; # and @ rules and the closers from scanner.h", () => {
+  assertEquals(statementLexing(SCANNER), {
+    AUTO: { semicolons: 'HEURISTIC', hashImmediates: true, hashNeedsValue: true, atComments: true },
+    ARM: { semicolons: 'SEPARATES', hashImmediates: true, hashNeedsValue: false, atComments: true },
+    ARM_APPLE: {
+      semicolons: 'COMMENTS',
+      hashImmediates: true,
+      hashNeedsValue: false,
+      atComments: false,
+    },
+    X86_GAS: {
+      semicolons: 'SEPARATES',
+      hashImmediates: false,
+      hashNeedsValue: false,
+      atComments: false,
+    },
+    X86_NASM: {
+      semicolons: 'COMMENTS',
+      hashImmediates: false,
+      hashNeedsValue: false,
+      atComments: false,
+    },
+  });
+  assertEquals(blockClosers(SCANNER), [
+    { name: '.endm', symbol: 'MACRO_CLOSE' },
+    { name: '.endmacro', symbol: 'MACRO_CLOSE' },
+    { name: '.endif', symbol: 'CONDITIONAL_CLOSE' },
+    { name: '.endr', symbol: 'REPEAT_CLOSE' },
+  ]);
+});
+
+Deno.test('a block that names an unknown opener or closer fails with a clear message', () => {
+  const language = byGrammar('asm_arm');
+  const syntax = manifest.syntaxes.gas;
+  assertThrows(
+    () =>
+      blockIndentPattern(language, {
+        ...syntax,
+        blocks: [{ openers: ['nope'], clauses: [], closer: 'MACRO_CLOSE' }],
+      }),
+    Error,
+    'lexical.js has no gas token named nope',
+  );
+  assertThrows(
+    () =>
+      blockIndentPattern(language, {
+        ...syntax,
+        blocks: [{ openers: ['macroOpen'], clauses: [], closer: 'NOPE' }],
+      }),
+    Error,
+    'scanner.h has no block closer for NOPE',
   );
 });

@@ -214,6 +214,36 @@
     }
   },
   {
+    "type": "label_block",
+    "named": true,
+    "fields": {
+      "label": {
+        "multiple": false,
+        "required": true,
+        "types": [
+          {
+            "type": "label",
+            "named": true
+          }
+        ]
+      }
+    },
+    "children": {
+      "multiple": true,
+      "required": false,
+      "types": [
+        {
+          "type": "instruction",
+          "named": true
+        },
+        {
+          "type": "label",
+          "named": true
+        }
+      ]
+    }
+  },
+  {
     "type": "parenthesized_expression",
     "named": true,
     "fields": {},
@@ -263,6 +293,10 @@
         },
         {
           "type": "label",
+          "named": true
+        },
+        {
+          "type": "label_block",
           "named": true
         }
       ]

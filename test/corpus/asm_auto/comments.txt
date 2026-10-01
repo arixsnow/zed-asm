@@ -30,11 +30,55 @@ Semicolon before a directive separates statements
 --------------------------------------------------------------------------------
 
 (source_file
-  (directive
-    name: (directive_name)
-    argument: (identifier))
+  (macro_definition
+    name: (identifier)
+    body: (body)))
+
+================================================================================
+A semicolon comment ends before a later semicolon that a directive follows
+================================================================================
+
+    .rept 2; nop; nop; .endr
+    .if A; nop; .else; nop; .endif
+    nop ; note ; .text
+
+--------------------------------------------------------------------------------
+
+(source_file
+  (repeat_block
+    count: (integer)
+    (line_comment)
+    body: (body))
+  (conditional
+    condition: (identifier)
+    (line_comment)
+    body: (body)
+    (else_clause
+      (line_comment)
+      body: (body)))
+  (instruction
+    mnemonic: (mnemonic))
+  (line_comment)
   (directive
     name: (directive_name)))
+
+================================================================================
+Apple comments run to the end of the line
+================================================================================
+
+    mov w1, #0 ; =0x0
+; -- Begin function _f
+
+--------------------------------------------------------------------------------
+
+(source_file
+  (instruction
+    mnemonic: (mnemonic)
+    operand: (identifier)
+    operand: (immediate
+      value: (integer)))
+  (line_comment)
+  (line_comment))
 
 ================================================================================
 Line markers are comments
@@ -81,3 +125,40 @@ nop
   (line_comment)
   (instruction
     mnemonic: (mnemonic)))
+
+================================================================================
+A semicolon after an x86 prefix separates statements
+================================================================================
+
+rep; movsb
+lock ; incl %eax
+REX.W; add %rax, %rbx
+rep; nop; nop
+repx; nop
+
+--------------------------------------------------------------------------------
+
+(source_file
+  (instruction
+    mnemonic: (mnemonic))
+  (instruction
+    mnemonic: (mnemonic))
+  (instruction
+    mnemonic: (mnemonic))
+  (instruction
+    mnemonic: (mnemonic)
+    operand: (register))
+  (instruction
+    mnemonic: (mnemonic))
+  (instruction
+    mnemonic: (mnemonic)
+    operand: (register)
+    operand: (register))
+  (instruction
+    mnemonic: (mnemonic))
+  (instruction
+    mnemonic: (mnemonic))
+  (line_comment)
+  (instruction
+    mnemonic: (mnemonic))
+  (line_comment))

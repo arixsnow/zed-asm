@@ -7,55 +7,6 @@ Empty file
 (source_file)
 
 ================================================================================
-Label followed by an instruction
-================================================================================
-
-start:
-    mov x0, x1
-
---------------------------------------------------------------------------------
-
-(source_file
-  (label
-    name: (identifier))
-  (instruction
-    mnemonic: (mnemonic)
-    operand: (identifier)
-    operand: (identifier)))
-
-================================================================================
-Labels and an instruction on one line
-================================================================================
-
-outer: inner: nop
-
---------------------------------------------------------------------------------
-
-(source_file
-  (label
-    name: (identifier))
-  (label
-    name: (identifier))
-  (instruction
-    mnemonic: (mnemonic)))
-
-================================================================================
-Dot-prefixed label
-================================================================================
-
-.Lloop:
-    dec rcx
-
---------------------------------------------------------------------------------
-
-(source_file
-  (label
-    name: (local_identifier))
-  (instruction
-    mnemonic: (mnemonic)
-    operand: (identifier)))
-
-================================================================================
 Tabs between mnemonic and operands
 ================================================================================
 
@@ -235,3 +186,29 @@ nop
         left: (identifier))))
   (instruction
     mnemonic: (mnemonic)))
+
+================================================================================
+Operands may be separated by blanks, as in a macro call
+================================================================================
+
+m 1 2
+m 1 -2
+m a, b c
+
+--------------------------------------------------------------------------------
+
+(source_file
+  (instruction
+    mnemonic: (mnemonic)
+    operand: (integer)
+    operand: (integer))
+  (instruction
+    mnemonic: (mnemonic)
+    operand: (binary_expression
+      left: (integer)
+      right: (integer)))
+  (instruction
+    mnemonic: (mnemonic)
+    operand: (identifier)
+    operand: (identifier)
+    operand: (identifier)))

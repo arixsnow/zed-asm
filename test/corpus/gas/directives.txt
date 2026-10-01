@@ -1,0 +1,81 @@
+================================================================================
+Blank-separated arguments of .file and .loc
+================================================================================
+
+    .file 1 "a.c"
+    .file "b.c"
+    .loc 1 2 3 prologue_end is_stmt 0
+
+--------------------------------------------------------------------------------
+
+(source_file
+  (directive
+    name: (directive_name)
+    argument: (integer)
+    argument: (string))
+  (directive
+    name: (directive_name)
+    argument: (string))
+  (directive
+    name: (directive_name)
+    argument: (integer)
+    argument: (integer)
+    argument: (integer)
+    argument: (identifier)
+    argument: (identifier)
+    argument: (integer)))
+
+================================================================================
+Empty arguments
+================================================================================
+
+    .p2align 4,,10
+    .balign 8,,4
+
+--------------------------------------------------------------------------------
+
+(source_file
+  (directive
+    name: (directive_name)
+    argument: (integer)
+    argument: (integer))
+  (directive
+    name: (directive_name)
+    argument: (integer)
+    argument: (integer)))
+
+================================================================================
+A blank between numbers is one expression elsewhere
+================================================================================
+
+    .byte 1 -2
+
+--------------------------------------------------------------------------------
+
+(source_file
+  (directive
+    name: (directive_name)
+    argument: (binary_expression
+      left: (integer)
+      right: (integer))))
+
+================================================================================
+Data directives whose names start with a digit
+================================================================================
+
+    .2byte 1
+    .4byte 2
+    .8byte 3
+
+--------------------------------------------------------------------------------
+
+(source_file
+  (directive
+    name: (directive_name)
+    argument: (integer))
+  (directive
+    name: (directive_name)
+    argument: (integer))
+  (directive
+    name: (directive_name)
+    argument: (integer)))

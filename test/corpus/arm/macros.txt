@@ -1,0 +1,21 @@
+================================================================================
+A macro argument as an ARM immediate
+================================================================================
+
+.macro m val
+    mov x0, #\val
+.endm
+
+--------------------------------------------------------------------------------
+
+(source_file
+  (macro_definition
+    name: (identifier)
+    parameter: (parameter
+      name: (identifier))
+    body: (body
+      (instruction
+        mnemonic: (mnemonic)
+        operand: (identifier)
+        operand: (immediate
+          value: (macro_argument))))))

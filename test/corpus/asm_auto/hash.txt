@@ -32,3 +32,17 @@ nop #=== section ===
   (instruction
     mnemonic: (mnemonic))
   (line_comment))
+
+================================================================================
+A hash after a blank-separated operand is a comment
+================================================================================
+
+m x0 #1
+
+--------------------------------------------------------------------------------
+
+(source_file
+  (instruction
+    mnemonic: (mnemonic)
+    operand: (identifier))
+  (line_comment))

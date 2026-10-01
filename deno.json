@@ -48,8 +48,8 @@
       "command": "deno run --allow-read=. --allow-write=.build --allow-run=tree-sitter,as,aarch64-linux-gnu-as,arm-none-eabi-as,clang,nasm,yasm scripts/verify-fixtures.ts"
     },
     "test:unit": {
-      "description": "Unit, highlight, parse-tree, typing and performance tests",
-      "command": "deno test --allow-read=. --allow-write=.build --allow-run=tree-sitter"
+      "description": "Unit, highlight, parse-tree, typing, structure and performance tests",
+      "command": "deno test --allow-read=. --allow-write=.build --allow-run=tree-sitter,gcc,clang,aarch64-linux-gnu-gcc,arm-none-eabi-gcc"
     },
     "corpus": {
       "description": "Compose each grammar's corpus tests from test/corpus",
