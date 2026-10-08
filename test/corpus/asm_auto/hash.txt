@@ -44,5 +44,5 @@ m x0 #1
 (source_file
   (instruction
     mnemonic: (mnemonic)
-    operand: (identifier))
+    operand: (register))
   (line_comment))

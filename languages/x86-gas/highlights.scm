@@ -70,6 +70,8 @@
 
 (location_counter) @constant.builtin
 
+(register) @variable.special
+
 (symbol_type) @type.builtin
 
 (relocation
@@ -133,8 +135,6 @@
   .
   argument: (identifier) @namespace
   (#match? @_section "^\\.(?i:section|pushsection)$"))
-
-(register) @variable.special
 
 (immediate
   "$" @punctuation.special)

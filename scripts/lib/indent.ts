@@ -28,7 +28,7 @@ export interface BlockPatternSource {
   lexing: StatementLexing;
 }
 
-export interface BlockCloser {
+export interface StatementWord {
   name: string;
   symbol: string;
 }
@@ -93,6 +93,10 @@ function caseless(character: string): string {
   const lower = character.toLowerCase();
   const upper = character.toUpperCase();
   return lower === upper ? classMember(character) : `${lower}${upper}`;
+}
+
+function caselessWord(word: string): RegExp {
+  return new RegExp([...word].map((character) => `[${caseless(character)}]`).join(''));
 }
 
 interface TrieNode {
@@ -258,12 +262,12 @@ export function statementLexing(scanner: string): Record<string, Omit<StatementL
   return lexing;
 }
 
-export function blockClosers(scanner: string): BlockCloser[] {
-  const table = /BLOCK_CLOSERS\[\] = \{([^;]*)\};/.exec(scanner);
+export function statementWords(scanner: string): StatementWord[] {
+  const table = /#define ASM_STATEMENT_WORDS\(X\)((?:[^\n]*\\\n)+[^\n]*)/.exec(scanner);
   if (table === null) {
-    throw new Error('scanner.h: BLOCK_CLOSERS table not found');
+    throw new Error('scanner.h: ASM_STATEMENT_WORDS table not found');
   }
-  return [...table[1].matchAll(/\{"([^"]+)", ([A-Z_]+)\}/g)].map(([, name, symbol]) => ({
+  return [...table[1].matchAll(/X\("([^"]+)", ([A-Z_]+)\)/g)].map(([, name, symbol]) => ({
     name,
     symbol,
   }));
@@ -289,34 +293,34 @@ export function blockIndentPattern(language: Language, syntax: Syntax): string |
   if (lexing === undefined) {
     throw new Error(`scanner.h has no settings for ASM_DIALECT_${language.dialect}`);
   }
-  const tokens = lexical[language.syntax];
-  const closers = blockClosers(scanner);
+  const words = statementWords(scanner);
   const ends = implicitEnds(scanner);
-  const token = (key: string) => {
-    const pattern = tokens[key];
-    if (!(pattern instanceof RegExp)) {
-      throw new Error(`lexical.js has no ${language.syntax} token named ${key}`);
-    }
-    return pattern;
-  };
+  const patterns = (words: StatementWord[], kind: string, symbols: string[]) =>
+    symbols.flatMap((symbol) => {
+      const named = words.filter((word) => word.symbol === symbol);
+      if (named.length === 0) {
+        throw new Error(`scanner.h has no block ${kind} for ${symbol}`);
+      }
+      return named.map(({ name }) => caselessWord(name));
+    });
   const kinds = syntax.blocks.map((block) => {
-    const openers = block.openers.map(token);
-    const clauses = block.clauses.map(token);
-    if (!closers.some((closer) => closer.symbol === block.closer)) {
+    if (!words.some((word) => word.symbol === block.closer)) {
       throw new Error(`scanner.h has no block closer for ${block.closer}`);
     }
     const symbols = [
       block.closer,
       ...ends.filter((end) => end.ends === block.closer).map((end) => end.closer),
     ];
-    const names = closers.filter((closer) => symbols.includes(closer.symbol)).map(({ name }) =>
-      name
-    );
-    return { openers, clauses, closers: names };
+    const names = words.filter((word) => symbols.includes(word.symbol)).map(({ name }) => name);
+    return {
+      openers: patterns(words, 'opener', block.openers),
+      clauses: patterns(words, 'clause', block.clauses),
+      closers: names,
+    };
   });
   return blockOpenerPattern({
     blocks: kinds,
-    nameCharacter: tokens.nameCharacter,
+    nameCharacter: lexical[language.syntax].nameCharacter,
     lexing: { ...lexing, atTypes: language.archs.includes('x86') },
   });
 }

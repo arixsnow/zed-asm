@@ -22,6 +22,8 @@
 
 (location_counter) @constant.builtin
 
+(register) @variable.special
+
 (symbol_type) @type.builtin
 
 (relocation

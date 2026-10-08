@@ -2,7 +2,7 @@
 
 import { globToRegExp, join } from '@std/path';
 
-import { readTextIfExists } from '../../scripts/lib/files.ts';
+import { readTextIfExists } from './files.ts';
 
 const SCANNED_HIDDEN_DIRECTORIES = new Set(['.github']);
 

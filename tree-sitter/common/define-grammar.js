@@ -29,6 +29,8 @@ const EXTERNALS = [
   '_missing_operand',
   '_missing_expression',
   '_unclosed',
+  '_unclosed_bracket',
+  '_unclosed_brace',
   '_global_label_name',
   '_local_label_name',
   '_numeric_label_name',
@@ -41,6 +43,18 @@ const EXTERNALS = [
   '_blank',
   '_prefix_word',
   '_prefix_semicolon',
+  '_macro_open',
+  '_if_open',
+  '_rept_open',
+  '_irp_open',
+  '_irpc_open',
+  '_blank_separated_directive',
+  '_cfi_register_directive',
+  '_unwind_register_directive',
+  '_linker_hint_directive',
+  '_suffix_relocation_name',
+  '_register_alias_word',
+  '_neon_alias_word',
   '_macro_close',
   '_conditional_close',
   '_repeat_close',
@@ -52,7 +66,17 @@ const EXTERNALS = [
   '_error_sentinel',
 ];
 
-const INLINED = ['_line_content', '_statement', '_operand', '_value', '_symbol', '_mnemonic'];
+const INLINED = [
+  '_line_content',
+  '_statement',
+  '_instruction_operand',
+  '_operand',
+  '_value',
+  '_symbol',
+  '_defined_name',
+  '_glue_head',
+  '_mnemonic',
+];
 
 module.exports = function defineGrammar(grammarName, catalog = languages) {
   const language = catalog.find((candidate) => candidate.grammar === grammarName);
@@ -76,6 +100,7 @@ module.exports = function defineGrammar(grammarName, catalog = languages) {
   const rules = {};
   const choices = {};
   const extras = [];
+  let word;
 
   for (const moduleName of moduleNames) {
     const fragment = MODULES[moduleName](ctx);
@@ -89,6 +114,12 @@ module.exports = function defineGrammar(grammarName, catalog = languages) {
       (choices[name] ??= []).push(...alternatives);
     }
     extras.push(...(fragment.extras ?? []));
+    if (fragment.word !== undefined) {
+      if (word !== undefined) {
+        throw new Error(`the word token is declared twice (again by module "${moduleName}")`);
+      }
+      word = fragment.word;
+    }
   }
 
   for (const [name, alternatives] of Object.entries(choices)) {
@@ -102,7 +133,8 @@ module.exports = function defineGrammar(grammarName, catalog = languages) {
     name: grammarName,
     externals: ($) => EXTERNALS.map((name) => $[name]),
     extras: ($) => extras.map((extra) => extra($)),
-    inline: ($) => INLINED.map((name) => $[name]),
+    ...(word === undefined ? {} : { word }),
+    inline: ($) => INLINED.filter((name) => name in rules).map((name) => $[name]),
     rules,
   });
 };

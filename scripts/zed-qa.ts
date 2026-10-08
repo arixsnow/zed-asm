@@ -435,10 +435,52 @@ export const CHECKS: Check[] = [
     expect: (text) => text.startsWith('X.macro m\n'),
   },
   {
-    id: '24a',
+    id: '24',
     row: 24,
+    title: 'Opening ARM operands',
+    file: 'c24.s',
+    text: [
+      '// vim: ft=arm',
+      'src .req x2',
+      '    ldr x0, [x1, #8]!',
+      '    ld1 {v0.16b-v3.16b}, [x0]',
+      '    csel x0, x1, x2, lt',
+      '    add x0, x0, :lo12:sym',
+      '',
+    ].join('\n'),
+    steps: [],
+    look:
+      'registers and src have the register color, lt the operator color, lo12 the attribute color',
+  },
+  {
+    id: '25a',
+    row: 25,
+    title: 'Jumping from { to its } in ARM',
+    file: 'c25a.s',
+    text: '// vim: ft=arm\nld1 {v0.16b}, [x0]\n',
+    steps: [{ keys: ['ctrl+Home', 'Down', 'Home', ...Array(5).fill('Right'), 'ctrl+m'] }, {
+      type: 'X',
+    }],
+    wants: 'the cursor jumps to the matching }',
+    expect: (text) => text === '// vim: ft=arm\nld1 {v0.16bX}, [x0]\n',
+  },
+  {
+    id: '25b',
+    row: 25,
+    title: 'Jumping from [ to its ] in ARM',
+    file: 'c25b.s',
+    text: '// vim: ft=arm\nld1 {v0.16b}, [x0]\n',
+    steps: [{ keys: ['ctrl+Home', 'Down', 'Home', ...Array(15).fill('Right'), 'ctrl+m'] }, {
+      type: 'X',
+    }],
+    wants: 'the cursor jumps to the matching ]',
+    expect: (text) => text === '// vim: ft=arm\nld1 {v0.16b}, [x0X]\n',
+  },
+  {
+    id: '26a',
+    row: 26,
     title: 'Yanking vaf in vim mode',
-    file: 'c24a.s',
+    file: 'c26a.s',
     text: FUNCTIONS,
     steps: [{ keys: ['ctrl+Home', 'Down', 'Down', 'Down'] }, { type: 'vafy' }],
     clipboard: true,
@@ -447,10 +489,10 @@ export const CHECKS: Check[] = [
     expect: (text) => text === FUNCTIONS.split('helper:')[0],
   },
   {
-    id: '24b',
-    row: 24,
+    id: '26b',
+    row: 26,
     title: 'Yanking vif in vim mode',
-    file: 'c24b.s',
+    file: 'c26b.s',
     text: FUNCTIONS,
     steps: [{ keys: ['ctrl+Home', 'Down', 'Down', 'Down'] }, { type: 'vify' }],
     clipboard: true,
@@ -459,10 +501,10 @@ export const CHECKS: Check[] = [
     expect: (text) => text === 'mov x0, x1\n.Lloop:\n    subs x0, x0, #1\n    b.ne .Lloop\n    ret',
   },
   {
-    id: '24c',
-    row: 24,
+    id: '26c',
+    row: 26,
     title: 'Yanking vac in vim mode',
-    file: 'c24c.s',
+    file: 'c26c.s',
     text: MACRO,
     steps: [{ keys: ['ctrl+Home', 'Down'] }, { type: 'vacy' }],
     clipboard: true,
@@ -472,7 +514,7 @@ export const CHECKS: Check[] = [
   },
 ];
 
-export const LOG_ROW = 25;
+export const LOG_ROW = 27;
 export const LOG_PATTERN = /\basm\b|asm_(?:auto|arm|x86)|Assembly|grammar|quer(?:y|ies)/i;
 
 export interface Result {

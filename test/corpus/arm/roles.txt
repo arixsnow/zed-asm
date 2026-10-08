@@ -1,0 +1,386 @@
+================================================================================
+A label slot reads register and condition names as symbols
+================================================================================
+
+adrp x0, x1
+adr x0, lt
+b x0
+bl sp
+b eq
+b.eq x0
+bc.ne x1
+cbz x0, x1
+cbnz w0, lr
+tbz x0, #3, x1
+tbnz w0, #0, sp
+ldr x0, x1
+ldrsw x0, w1
+prfm pldl1keep, x2
+movz x0, x2
+
+--------------------------------------------------------------------------------
+
+(source_file
+  (instruction
+    mnemonic: (mnemonic)
+    operand: (register)
+    operand: (identifier))
+  (instruction
+    mnemonic: (mnemonic)
+    operand: (register)
+    operand: (identifier))
+  (instruction
+    mnemonic: (mnemonic)
+    operand: (identifier))
+  (instruction
+    mnemonic: (mnemonic)
+    operand: (identifier))
+  (instruction
+    mnemonic: (mnemonic)
+    operand: (identifier))
+  (instruction
+    mnemonic: (mnemonic)
+    operand: (identifier))
+  (instruction
+    mnemonic: (mnemonic)
+    operand: (identifier))
+  (instruction
+    mnemonic: (mnemonic)
+    operand: (register)
+    operand: (identifier))
+  (instruction
+    mnemonic: (mnemonic)
+    operand: (register)
+    operand: (identifier))
+  (instruction
+    mnemonic: (mnemonic)
+    operand: (register)
+    operand: (immediate
+      value: (integer))
+    operand: (identifier))
+  (instruction
+    mnemonic: (mnemonic)
+    operand: (register)
+    operand: (immediate
+      value: (integer))
+    operand: (identifier))
+  (instruction
+    mnemonic: (mnemonic)
+    operand: (register)
+    operand: (identifier))
+  (instruction
+    mnemonic: (mnemonic)
+    operand: (register)
+    operand: (identifier))
+  (instruction
+    mnemonic: (mnemonic)
+    operand: (identifier)
+    operand: (identifier))
+  (instruction
+    mnemonic: (mnemonic)
+    operand: (register)
+    operand: (identifier)))
+
+================================================================================
+A label slot still reads immediates, memory operands, literal pools and expressions
+================================================================================
+
+b #8
+bl label + 4
+ldr x0, [x1]
+ldr x0, =sym
+prfm pldl1keep, [x0, #8]
+cbz x0, 1f
+1:
+
+--------------------------------------------------------------------------------
+
+(source_file
+  (instruction
+    mnemonic: (mnemonic)
+    operand: (immediate
+      value: (integer)))
+  (instruction
+    mnemonic: (mnemonic)
+    operand: (binary_expression
+      left: (identifier)
+      right: (integer)))
+  (instruction
+    mnemonic: (mnemonic)
+    operand: (register)
+    operand: (memory_operand
+      operand: (register)))
+  (instruction
+    mnemonic: (mnemonic)
+    operand: (register)
+    operand: (literal_pool
+      value: (identifier)))
+  (instruction
+    mnemonic: (mnemonic)
+    operand: (identifier)
+    operand: (memory_operand
+      operand: (register)
+      operand: (immediate
+        value: (integer))))
+  (instruction
+    mnemonic: (mnemonic)
+    operand: (register)
+    operand: (numeric_label))
+  (label
+    name: (numeric_label)))
+
+================================================================================
+A condition slot reads condition names as conditions
+================================================================================
+
+csel x0, x1, x2, lt
+csinc x0, x1, x2, NE
+csinv w0, w1, w2, hs
+csneg x0, x1, x2, al
+cset x0, eq
+csetm w0, cc
+cinc x0, x1, ls
+cinv x0, x1, nv
+cneg x0, x1, mi
+ccmp x0, x1, #0, ne
+ccmn w0, #1, #4, ge
+fcsel d0, d1, d2, gt
+fccmp s0, s1, #0, vs
+fccmpe d0, d1, #8, le
+
+--------------------------------------------------------------------------------
+
+(source_file
+  (instruction
+    mnemonic: (mnemonic)
+    operand: (register)
+    operand: (register)
+    operand: (register)
+    operand: (condition))
+  (instruction
+    mnemonic: (mnemonic)
+    operand: (register)
+    operand: (register)
+    operand: (register)
+    operand: (condition))
+  (instruction
+    mnemonic: (mnemonic)
+    operand: (register)
+    operand: (register)
+    operand: (register)
+    operand: (condition))
+  (instruction
+    mnemonic: (mnemonic)
+    operand: (register)
+    operand: (register)
+    operand: (register)
+    operand: (condition))
+  (instruction
+    mnemonic: (mnemonic)
+    operand: (register)
+    operand: (condition))
+  (instruction
+    mnemonic: (mnemonic)
+    operand: (register)
+    operand: (condition))
+  (instruction
+    mnemonic: (mnemonic)
+    operand: (register)
+    operand: (register)
+    operand: (condition))
+  (instruction
+    mnemonic: (mnemonic)
+    operand: (register)
+    operand: (register)
+    operand: (condition))
+  (instruction
+    mnemonic: (mnemonic)
+    operand: (register)
+    operand: (register)
+    operand: (condition))
+  (instruction
+    mnemonic: (mnemonic)
+    operand: (register)
+    operand: (register)
+    operand: (immediate
+      value: (integer))
+    operand: (condition))
+  (instruction
+    mnemonic: (mnemonic)
+    operand: (register)
+    operand: (immediate
+      value: (integer))
+    operand: (immediate
+      value: (integer))
+    operand: (condition))
+  (instruction
+    mnemonic: (mnemonic)
+    operand: (register)
+    operand: (register)
+    operand: (register)
+    operand: (condition))
+  (instruction
+    mnemonic: (mnemonic)
+    operand: (register)
+    operand: (register)
+    operand: (immediate
+      value: (integer))
+    operand: (condition))
+  (instruction
+    mnemonic: (mnemonic)
+    operand: (register)
+    operand: (register)
+    operand: (immediate
+      value: (integer))
+    operand: (condition)))
+
+================================================================================
+Outside a condition slot a condition name is a symbol
+================================================================================
+
+mov x0, eq
+add x0, x1, lt
+csel x0, eq, x2, lt
+
+--------------------------------------------------------------------------------
+
+(source_file
+  (instruction
+    mnemonic: (mnemonic)
+    operand: (register)
+    operand: (identifier))
+  (instruction
+    mnemonic: (mnemonic)
+    operand: (register)
+    operand: (register)
+    operand: (identifier))
+  (instruction
+    mnemonic: (mnemonic)
+    operand: (register)
+    operand: (identifier)
+    operand: (register)
+    operand: (condition)))
+
+================================================================================
+Role words in any case
+================================================================================
+
+B.EQ x0
+CSEL X0, X1, X2, LT
+ADRP X0, X1
+Cbz x0, x1
+
+--------------------------------------------------------------------------------
+
+(source_file
+  (instruction
+    mnemonic: (mnemonic)
+    operand: (identifier))
+  (instruction
+    mnemonic: (mnemonic)
+    operand: (register)
+    operand: (register)
+    operand: (register)
+    operand: (condition))
+  (instruction
+    mnemonic: (mnemonic)
+    operand: (register)
+    operand: (identifier))
+  (instruction
+    mnemonic: (mnemonic)
+    operand: (register)
+    operand: (identifier)))
+
+================================================================================
+Longer mnemonics that start with a role word are ordinary mnemonics
+================================================================================
+
+bic x0, x1, x2
+blr x0
+bfi x0, x1, #0, #8
+brk #0
+cselx x0
+csetx x0, eq
+ldrb w0, [x1]
+ldraa x0, [x1]
+b.eqx x0
+lslv x0, x1, x2
+mov x0, lslx
+
+--------------------------------------------------------------------------------
+
+(source_file
+  (instruction
+    mnemonic: (mnemonic)
+    operand: (register)
+    operand: (register)
+    operand: (register))
+  (instruction
+    mnemonic: (mnemonic)
+    operand: (register))
+  (instruction
+    mnemonic: (mnemonic)
+    operand: (register)
+    operand: (register)
+    operand: (immediate
+      value: (integer))
+    operand: (immediate
+      value: (integer)))
+  (instruction
+    mnemonic: (mnemonic)
+    operand: (immediate
+      value: (integer)))
+  (instruction
+    mnemonic: (mnemonic)
+    operand: (register))
+  (instruction
+    mnemonic: (mnemonic)
+    operand: (register)
+    operand: (identifier))
+  (instruction
+    mnemonic: (mnemonic)
+    operand: (register)
+    operand: (memory_operand
+      operand: (register)))
+  (instruction
+    mnemonic: (mnemonic)
+    operand: (register)
+    operand: (memory_operand
+      operand: (register)))
+  (instruction
+    mnemonic: (mnemonic)
+    operand: (register))
+  (instruction
+    mnemonic: (mnemonic)
+    operand: (register)
+    operand: (register)
+    operand: (register))
+  (instruction
+    mnemonic: (mnemonic)
+    operand: (register)
+    operand: (identifier)))
+
+================================================================================
+A role word followed by an equals sign names an assignment
+================================================================================
+
+B=2
+b = 3
+ldr = 4
+csel == 5
+
+--------------------------------------------------------------------------------
+
+(source_file
+  (assignment
+    name: (identifier)
+    value: (integer))
+  (assignment
+    name: (identifier)
+    value: (integer))
+  (assignment
+    name: (identifier)
+    value: (integer))
+  (assignment
+    name: (identifier)
+    value: (integer)))

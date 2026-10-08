@@ -29,9 +29,9 @@ const syntaxes = {
     ],
     labelPattern: '^\\s*(?:[A-Za-z_.][A-Za-z0-9_.$]*|[0-9]+):',
     blocks: [
-      { openers: ['macroOpen'], clauses: [], closer: 'MACRO_CLOSE' },
-      { openers: ['ifOpen'], clauses: ['elseif', 'else'], closer: 'CONDITIONAL_CLOSE' },
-      { openers: ['reptOpen', 'irpOpen', 'irpcOpen'], clauses: [], closer: 'REPEAT_CLOSE' },
+      { openers: ['MACRO_OPEN'], clauses: [], closer: 'MACRO_CLOSE' },
+      { openers: ['IF_OPEN'], clauses: ['ELSEIF', 'ELSE'], closer: 'CONDITIONAL_CLOSE' },
+      { openers: ['REPT_OPEN', 'IRP_OPEN', 'IRPC_OPEN'], clauses: [], closer: 'REPEAT_CLOSE' },
     ],
     overrides: { preproc: { line_comments: ['// '] } },
   },

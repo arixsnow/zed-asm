@@ -4,7 +4,7 @@ import { assertEquals } from '@std/assert';
 import { join } from '@std/path';
 
 import { ROOT } from '../../scripts/lib/files.ts';
-import { repositoryFiles } from '../lib/repository.ts';
+import { repositoryFiles } from '../../scripts/lib/repository.ts';
 
 const TAB_ALLOWED = ['test/corpus/', 'test/fixtures/'];
 

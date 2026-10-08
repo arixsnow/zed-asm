@@ -14,8 +14,8 @@ scripts/zed             # run every check
 scripts/zed --refresh   # first update Zed to its latest release
 ```
 
-Checks 1 to 4, 19 and 22 end with `LOOK`: open their screenshot and confirm it. The others pass or
-fail on their own. The exact languages are selected with a modeline such as `// vim: ft=arm`. Run
+Checks 1 to 4, 19, 22 and 24 end with `LOOK`: open their screenshot and confirm it. The others pass
+or fail on their own. The exact languages are selected with a modeline such as `// vim: ft=arm`. Run
 the checks before each release and note the Zed version from the report.
 
 | #  | Do                                                                                             | Expect                                                |
@@ -43,8 +43,10 @@ the checks before each release and note the Zed version from the report.
 | 21 | After `main:` and Enter, type `.text`                                                          | `.text` stays indented where it was typed             |
 | 22 | In a `.S` file, look at `#if defined(SAVE) && LEVEL > 1`                                       | The condition has the C colors                        |
 | 23 | Below `.macro m` and `nop`, type `.` as the last line, with no newline after it                | The outline still lists `m`                           |
-| 24 | In vim mode, `vaf`, `vif` and `vac`, then `y`                                                  | Each copies the function, its body or the macro       |
-| 25 | Read the Zed log                                                                               | No errors about the asm grammars or queries           |
+| 24 | Open ARM code with registers, `[ ]`, `{ }`, a condition and `:lo12:`                           | Registers, conditions and relocations have own colors |
+| 25 | In ARM, put the cursor after `{` or `[` and run Move to Enclosing Bracket (Ctrl+M)             | The cursor jumps to the matching `}` or `]`           |
+| 26 | In vim mode, `vaf`, `vif` and `vac`, then `y`                                                  | Each copies the function, its body or the macro       |
+| 27 | Read the Zed log                                                                               | No errors about the asm grammars or queries           |
 
 A Zed limitation: when nothing follows the cursor, at the very end of a file, Zed ignores
 scope-based settings. There, Enter after `#define X 1` inserts `#` and a space in the GNU-syntax

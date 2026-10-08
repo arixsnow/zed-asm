@@ -18,8 +18,39 @@ jobs:
         with:
           persist-credentials: false
 
+      - name: Name the toolchain image
+        id: image
+        run: |
+          image=$(scripts/dev --image)
+          week=$(date -u +%G-W%V)
+          echo "name=${image}" >> "${GITHUB_OUTPUT}"
+          echo "key=${image##*:}-${week}" >> "${GITHUB_OUTPUT}"
+
+      - name: Restore the toolchain image (actions/cache v6.1.0)
+        id: restore
+        uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9
+        with:
+          path: ${{ runner.temp }}/toolchain.tar
+          key: toolchain-${{ steps.image.outputs.key }}
+
+      - name: Load the toolchain image
+        if: steps.restore.outputs.cache-hit == 'true'
+        run: podman load --input "${RUNNER_TEMP}/toolchain.tar"
+
       - name: Build the toolchain image
-        run: scripts/dev true
+        if: steps.restore.outputs.cache-hit != 'true'
+        env:
+          IMAGE: ${{ steps.image.outputs.name }}
+        run: |
+          scripts/dev true
+          podman save --output "${RUNNER_TEMP}/toolchain.tar" "${IMAGE}"
+
+      - name: Save the toolchain image (actions/cache v6.1.0)
+        if: steps.restore.outputs.cache-hit != 'true'
+        uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9
+        with:
+          path: ${{ runner.temp }}/toolchain.tar
+          key: toolchain-${{ steps.image.outputs.key }}
 
       - name: Test
         run: scripts/dev deno task test

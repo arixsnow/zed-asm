@@ -13,7 +13,7 @@ import {
   sourcesOf,
   toToml,
 } from '../../scripts/build.ts';
-import { blockClosers, blockIndentPattern, statementLexing } from '../../scripts/lib/indent.ts';
+import { blockIndentPattern, statementLexing, statementWords } from '../../scripts/lib/indent.ts';
 import { ROOT } from '../../scripts/lib/files.ts';
 import { type Language, manifest, parseAuthor } from '../../scripts/lib/manifest.ts';
 
@@ -234,12 +234,46 @@ Deno.test("the indent pattern reads each dialect's ; # and @ rules and the close
       atComments: false,
     },
   });
-  assertEquals(blockClosers(SCANNER), [
-    { name: '.endm', symbol: 'MACRO_CLOSE' },
-    { name: '.endmacro', symbol: 'MACRO_CLOSE' },
-    { name: '.endif', symbol: 'CONDITIONAL_CLOSE' },
-    { name: '.endr', symbol: 'REPEAT_CLOSE' },
+  const words = statementWords(SCANNER);
+  const named = (...symbols: string[]) =>
+    words.filter(({ symbol }) => symbols.includes(symbol)).map(({ name }) => name);
+  assertEquals(named('MACRO_OPEN', 'REPT_OPEN', 'IRP_OPEN', 'IRPC_OPEN'), [
+    '.irp',
+    '.irpc',
+    '.macro',
+    '.rept',
   ]);
+  assertEquals(named('IF_OPEN'), [
+    '.if',
+    '.ifb',
+    '.ifc',
+    '.ifdef',
+    '.ifeq',
+    '.ifeqs',
+    '.ifge',
+    '.ifgt',
+    '.ifle',
+    '.iflt',
+    '.ifnb',
+    '.ifnc',
+    '.ifndef',
+    '.ifne',
+    '.ifnes',
+    '.ifnotdef',
+  ]);
+  assertEquals(named('ELSEIF', 'ELSE'), ['.else', '.elseif']);
+  assertEquals(named('MACRO_CLOSE', 'CONDITIONAL_CLOSE', 'REPEAT_CLOSE'), [
+    '.endif',
+    '.endm',
+    '.endmacro',
+    '.endr',
+  ]);
+});
+
+Deno.test('the scanner keeps its statement words sorted, as its binary search needs', () => {
+  const names = statementWords(SCANNER).map(({ name }) => name);
+  assertEquals(names, [...names].sort((left, right) => left < right ? -1 : left > right ? 1 : 0));
+  assertEquals(new Set(names).size, names.length);
 });
 
 Deno.test('a block that names an unknown opener or closer fails with a clear message', () => {
@@ -249,16 +283,25 @@ Deno.test('a block that names an unknown opener or closer fails with a clear mes
     () =>
       blockIndentPattern(language, {
         ...syntax,
-        blocks: [{ openers: ['nope'], clauses: [], closer: 'MACRO_CLOSE' }],
+        blocks: [{ openers: ['NOPE'], clauses: [], closer: 'MACRO_CLOSE' }],
       }),
     Error,
-    'lexical.js has no gas token named nope',
+    'scanner.h has no block opener for NOPE',
   );
   assertThrows(
     () =>
       blockIndentPattern(language, {
         ...syntax,
-        blocks: [{ openers: ['macroOpen'], clauses: [], closer: 'NOPE' }],
+        blocks: [{ openers: ['MACRO_OPEN'], clauses: ['NOPE'], closer: 'MACRO_CLOSE' }],
+      }),
+    Error,
+    'scanner.h has no block clause for NOPE',
+  );
+  assertThrows(
+    () =>
+      blockIndentPattern(language, {
+        ...syntax,
+        blocks: [{ openers: ['MACRO_OPEN'], clauses: [], closer: 'NOPE' }],
       }),
     Error,
     'scanner.h has no block closer for NOPE',

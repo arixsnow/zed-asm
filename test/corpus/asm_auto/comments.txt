@@ -74,7 +74,7 @@ Apple comments run to the end of the line
 (source_file
   (instruction
     mnemonic: (mnemonic)
-    operand: (identifier)
+    operand: (register)
     operand: (immediate
       value: (integer)))
   (line_comment)

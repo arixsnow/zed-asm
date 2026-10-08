@@ -15,7 +15,7 @@ Positional macro arguments of Apple's assembler
     body: (body
       (instruction
         mnemonic: (mnemonic)
-        operand: (identifier)
+        operand: (register)
         operand: (macro_argument))
       (directive
         name: (directive_name)
@@ -32,6 +32,47 @@ m x0 #1
 (source_file
   (instruction
     mnemonic: (mnemonic)
-    operand: (identifier)
+    operand: (register)
     operand: (immediate
       value: (integer))))
+
+================================================================================
+Positional arguments glued to the text after them
+================================================================================
+
+.macro m
+    ld1 {$0.16b, $1.16b}, [$2]
+    ins $0.s[1], w0
+    b $0abc
+.endm
+
+--------------------------------------------------------------------------------
+
+(source_file
+  (macro_definition
+    name: (identifier)
+    body: (body
+      (instruction
+        mnemonic: (mnemonic)
+        operand: (register_list
+          element: (concatenation
+            (macro_argument)
+            (identifier))
+          element: (concatenation
+            (macro_argument)
+            (identifier)))
+        operand: (memory_operand
+          operand: (macro_argument)))
+      (instruction
+        mnemonic: (mnemonic)
+        operand: (indexed_register
+          register: (concatenation
+            (macro_argument)
+            (identifier))
+          index: (integer))
+        operand: (register))
+      (instruction
+        mnemonic: (mnemonic)
+        operand: (concatenation
+          (macro_argument)
+          (identifier))))))

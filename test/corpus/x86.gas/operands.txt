@@ -68,3 +68,28 @@ nop
     operand: (register))
   (instruction
     mnemonic: (mnemonic)))
+
+================================================================================
+A relocation inside parentheses keeps its specifier
+================================================================================
+
+.quad (sym@PLT)
+.quad (sym@PLT + 4)
+
+--------------------------------------------------------------------------------
+
+(source_file
+  (directive
+    name: (directive_name)
+    argument: (parenthesized_expression
+      (relocation
+        symbol: (identifier)
+        specifier: (identifier))))
+  (directive
+    name: (directive_name)
+    argument: (parenthesized_expression
+      (binary_expression
+        left: (relocation
+          symbol: (identifier)
+          specifier: (identifier))
+        right: (integer)))))

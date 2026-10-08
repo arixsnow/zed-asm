@@ -21,23 +21,23 @@ LBB0_3:
       name: (identifier))
     (instruction
       mnemonic: (mnemonic)
-      operand: (identifier)
+      operand: (register)
       operand: (immediate
         value: (integer)))
     (instruction
       mnemonic: (mnemonic)
-      operand: (identifier))
+      operand: (local_identifier))
     (label
       name: (local_identifier))
     (instruction
       mnemonic: (mnemonic)
-      operand: (identifier)
-      operand: (identifier)
+      operand: (register)
+      operand: (register)
       operand: (immediate
         value: (integer)))
     (instruction
       mnemonic: (mnemonic)
-      operand: (identifier))
+      operand: (local_identifier))
     (label
       name: (local_identifier))
     (instruction

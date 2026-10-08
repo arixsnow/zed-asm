@@ -37,6 +37,9 @@ enum SemicolonMode {
 #endif /* exactly one ASM_DIALECT_* */
 
 #ifdef ASM_DIALECT_AUTO
+#define ASM_ARM_OPERANDS 1
+#define ASM_RELOCATION_OPERATORS 1
+#define ASM_SUFFIX_RELOCATIONS 1
 #define ASM_GNU_SYNTAX 1
 #define ASM_HASH_IMMEDIATES 1
 #define ASM_HASH_NEEDS_VALUE 1
@@ -46,6 +49,9 @@ enum SemicolonMode {
 #define ASM_DARWIN_ARGUMENTS 0
 #define ASM_SEMICOLONS SEMICOLON_HEURISTIC
 #elif defined(ASM_DIALECT_ARM)
+#define ASM_ARM_OPERANDS 1
+#define ASM_RELOCATION_OPERATORS 1
+#define ASM_SUFFIX_RELOCATIONS 1
 #define ASM_GNU_SYNTAX 1
 #define ASM_HASH_IMMEDIATES 1
 #define ASM_HASH_NEEDS_VALUE 0
@@ -55,6 +61,9 @@ enum SemicolonMode {
 #define ASM_DARWIN_ARGUMENTS 0
 #define ASM_SEMICOLONS SEMICOLON_SEPARATES
 #elif defined(ASM_DIALECT_ARM_APPLE)
+#define ASM_ARM_OPERANDS 1
+#define ASM_RELOCATION_OPERATORS 0
+#define ASM_SUFFIX_RELOCATIONS 0
 #define ASM_GNU_SYNTAX 1
 #define ASM_HASH_IMMEDIATES 1
 #define ASM_HASH_NEEDS_VALUE 0
@@ -64,6 +73,9 @@ enum SemicolonMode {
 #define ASM_DARWIN_ARGUMENTS 1
 #define ASM_SEMICOLONS SEMICOLON_COMMENTS
 #elif defined(ASM_DIALECT_X86_GAS)
+#define ASM_ARM_OPERANDS 0
+#define ASM_RELOCATION_OPERATORS 0
+#define ASM_SUFFIX_RELOCATIONS 0
 #define ASM_GNU_SYNTAX 1
 #define ASM_HASH_IMMEDIATES 0
 #define ASM_HASH_NEEDS_VALUE 0
@@ -73,6 +85,9 @@ enum SemicolonMode {
 #define ASM_DARWIN_ARGUMENTS 0
 #define ASM_SEMICOLONS SEMICOLON_SEPARATES
 #elif defined(ASM_DIALECT_X86_NASM)
+#define ASM_ARM_OPERANDS 0
+#define ASM_RELOCATION_OPERATORS 0
+#define ASM_SUFFIX_RELOCATIONS 0
 #define ASM_GNU_SYNTAX 0
 #define ASM_HASH_IMMEDIATES 0
 #define ASM_HASH_NEEDS_VALUE 0
@@ -101,6 +116,8 @@ enum TokenType {
   MISSING_OPERAND,
   MISSING_EXPRESSION,
   UNCLOSED,
+  UNCLOSED_BRACKET,
+  UNCLOSED_BRACE,
   GLOBAL_LABEL_NAME,
   LOCAL_LABEL_NAME,
   NUMERIC_LABEL_NAME,
@@ -113,6 +130,18 @@ enum TokenType {
   BLANK,
   PREFIX_WORD,
   PREFIX_SEMICOLON,
+  MACRO_OPEN,
+  IF_OPEN,
+  REPT_OPEN,
+  IRP_OPEN,
+  IRPC_OPEN,
+  BLANK_SEPARATED_DIRECTIVE,
+  CFI_REGISTER_DIRECTIVE,
+  UNWIND_REGISTER_DIRECTIVE,
+  LINKER_HINT_DIRECTIVE,
+  SUFFIX_RELOCATION_NAME,
+  REGISTER_ALIAS_WORD,
+  NEON_ALIAS_WORD,
   MACRO_CLOSE,
   CONDITIONAL_CLOSE,
   REPEAT_CLOSE,
@@ -126,10 +155,10 @@ enum TokenType {
 
 enum {
   CPP_WORD_CAPACITY = 16,
-  STATEMENT_WORD_CAPACITY = 16
+  STATEMENT_WORD_CAPACITY = 32
 };
 
-struct BlockWord {
+struct Word {
   const char *name;
   TSSymbol symbol;
 };
@@ -138,17 +167,103 @@ struct Scanner {
   bool closed_input;
 };
 
-static const struct BlockWord BLOCK_CLOSERS[] = {
-    {".endm", MACRO_CLOSE},
-    {".endmacro", MACRO_CLOSE},
-    {".endif", CONDITIONAL_CLOSE},
-    {".endr", REPEAT_CLOSE},
-};
+#define ASM_STATEMENT_WORDS(X)                                                                     \
+  X(".cfi_def_cfa", CFI_REGISTER_DIRECTIVE)                                                        \
+  X(".cfi_def_cfa_register", CFI_REGISTER_DIRECTIVE)                                               \
+  X(".cfi_llvm_def_aspace_cfa", CFI_REGISTER_DIRECTIVE)                                            \
+  X(".cfi_offset", CFI_REGISTER_DIRECTIVE)                                                         \
+  X(".cfi_register", CFI_REGISTER_DIRECTIVE)                                                       \
+  X(".cfi_rel_offset", CFI_REGISTER_DIRECTIVE)                                                     \
+  X(".cfi_restore", CFI_REGISTER_DIRECTIVE)                                                        \
+  X(".cfi_return_column", CFI_REGISTER_DIRECTIVE)                                                  \
+  X(".cfi_same_value", CFI_REGISTER_DIRECTIVE)                                                     \
+  X(".cfi_undefined", CFI_REGISTER_DIRECTIVE)                                                      \
+  X(".cfi_val_encoded_addr", CFI_REGISTER_DIRECTIVE)                                               \
+  X(".cfi_val_offset", CFI_REGISTER_DIRECTIVE)                                                     \
+  X(".dn", NEON_ALIAS_WORD)                                                                        \
+  X(".else", ELSE)                                                                                 \
+  X(".elseif", ELSEIF)                                                                             \
+  X(".endif", CONDITIONAL_CLOSE)                                                                   \
+  X(".endm", MACRO_CLOSE)                                                                          \
+  X(".endmacro", MACRO_CLOSE)                                                                      \
+  X(".endr", REPEAT_CLOSE)                                                                         \
+  X(".file", BLANK_SEPARATED_DIRECTIVE)                                                            \
+  X(".if", IF_OPEN)                                                                                \
+  X(".ifb", IF_OPEN)                                                                               \
+  X(".ifc", IF_OPEN)                                                                               \
+  X(".ifdef", IF_OPEN)                                                                             \
+  X(".ifeq", IF_OPEN)                                                                              \
+  X(".ifeqs", IF_OPEN)                                                                             \
+  X(".ifge", IF_OPEN)                                                                              \
+  X(".ifgt", IF_OPEN)                                                                              \
+  X(".ifle", IF_OPEN)                                                                              \
+  X(".iflt", IF_OPEN)                                                                              \
+  X(".ifnb", IF_OPEN)                                                                              \
+  X(".ifnc", IF_OPEN)                                                                              \
+  X(".ifndef", IF_OPEN)                                                                            \
+  X(".ifne", IF_OPEN)                                                                              \
+  X(".ifnes", IF_OPEN)                                                                             \
+  X(".ifnotdef", IF_OPEN)                                                                          \
+  X(".irp", IRP_OPEN)                                                                              \
+  X(".irpc", IRPC_OPEN)                                                                            \
+  X(".loc", BLANK_SEPARATED_DIRECTIVE)                                                             \
+  X(".loh", LINKER_HINT_DIRECTIVE)                                                                 \
+  X(".macro", MACRO_OPEN)                                                                          \
+  X(".movsp", UNWIND_REGISTER_DIRECTIVE)                                                           \
+  X(".qn", NEON_ALIAS_WORD)                                                                        \
+  X(".rept", REPT_OPEN)                                                                            \
+  X(".req", REGISTER_ALIAS_WORD)                                                                   \
+  X(".save", UNWIND_REGISTER_DIRECTIVE)                                                            \
+  X(".seh_save_any_reg", UNWIND_REGISTER_DIRECTIVE)                                                \
+  X(".seh_save_any_reg_p", UNWIND_REGISTER_DIRECTIVE)                                              \
+  X(".seh_save_any_reg_px", UNWIND_REGISTER_DIRECTIVE)                                             \
+  X(".seh_save_any_reg_x", UNWIND_REGISTER_DIRECTIVE)                                              \
+  X(".seh_save_freg", UNWIND_REGISTER_DIRECTIVE)                                                   \
+  X(".seh_save_freg_x", UNWIND_REGISTER_DIRECTIVE)                                                 \
+  X(".seh_save_fregp", UNWIND_REGISTER_DIRECTIVE)                                                  \
+  X(".seh_save_fregp_x", UNWIND_REGISTER_DIRECTIVE)                                                \
+  X(".seh_save_lrpair", UNWIND_REGISTER_DIRECTIVE)                                                 \
+  X(".seh_save_preg", UNWIND_REGISTER_DIRECTIVE)                                                   \
+  X(".seh_save_reg", UNWIND_REGISTER_DIRECTIVE)                                                    \
+  X(".seh_save_reg_x", UNWIND_REGISTER_DIRECTIVE)                                                  \
+  X(".seh_save_regp", UNWIND_REGISTER_DIRECTIVE)                                                   \
+  X(".seh_save_regp_x", UNWIND_REGISTER_DIRECTIVE)                                                 \
+  X(".seh_save_zreg", UNWIND_REGISTER_DIRECTIVE)                                                   \
+  X(".setfp", UNWIND_REGISTER_DIRECTIVE)                                                           \
+  X(".vsave", UNWIND_REGISTER_DIRECTIVE)
 
-static const struct BlockWord BLOCK_CLAUSES[] = {
-    {".elseif", ELSEIF},
-    {".else", ELSE},
-};
+#define ASM_SUFFIX_RELOCATION_NAMES(X)                                                             \
+  X("got")                                                                                         \
+  X("gotoff")                                                                                      \
+  X("got_prel")                                                                                    \
+  X("plt")                                                                                         \
+  X("target1")                                                                                     \
+  X("target2")                                                                                     \
+  X("sbrel")                                                                                       \
+  X("prel31")                                                                                      \
+  X("tlsgd")                                                                                       \
+  X("tlsldm")                                                                                      \
+  X("tlsldo")                                                                                      \
+  X("gottpoff")                                                                                    \
+  X("tpoff")                                                                                       \
+  X("tlscall")                                                                                     \
+  X("tlsdesc")
+
+#define ASM_STATEMENT_WORD_FITS(word, symbol)                                                      \
+  _Static_assert(sizeof(word) <= STATEMENT_WORD_CAPACITY,                                          \
+                 "STATEMENT_WORD_CAPACITY must hold " word);
+ASM_STATEMENT_WORDS(ASM_STATEMENT_WORD_FITS)
+
+#define ASM_SUFFIX_RELOCATION_FITS(word)                                                           \
+  _Static_assert(sizeof(word) <= STATEMENT_WORD_CAPACITY,                                          \
+                 "STATEMENT_WORD_CAPACITY must hold " word);
+ASM_SUFFIX_RELOCATION_NAMES(ASM_SUFFIX_RELOCATION_FITS)
+
+#define ASM_WORD_ENTRY(word, symbol) {word, symbol},
+static const struct Word STATEMENT_WORDS[] = {ASM_STATEMENT_WORDS(ASM_WORD_ENTRY)};
+
+#define ASM_NAME_ENTRY(word) word,
+static const char *const SUFFIX_RELOCATIONS[] = {ASM_SUFFIX_RELOCATION_NAMES(ASM_NAME_ENTRY)};
 
 static const char *const X86_PREFIXES[] = {
     "cs",   "ds",   "ss",  "es",   "fs",   "gs",    "data16", "data32",  "addr16",   "addr32",
@@ -237,7 +352,7 @@ static inline bool starts_expression(int32_t codepoint) {
     return true;
   }
   if (ASM_GNU_SYNTAX) {
-    return codepoint == '\'' || codepoint == '\\';
+    return codepoint == '\'' || codepoint == '\\' || (ASM_RELOCATION_OPERATORS && codepoint == ':');
   }
   return codepoint == '?' || codepoint == '$';
 }
@@ -248,6 +363,9 @@ static inline bool starts_value(int32_t codepoint) {
 
 static inline bool starts_operand(int32_t codepoint) {
   if (starts_expression(codepoint) || codepoint == '"') {
+    return true;
+  }
+  if (ASM_ARM_OPERANDS && (codepoint == '[' || codepoint == '{' || codepoint == '=')) {
     return true;
   }
   if (ASM_GNU_SYNTAX) {
@@ -262,7 +380,23 @@ static inline bool continues_expression(int32_t codepoint) {
          codepoint == '!' || codepoint == '&' || codepoint == '|' || codepoint == '^';
 }
 
+static inline bool starts_suffix_relocation(int32_t codepoint) {
+  return ASM_SUFFIX_RELOCATIONS && codepoint == '(';
+}
+
+static inline bool continues_bracket(int32_t codepoint) {
+  return continues_expression(codepoint) || starts_suffix_relocation(codepoint) ||
+         codepoint == ',' || codepoint == ']' || codepoint == ':';
+}
+
+static inline bool continues_brace(int32_t codepoint) {
+  return codepoint == ',' || codepoint == '}' || codepoint == '-' || codepoint == '[';
+}
+
 static inline bool separates_operand(int32_t codepoint) {
+  if (codepoint == '[') {
+    return false;
+  }
   if (codepoint == '#') {
     return ASM_HASH_IMMEDIATES && !ASM_HASH_NEEDS_VALUE;
   }
@@ -295,6 +429,12 @@ static inline bool closer_fits(const bool *valid) {
   return valid[MACRO_CLOSE] || valid[CONDITIONAL_CLOSE] || valid[REPEAT_CLOSE];
 }
 
+static inline bool directive_word_fits(const bool *valid) {
+  return valid[MACRO_OPEN] || valid[IF_OPEN] || valid[REPT_OPEN] || valid[IRP_OPEN] ||
+         valid[IRPC_OPEN] || valid[BLANK_SEPARATED_DIRECTIVE] || valid[CFI_REGISTER_DIRECTIVE] ||
+         valid[UNWIND_REGISTER_DIRECTIVE] || valid[LINKER_HINT_DIRECTIVE];
+}
+
 static inline bool scanner_dispatches(int32_t codepoint) {
   if (ASM_GNU_SYNTAX) {
     return codepoint == '/' || codepoint == '#' || codepoint == '@' || codepoint == ';';
@@ -304,7 +444,8 @@ static inline bool scanner_dispatches(int32_t codepoint) {
 
 static inline bool closable(const bool *valid) {
   return !valid[ERROR_SENTINEL] && !valid[SEPARATOR] &&
-         (valid[MISSING_OPERAND] || valid[MISSING_EXPRESSION] || valid[UNCLOSED]);
+         (valid[MISSING_OPERAND] || valid[MISSING_EXPRESSION] || valid[UNCLOSED] ||
+          valid[UNCLOSED_BRACKET] || valid[UNCLOSED_BRACE]);
 }
 
 static TSSymbol closing_token(const bool *valid) {
@@ -314,7 +455,13 @@ static TSSymbol closing_token(const bool *valid) {
   if (valid[MISSING_EXPRESSION]) {
     return MISSING_EXPRESSION;
   }
-  return UNCLOSED;
+  if (valid[UNCLOSED]) {
+    return UNCLOSED;
+  }
+  if (valid[UNCLOSED_BRACKET]) {
+    return UNCLOSED_BRACKET;
+  }
+  return UNCLOSED_BRACE;
 }
 
 static bool closes_before(int32_t codepoint, const bool *valid) {
@@ -323,8 +470,12 @@ static bool closes_before(int32_t codepoint, const bool *valid) {
       return !starts_operand(codepoint);
     case MISSING_EXPRESSION:
       return !starts_expression(codepoint);
+    case UNCLOSED:
+      return !continues_expression(codepoint) && !starts_suffix_relocation(codepoint);
+    case UNCLOSED_BRACKET:
+      return !continues_bracket(codepoint);
     default:
-      return !continues_expression(codepoint);
+      return !continues_brace(codepoint);
   }
 }
 
@@ -649,7 +800,9 @@ static bool scan_preproc_rest(TSLexer *lexer, const bool *valid) {
 }
 
 static bool needs_second_character(int32_t first, const bool *valid) {
-  if (closing_token(valid) == UNCLOSED && (first == '=' || first == '!')) {
+  const TSSymbol token = closing_token(valid);
+
+  if ((token == UNCLOSED || token == UNCLOSED_BRACKET) && (first == '=' || first == '!')) {
     return true;
   }
   if (ASM_GNU_SYNTAX) {
@@ -677,7 +830,8 @@ enum ClosingDecision {
   CLOSING_STAYS_OPEN,
 };
 
-static enum ClosingDecision closing_decision(TSLexer *lexer, const bool *valid, bool closing) {
+static enum ClosingDecision closing_decision(TSLexer *lexer, const bool *valid, bool closing,
+                                             bool glued) {
   if (!closing) {
     return CLOSING_UNDECIDED;
   }
@@ -685,7 +839,7 @@ static enum ClosingDecision closing_decision(TSLexer *lexer, const bool *valid, 
   if (at_line_end(lexer)) {
     return CLOSING_CLOSES;
   }
-  if (scanner_dispatches(lexer->lookahead)) {
+  if (scanner_dispatches(lexer->lookahead) || (glued && is_alpha(lexer->lookahead))) {
     return CLOSING_UNDECIDED;
   }
   if (closes_before(lexer->lookahead, valid)) {
@@ -706,7 +860,8 @@ static bool label_fits(const bool *valid) {
 }
 
 static bool statement_word_fits(TSLexer *lexer, const bool *valid) {
-  return (label_fits(valid) || closer_fits(valid)) && starts_label(lexer->lookahead);
+  return (label_fits(valid) || closer_fits(valid) || directive_word_fits(valid)) &&
+         starts_label(lexer->lookahead);
 }
 
 static bool scan_end_of_input(TSLexer *lexer, const bool *valid, bool recovering, bool closed_input,
@@ -745,10 +900,11 @@ static void take_word_char(TSLexer *lexer, char *word, size_t *length) {
 static bool read_label_word(TSLexer *lexer, const bool *valid, TSSymbol *symbol, char *word) {
   bool local = false;
   size_t length = 0;
-  char *closer_word = NULL;
+  char *kept_word = NULL;
 
-  if ((closer_fits(valid) && lexer->lookahead == '.') || valid[PREFIX_WORD]) {
-    closer_word = word;
+  if (((closer_fits(valid) || directive_word_fits(valid)) && lexer->lookahead == '.') ||
+      valid[PREFIX_WORD]) {
+    kept_word = word;
   }
 
   if (is_digit(lexer->lookahead)) {
@@ -764,15 +920,15 @@ static bool read_label_word(TSLexer *lexer, const bool *valid, TSSymbol *symbol,
   }
   if (!ASM_GNU_SYNTAX) {
     if (lexer->lookahead == '$') {
-      take_word_char(lexer, closer_word, &length);
+      take_word_char(lexer, kept_word, &length);
     }
     if (!starts_nasm_name(lexer->lookahead)) {
       return false;
     }
     local = lexer->lookahead == '.';
-    take_word_char(lexer, closer_word, &length);
+    take_word_char(lexer, kept_word, &length);
   } else if (lexer->lookahead == '.') {
-    take_word_char(lexer, closer_word, &length);
+    take_word_char(lexer, kept_word, &length);
     local = !ASM_DARWIN_LOCALS && lexer->lookahead == 'L';
     if (!is_alpha(lexer->lookahead)) {
       return false;
@@ -781,7 +937,7 @@ static bool read_label_word(TSLexer *lexer, const bool *valid, TSSymbol *symbol,
     local = ASM_DARWIN_LOCALS && lexer->lookahead == 'L';
   }
   while (continues_label(lexer->lookahead)) {
-    take_word_char(lexer, closer_word, &length);
+    take_word_char(lexer, kept_word, &length);
   }
   *symbol = GLOBAL_LABEL_NAME;
   if (local) {
@@ -807,13 +963,45 @@ static bool scan_stray_label(TSLexer *lexer, const bool *valid) {
   return finish_token(lexer, STRAY);
 }
 
-static bool word_symbol(const char *word, const struct BlockWord *table, size_t count,
-                        TSSymbol *symbol) {
+static bool statement_word_symbol(const char *word, TSSymbol *symbol) {
+  size_t low = 0;
+  size_t high = sizeof(STATEMENT_WORDS) / sizeof(STATEMENT_WORDS[0]);
+
+  while (low < high) {
+    const size_t middle = low + ((high - low) / 2);
+    const int order = strcmp(word, STATEMENT_WORDS[middle].name);
+
+    if (order == 0) {
+      *symbol = STATEMENT_WORDS[middle].symbol;
+      return true;
+    }
+    if (order < 0) {
+      high = middle;
+    } else {
+      low = middle + 1;
+    }
+  }
+  return false;
+}
+
+static inline bool is_closer(TSSymbol symbol) {
+  return symbol == MACRO_CLOSE || symbol == CONDITIONAL_CLOSE || symbol == REPEAT_CLOSE;
+}
+
+static inline bool is_clause(TSSymbol symbol) {
+  return symbol == ELSEIF || symbol == ELSE;
+}
+
+static bool read_suffix_relocation(TSLexer *lexer) {
+  char word[STATEMENT_WORD_CAPACITY] = {0};
+  size_t length = 0;
   size_t index = 0;
 
-  while (index < count) {
-    if (strcmp(word, table[index].name) == 0) {
-      *symbol = table[index].symbol;
+  while (is_word_char(lexer->lookahead)) {
+    take_word_char(lexer, word, &length);
+  }
+  while (index < sizeof(SUFFIX_RELOCATIONS) / sizeof(SUFFIX_RELOCATIONS[0])) {
+    if (strcmp(word, SUFFIX_RELOCATIONS[index]) == 0) {
       return true;
     }
     index++;
@@ -821,12 +1009,31 @@ static bool word_symbol(const char *word, const struct BlockWord *table, size_t 
   return false;
 }
 
-static bool closer_symbol(const char *word, TSSymbol *symbol) {
-  return word_symbol(word, BLOCK_CLOSERS, sizeof(BLOCK_CLOSERS) / sizeof(BLOCK_CLOSERS[0]), symbol);
+static bool scan_register_alias_word(TSLexer *lexer, const bool *valid) {
+  char word[STATEMENT_WORD_CAPACITY] = {0};
+  size_t length = 0;
+  bool upper = false;
+  TSSymbol symbol = REGISTER_ALIAS_WORD;
+
+  while (is_word_char(lexer->lookahead)) {
+    upper = upper || (lexer->lookahead >= 'A' && lexer->lookahead <= 'Z');
+    take_word_char(lexer, word, &length);
+  }
+  if (!statement_word_symbol(word, &symbol) || !valid[symbol]) {
+    return false;
+  }
+  if (symbol == REGISTER_ALIAS_WORD || (symbol == NEON_ALIAS_WORD && !upper)) {
+    return finish_token(lexer, symbol);
+  }
+  return false;
 }
 
-static bool clause_symbol(const char *word, TSSymbol *symbol) {
-  return word_symbol(word, BLOCK_CLAUSES, sizeof(BLOCK_CLAUSES) / sizeof(BLOCK_CLAUSES[0]), symbol);
+static bool suffix_relocation_follows(TSLexer *lexer) {
+  if (lexer->lookahead != '(') {
+    return false;
+  }
+  advance(lexer);
+  return read_suffix_relocation(lexer);
 }
 
 static bool is_rex_prefix(const char *word) {
@@ -884,15 +1091,16 @@ static bool ends_inner_block(TSSymbol closer, const bool *valid) {
 
 static bool scan_statement_word(TSLexer *lexer, const bool *valid) {
   TSSymbol symbol = GLOBAL_LABEL_NAME;
-  TSSymbol closer = MACRO_CLOSE;
-  TSSymbol clause = ELSE;
+  TSSymbol keyword = MACRO_CLOSE;
+  bool known = false;
   char word[STATEMENT_WORD_CAPACITY] = {0};
 
   lexer->mark_end(lexer);
   if (!read_label_word(lexer, valid, &symbol, word)) {
     return false;
   }
-  if (word[0] != '\0' && closer_symbol(word, &closer) && ends_inner_block(closer, valid)) {
+  known = word[0] != '\0' && statement_word_symbol(word, &keyword);
+  if (known && is_closer(keyword) && ends_inner_block(keyword, valid)) {
     while (is_blank(lexer->lookahead)) {
       advance(lexer);
     }
@@ -920,19 +1128,16 @@ static bool scan_statement_word(TSLexer *lexer, const bool *valid) {
     lexer->result_symbol = PREFIX_WORD;
     return true;
   }
-  if (closer_symbol(word, &closer) && valid[closer]) {
-    lexer->result_symbol = closer;
+  if (!known) {
+    return false;
+  }
+  if (valid[keyword]) {
+    lexer->result_symbol = keyword;
     return true;
   }
-  if (clause_symbol(word, &clause)) {
-    if (valid[clause]) {
-      lexer->result_symbol = clause;
-      return true;
-    }
-    if (valid[CONDITIONAL_CLOSE]) {
-      lexer->result_symbol = STRAY;
-      return true;
-    }
+  if (is_clause(keyword) && valid[CONDITIONAL_CLOSE]) {
+    lexer->result_symbol = STRAY;
+    return true;
   }
   return false;
 }
@@ -1007,14 +1212,40 @@ static bool scan_darwin_argument(TSLexer *lexer, const bool *valid, bool closing
   advance(lexer);
   if (is_digit(lexer->lookahead) || lexer->lookahead == 'n') {
     advance(lexer);
-    if (!is_word_char(lexer->lookahead)) {
-      return finish_token(lexer, DARWIN_ARGUMENT);
-    }
+    return finish_token(lexer, DARWIN_ARGUMENT);
   }
   if (closing) {
     return close_construct(lexer, valid);
   }
   return false;
+}
+
+enum ScanDecision {
+  SCAN_UNDECIDED,
+  SCAN_FOUND,
+  SCAN_NOT_FOUND,
+};
+
+static enum ScanDecision decided(bool found) {
+  return found ? SCAN_FOUND : SCAN_NOT_FOUND;
+}
+
+static enum ScanDecision scan_operand_token(TSLexer *lexer, const bool *valid, uint32_t blanks) {
+  if (valid[BLANK] && blanks > 0 && separates_operand(lexer->lookahead)) {
+    lexer->mark_end(lexer);
+    if (ASM_SUFFIX_RELOCATIONS && suffix_relocation_follows(lexer)) {
+      return SCAN_NOT_FOUND;
+    }
+    lexer->result_symbol = BLANK;
+    return SCAN_FOUND;
+  }
+  if (valid[SUFFIX_RELOCATION_NAME] && is_alpha(lexer->lookahead)) {
+    return decided(read_suffix_relocation(lexer) && finish_token(lexer, SUFFIX_RELOCATION_NAME));
+  }
+  if ((valid[REGISTER_ALIAS_WORD] || valid[NEON_ALIAS_WORD]) && lexer->lookahead == '.') {
+    return decided(scan_register_alias_word(lexer, valid));
+  }
+  return SCAN_UNDECIDED;
 }
 
 static bool scan_gnu(TSLexer *lexer, const bool *valid, bool closed_input, bool *closes_input) {
@@ -1033,13 +1264,20 @@ static bool scan_gnu(TSLexer *lexer, const bool *valid, bool closed_input, bool 
     return scan_glued(lexer, valid, closing);
   }
   blanks = skip_blanks(lexer);
-  if (valid[BLANK] && !recovering && blanks > 0 && separates_operand(lexer->lookahead)) {
-    return finish_token(lexer, BLANK);
+  if (!recovering) {
+    switch (scan_operand_token(lexer, valid, blanks)) {
+      case SCAN_FOUND:
+        return true;
+      case SCAN_NOT_FOUND:
+        return false;
+      default:
+        break;
+    }
   }
   if (valid[DARWIN_ARGUMENT] && !recovering && lexer->lookahead == '$') {
     return scan_darwin_argument(lexer, valid, closing);
   }
-  switch (closing_decision(lexer, valid, closing)) {
+  switch (closing_decision(lexer, valid, closing, blanks == 0)) {
     case CLOSING_CLOSES:
       return close_construct(lexer, valid);
     case CLOSING_STAYS_OPEN:
@@ -1081,7 +1319,7 @@ static bool scan_nasm(TSLexer *lexer, const bool *valid, bool closed_input, bool
   if (valid[BLANK] && !recovering && blanks > 0 && separates_operand(lexer->lookahead)) {
     return finish_token(lexer, BLANK);
   }
-  switch (closing_decision(lexer, valid, closing)) {
+  switch (closing_decision(lexer, valid, closing, blanks == 0)) {
     case CLOSING_CLOSES:
       return close_construct(lexer, valid);
     case CLOSING_STAYS_OPEN:

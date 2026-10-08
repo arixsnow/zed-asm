@@ -34,6 +34,20 @@
     \op \reg, \reg, #1
     .endm
 
+    .macro copy dst, src, base
+    ld1 {\src\().16b, \dst\().16b}, [\base], #32
+    ld1 {\src\().16b - \dst\().16b}, [\base]
+    ins \dst\().s[1], w0
+    ldr \base, [\base, #8]
+    .endm
+
+    .macro jump cond, size
+    b\cond 1f
+    ldr\size w0, [x1]
+    csel\()\size x0, x1, x2, \cond
+1:
+    .endm
+
     .text
     .globl entry
 entry:
@@ -41,6 +55,9 @@ entry:
     load x0, 1, 2, 3
     upper
     apply add, x0
+    copy v1, v0, x0
+    jump eq
+    ret
     .data
     pair b=5, a=4
     pair 7

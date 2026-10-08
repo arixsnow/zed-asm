@@ -25,6 +25,8 @@ const REJECTED: [string, number[], string[]][] = [
   ['.if 1\n.else\n.elseif 2\n.endif', [2], GNU],
   ['#define 1 2', [0], GNU],
   ['#define F(1) x', [0], GNU],
+  ['    .word sym(FOO)', [0], ['asm_auto', 'asm_arm']],
+  ['    .save {r4, lr}', [0], ['asm_arm_apple']],
 ];
 
 function errorRows(tree: string): number[] {
@@ -42,11 +44,14 @@ Deno.test('syntax that every assembler of a language rejects parses with an erro
   for (const grammar of ALL) {
     const rejected = REJECTED.filter(([, , grammars]) => grammars.includes(grammar));
     const sources = rejected.map(([snippet]) => `${snippet}\n`);
-    const trees = treeText(parseFiles(grammar, 'rejected', sources).output)
+    const { output } = parseFiles(grammar, 'rejected', sources);
+    const trees = treeText(output)
       .split(/^(?=\(source_file )/m).filter((tree) => tree.startsWith('(source_file '));
+    const statuses = output.split('\n').filter((line) => line.includes('\tParse:'));
     assertEquals(trees.length, rejected.length, `${grammar}: one tree per snippet`);
+    assertEquals(statuses.length, rejected.length, `${grammar}: one status per snippet`);
     for (const [index, [snippet, rows]] of rejected.entries()) {
-      const found = errorRows(trees[index]);
+      const found = errorRows(`${trees[index]}\n${statuses[index]}`);
       if (found.join() !== rows.join()) {
         failures.push(
           `${grammar}: ${JSON.stringify(snippet)} has errors on rows [${found}], not [${rows}]`,

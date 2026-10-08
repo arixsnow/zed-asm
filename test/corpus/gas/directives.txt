@@ -79,3 +79,52 @@ Data directives whose names start with a digit
   (directive
     name: (directive_name)
     argument: (integer)))
+
+================================================================================
+A directive name that starts with a block or blank-separated word is its own directive
+================================================================================
+
+.macros 1
+.ifx 1
+.irpz 1
+.loc_mark_labels 1
+.filex 1
+
+--------------------------------------------------------------------------------
+
+(source_file
+  (directive
+    name: (directive_name)
+    argument: (integer))
+  (directive
+    name: (directive_name)
+    argument: (integer))
+  (directive
+    name: (directive_name)
+    argument: (integer))
+  (directive
+    name: (directive_name)
+    argument: (integer))
+  (directive
+    name: (directive_name)
+    argument: (integer)))
+
+================================================================================
+A .loc view may be reset with -0
+================================================================================
+
+.loc 1 58 52 is_stmt 1 view -0
+
+--------------------------------------------------------------------------------
+
+(source_file
+  (directive
+    name: (directive_name)
+    argument: (integer)
+    argument: (integer)
+    argument: (integer)
+    argument: (identifier)
+    argument: (integer)
+    argument: (identifier)
+    argument: (unary_expression
+      argument: (integer))))

@@ -33,29 +33,31 @@ For a single file, put a modeline on its first line: `// -*- mode: arm -*-`, or 
 If the older `assembly` extension is installed, uninstall it so the two do not both claim `.s`
 files.
 
-This is an early release. Syntax that is not parsed yet, such as memory operands and NASM
+This is an early release. Syntax that is not parsed yet, such as x86 memory operands and NASM
 directives, shows up as an error, but an error never spreads past its own line, so the rest of the
 file keeps its colors and its outline. The roadmap lists what comes next.
 
 ## Roadmap
 
-| Milestone       | Status       | What it adds                                                                                                                                                                                                                                                                                         |
-| --------------- | ------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Foundation      | done         | five languages for ARM and x86; comments, `#` immediates and `@` relocations read per dialect; C preprocessor lines; highlighting; comment continuation; label indentation; typing never breaks later lines                                                                                          |
-| Structure       | this release | outline and breadcrumbs of functions with their local labels, macros and named constants; vim text objects for functions, macros and comments; indentation of `.macro`, `.if` and `.rept` blocks as you type; numeric labels `1:` and `b 1b`; full GNU directive forms; C colors in `#if` conditions |
-| ARM             | next         | registers, memory operands like `[x1, #8]!`, `:lo12:` relocations, `=label` literals, register lists, vector arrangements like `v0.16b`, condition codes, Apple `L` labels in operands                                                                                                               |
-| x86 GAS         | planned      | AT&T memory like `8(%rsp,%rax,4)`, `*` indirect jumps, Intel `dword ptr [rbx]`, `.intel_syntax` switching, AVX-512 masks like `{k1}{z}`, prefixes like `rep movsb`, C macro calls like `FOO(1)` in `.S` operands                                                                                     |
-| RISC-V and MIPS | planned      | a RISC-V and a MIPS language: registers like `x0`, `a0` and `$t0`, `%hi()` and `%lo()` relocations, memory operands like `8(sp)`; not part of Assembly, where `$t0` would read as an x86 immediate                                                                                                   |
-| NASM            | planned      | directives such as `section`, `bits` and `times`, the `%` preprocessor, `%macro`, `%if`, `%rep`, `struc` and `istruc` blocks, `$` and `$$`                                                                                                                                                           |
-| Hardening       | planned      | Linux, glibc and FFmpeg sources parse without errors; benchmark budgets checked in CI                                                                                                                                                                                                                |
-| Release         | planned      | snippets, screenshots, a listing in the Zed extension registry                                                                                                                                                                                                                                       |
+| Milestone       | Status       | What it adds                                                                                                                                                                                                                                                                                                      |
+| --------------- | ------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Foundation      | done         | five languages for ARM and x86; comments, `#` immediates and `@` relocations read per dialect; C preprocessor lines; highlighting; comment continuation; label indentation; typing never breaks later lines                                                                                                       |
+| Structure       | done         | outline and breadcrumbs of functions with their local labels, macros and named constants; vim text objects for functions, macros and comments; indentation of `.macro`, `.if` and `.rept` blocks as you type; numeric labels `1:` and `b 1b`; full GNU directive forms; C colors in `#if` conditions              |
+| ARM             | this release | registers of every family, SVE, SME and MVE included; memory operands like `[x1, #8]!`; register lists and lanes like `{v0.16b-v3.16b}` and `v1.s[2]`; `:lo12:` and `sym(GOT)` relocations; `=label` literals; condition codes; `.cfi_offset` and `.save` registers; `.req` aliases; Apple `L` labels in operands |
+| x86 GAS         | next         | AT&T memory like `8(%rsp,%rax,4)`, `*` indirect jumps, Intel `dword ptr [rbx]`, `.intel_syntax` switching, AVX-512 masks like `{k1}{z}`, prefixes like `rep movsb`, C macro calls like `FOO(1)` in `.S` operands                                                                                                  |
+| RISC-V and MIPS | planned      | a RISC-V and a MIPS language: registers like `x0`, `a0` and `$t0`, `%hi()` and `%lo()` relocations, memory operands like `8(sp)`; not part of Assembly, where `$t0` would read as an x86 immediate                                                                                                                |
+| NASM            | planned      | directives such as `section`, `bits` and `times`, the `%` preprocessor, `%macro`, `%if`, `%rep`, `struc` and `istruc` blocks, `$` and `$$`                                                                                                                                                                        |
+| Hardening       | planned      | Linux, glibc and FFmpeg sources parse without errors; benchmark budgets checked in CI                                                                                                                                                                                                                             |
+| Release         | planned      | snippets, screenshots, a listing in the Zed extension registry                                                                                                                                                                                                                                                    |
 
 ## Development
 
 Everything runs in a Podman container built from `Containerfile`, so your machine only needs
-`podman` and `git`. The container pins tree-sitter 0.27.0 and Deno 2.9.7 exactly. The C toolchain
-and the assemblers come from Fedora 44's repositories as they are when the image is built: CI builds
-it fresh on every run, and `scripts/dev` rebuilds it locally whenever the Containerfile changes.
+`podman` and `git`. The container pins tree-sitter 0.27.0 and Deno 2.9.7 exactly. The C toolchain,
+the assemblers and ShellCheck come from Fedora 44's repositories as they are when the image is
+built. CI builds it fresh whenever the Containerfile changes and in the first run of each week,
+and reuses that image for the rest of the week; `scripts/dev` rebuilds it locally whenever the
+Containerfile changes.
 
 ```sh
 scripts/dev deno task test       # every check except the sanitizers

@@ -39,6 +39,10 @@
       "description": "Run clang-format, GCC and clang with strict warnings, both static analyzers and clang-tidy",
       "command": "deno run --allow-read=. --allow-run=clang-format,gcc,clang,clang-tidy scripts/check-c.ts"
     },
+    "check:shell": {
+      "description": "Run shellcheck, with every optional check, on every shell script",
+      "command": "deno run --allow-read=. --allow-run=shellcheck scripts/check-shell.ts"
+    },
     "check:queries": {
       "description": "Compile every generated query against its grammar",
       "command": "deno run --allow-read=. --allow-write=.build --allow-run=tree-sitter scripts/check-queries.ts"
@@ -49,7 +53,7 @@
     },
     "test:unit": {
       "description": "Run the unit, highlight, parse-tree, typing, structure and performance tests",
-      "command": "deno test --allow-read=. --allow-write=.build --allow-run=tree-sitter,gcc,clang,aarch64-linux-gnu-gcc,arm-none-eabi-gcc"
+      "command": "deno test --parallel --ignore=test/performance --allow-read=. --allow-write=.build --allow-run=tree-sitter,gcc,clang,aarch64-linux-gnu-gcc,arm-none-eabi-gcc && deno test --allow-read=. --allow-write=.build --allow-run=tree-sitter test/performance"
     },
     "corpus": {
       "description": "Compose each grammar's corpus tests from test/corpus",
@@ -73,7 +77,7 @@
     },
     "test": {
       "description": "Run every check except the sanitizers",
-      "command": "deno fmt --check && deno task lint && deno task check:types && deno task check:generated && deno task test:unit && deno task check:c && deno task test:corpus && deno task check:queries && deno task check:fixtures"
+      "command": "deno fmt --check && deno task lint && deno task check:types && deno task check:generated && deno task test:unit && deno task check:c && deno task check:shell && deno task test:corpus && deno task check:queries && deno task check:fixtures"
     }
   },
   "fmt": {

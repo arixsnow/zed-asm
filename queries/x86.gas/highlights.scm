@@ -1,5 +1,3 @@
-(register) @variable.special
-
 (immediate
   "$" @punctuation.special)
 

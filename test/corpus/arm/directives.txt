@@ -1,0 +1,73 @@
+================================================================================
+CFI directives read register names as registers
+================================================================================
+
+.cfi_startproc
+.cfi_def_cfa sp, 16
+.cfi_def_cfa_register x29
+.cfi_offset x29, -16
+.cfi_offset W30, -8
+.cfi_offset d8, -24
+.cfi_offset 29, -16
+.cfi_register x30, x9
+.cfi_restore x19
+.cfi_endproc
+
+--------------------------------------------------------------------------------
+
+(source_file
+  (directive
+    name: (directive_name))
+  (directive
+    name: (directive_name)
+    argument: (register)
+    argument: (integer))
+  (directive
+    name: (directive_name)
+    argument: (register))
+  (directive
+    name: (directive_name)
+    argument: (register)
+    argument: (unary_expression
+      argument: (integer)))
+  (directive
+    name: (directive_name)
+    argument: (register)
+    argument: (unary_expression
+      argument: (integer)))
+  (directive
+    name: (directive_name)
+    argument: (register)
+    argument: (unary_expression
+      argument: (integer)))
+  (directive
+    name: (directive_name)
+    argument: (integer)
+    argument: (unary_expression
+      argument: (integer)))
+  (directive
+    name: (directive_name)
+    argument: (register)
+    argument: (register))
+  (directive
+    name: (directive_name)
+    argument: (register))
+  (directive
+    name: (directive_name)))
+
+================================================================================
+A directive name that only starts with a CFI register directive is its own directive
+================================================================================
+
+.cfi_offsets x0
+.cfi_def_cfa_offset 16
+
+--------------------------------------------------------------------------------
+
+(source_file
+  (directive
+    name: (directive_name)
+    argument: (identifier))
+  (directive
+    name: (directive_name)
+    argument: (integer)))

@@ -11,18 +11,18 @@ mov x2, #(1 << 3)
 (source_file
   (instruction
     mnemonic: (mnemonic)
-    operand: (identifier)
+    operand: (register)
     operand: (immediate
       value: (integer)))
   (instruction
     mnemonic: (mnemonic)
-    operand: (identifier)
+    operand: (register)
     operand: (immediate
       value: (unary_expression
         argument: (integer))))
   (instruction
     mnemonic: (mnemonic)
-    operand: (identifier)
+    operand: (register)
     operand: (immediate
       value: (parenthesized_expression
         (binary_expression
@@ -41,18 +41,18 @@ ADD X0, X1, X2, LSL #32
 (source_file
   (instruction
     mnemonic: (mnemonic)
-    operand: (identifier)
-    operand: (identifier)
-    operand: (identifier)
+    operand: (register)
+    operand: (register)
+    operand: (register)
     operand: (shift
       operator: (shift_operator)
       amount: (immediate
         value: (integer))))
   (instruction
     mnemonic: (mnemonic)
-    operand: (identifier)
-    operand: (identifier)
-    operand: (identifier)
+    operand: (register)
+    operand: (register)
+    operand: (register)
     operand: (shift
       operator: (shift_operator)
       amount: (immediate
@@ -71,18 +71,18 @@ b lsl
 (source_file
   (instruction
     mnemonic: (mnemonic)
-    operand: (identifier)
-    operand: (identifier)
-    operand: (identifier)
+    operand: (register)
+    operand: (register)
+    operand: (register)
     operand: (shift
       operator: (shift_operator)
       amount: (immediate
         value: (integer))))
   (instruction
     mnemonic: (mnemonic)
-    operand: (identifier)
-    operand: (identifier)
-    operand: (identifier)
+    operand: (register)
+    operand: (register)
+    operand: (register)
     operand: (shift
       operator: (shift_operator)
       amount: (immediate
@@ -90,3 +90,499 @@ b lsl
   (instruction
     mnemonic: (mnemonic)
     operand: (identifier)))
+
+================================================================================
+Memory operands with offsets, indexes and writeback
+================================================================================
+
+ldr x0, [x1]
+ldr x0, [x1, #8]
+ldr x0, [x1, 8]
+ldr x0, [x1, #8]!
+ldr x0, [x1, #8] !
+ldr x0, [x1], #8
+ldur x0, [x1, #-8]
+ldr x0, [x1, x2, lsl #3]
+ldr x0, [x1, x2, lsl 3]
+ldr w0, [x1, w2, sxtw]
+ldr w0, [x1, w2, UXTW #2]
+stp x29, x30, [sp, #-16]!
+ldr x0, [ x1 , #8 ]
+
+--------------------------------------------------------------------------------
+
+(source_file
+  (instruction
+    mnemonic: (mnemonic)
+    operand: (register)
+    operand: (memory_operand
+      operand: (register)))
+  (instruction
+    mnemonic: (mnemonic)
+    operand: (register)
+    operand: (memory_operand
+      operand: (register)
+      operand: (immediate
+        value: (integer))))
+  (instruction
+    mnemonic: (mnemonic)
+    operand: (register)
+    operand: (memory_operand
+      operand: (register)
+      operand: (integer)))
+  (instruction
+    mnemonic: (mnemonic)
+    operand: (register)
+    operand: (memory_operand
+      operand: (register)
+      operand: (immediate
+        value: (integer))))
+  (instruction
+    mnemonic: (mnemonic)
+    operand: (register)
+    operand: (memory_operand
+      operand: (register)
+      operand: (immediate
+        value: (integer))))
+  (instruction
+    mnemonic: (mnemonic)
+    operand: (register)
+    operand: (memory_operand
+      operand: (register))
+    operand: (immediate
+      value: (integer)))
+  (instruction
+    mnemonic: (mnemonic)
+    operand: (register)
+    operand: (memory_operand
+      operand: (register)
+      operand: (immediate
+        value: (unary_expression
+          argument: (integer)))))
+  (instruction
+    mnemonic: (mnemonic)
+    operand: (register)
+    operand: (memory_operand
+      operand: (register)
+      operand: (register)
+      operand: (shift
+        operator: (shift_operator)
+        amount: (immediate
+          value: (integer)))))
+  (instruction
+    mnemonic: (mnemonic)
+    operand: (register)
+    operand: (memory_operand
+      operand: (register)
+      operand: (register)
+      operand: (shift
+        operator: (shift_operator)
+        amount: (integer))))
+  (instruction
+    mnemonic: (mnemonic)
+    operand: (register)
+    operand: (memory_operand
+      operand: (register)
+      operand: (register)
+      operand: (shift
+        operator: (shift_operator))))
+  (instruction
+    mnemonic: (mnemonic)
+    operand: (register)
+    operand: (memory_operand
+      operand: (register)
+      operand: (register)
+      operand: (shift
+        operator: (shift_operator)
+        amount: (immediate
+          value: (integer)))))
+  (instruction
+    mnemonic: (mnemonic)
+    operand: (register)
+    operand: (register)
+    operand: (memory_operand
+      operand: (register)
+      operand: (immediate
+        value: (unary_expression
+          argument: (integer)))))
+  (instruction
+    mnemonic: (mnemonic)
+    operand: (register)
+    operand: (memory_operand
+      operand: (register)
+      operand: (immediate
+        value: (integer)))))
+
+================================================================================
+SVE memory operands and multipliers
+================================================================================
+
+ld1d {z0.d}, p0/z, [x0, #1, mul vl]
+ld1d {z0.d}, p0/z, [x0, #1, MUL VL]
+ld1d {z0.d}, p0/z, [x0, z1.d, lsl #3]
+ld1w {z0.s}, p0/z, [x0, z1.s, uxtw #2]
+ld1d {z0.d}, p0/z, [z1.d, #8]
+adr z0.d, [z1.d, z2.d, lsl #1]
+cntd x0, all, mul #4
+
+--------------------------------------------------------------------------------
+
+(source_file
+  (instruction
+    mnemonic: (mnemonic)
+    operand: (register_list
+      element: (register))
+    operand: (predicate
+      register: (register)
+      qualifier: (identifier))
+    operand: (memory_operand
+      operand: (register)
+      operand: (immediate
+        value: (integer))
+      operand: (shift
+        operator: (shift_operator)
+        amount: (identifier))))
+  (instruction
+    mnemonic: (mnemonic)
+    operand: (register_list
+      element: (register))
+    operand: (predicate
+      register: (register)
+      qualifier: (identifier))
+    operand: (memory_operand
+      operand: (register)
+      operand: (immediate
+        value: (integer))
+      operand: (shift
+        operator: (shift_operator)
+        amount: (identifier))))
+  (instruction
+    mnemonic: (mnemonic)
+    operand: (register_list
+      element: (register))
+    operand: (predicate
+      register: (register)
+      qualifier: (identifier))
+    operand: (memory_operand
+      operand: (register)
+      operand: (register)
+      operand: (shift
+        operator: (shift_operator)
+        amount: (immediate
+          value: (integer)))))
+  (instruction
+    mnemonic: (mnemonic)
+    operand: (register_list
+      element: (register))
+    operand: (predicate
+      register: (register)
+      qualifier: (identifier))
+    operand: (memory_operand
+      operand: (register)
+      operand: (register)
+      operand: (shift
+        operator: (shift_operator)
+        amount: (immediate
+          value: (integer)))))
+  (instruction
+    mnemonic: (mnemonic)
+    operand: (register_list
+      element: (register))
+    operand: (predicate
+      register: (register)
+      qualifier: (identifier))
+    operand: (memory_operand
+      operand: (register)
+      operand: (immediate
+        value: (integer))))
+  (instruction
+    mnemonic: (mnemonic)
+    operand: (register)
+    operand: (memory_operand
+      operand: (register)
+      operand: (register)
+      operand: (shift
+        operator: (shift_operator)
+        amount: (immediate
+          value: (integer)))))
+  (instruction
+    mnemonic: (mnemonic)
+    operand: (register)
+    operand: (identifier)
+    operand: (shift
+      operator: (shift_operator)
+      amount: (immediate
+        value: (integer)))))
+
+================================================================================
+Register lists, ranges and list lanes
+================================================================================
+
+ld1 {v0.16b}, [x0]
+ld1 {v0.16b, v1.16b}, [x0], #32
+ld1 {v0.16b-v3.16b}, [x0], x2
+ld1 {v31.16b-v2.16b}, [x0]
+ld1 {v0.16b - v3.16b}, [x0]
+ld1 { v0.16b , v1.16b }, [x0]
+ld2 {v0.s, v1.s}[1], [x0]
+ld1 {v0.s} [1], [x0]
+tbl v0.16b, {v1.16b}, v2.16b
+ld1d {z0.d-z1.d}, pn8/z, [x0]
+ld1d {z0.d, z4.d, z8.d, z12.d}, pn8/z, [x0]
+
+--------------------------------------------------------------------------------
+
+(source_file
+  (instruction
+    mnemonic: (mnemonic)
+    operand: (register_list
+      element: (register))
+    operand: (memory_operand
+      operand: (register)))
+  (instruction
+    mnemonic: (mnemonic)
+    operand: (register_list
+      element: (register)
+      element: (register))
+    operand: (memory_operand
+      operand: (register))
+    operand: (immediate
+      value: (integer)))
+  (instruction
+    mnemonic: (mnemonic)
+    operand: (register_list
+      element: (register_range
+        start: (register)
+        end: (register)))
+    operand: (memory_operand
+      operand: (register))
+    operand: (register))
+  (instruction
+    mnemonic: (mnemonic)
+    operand: (register_list
+      element: (register_range
+        start: (register)
+        end: (register)))
+    operand: (memory_operand
+      operand: (register)))
+  (instruction
+    mnemonic: (mnemonic)
+    operand: (register_list
+      element: (register_range
+        start: (register)
+        end: (register)))
+    operand: (memory_operand
+      operand: (register)))
+  (instruction
+    mnemonic: (mnemonic)
+    operand: (register_list
+      element: (register)
+      element: (register))
+    operand: (memory_operand
+      operand: (register)))
+  (instruction
+    mnemonic: (mnemonic)
+    operand: (register_list
+      element: (register)
+      element: (register)
+      index: (integer))
+    operand: (memory_operand
+      operand: (register)))
+  (instruction
+    mnemonic: (mnemonic)
+    operand: (register_list
+      element: (register)
+      index: (integer))
+    operand: (memory_operand
+      operand: (register)))
+  (instruction
+    mnemonic: (mnemonic)
+    operand: (register)
+    operand: (register_list
+      element: (register))
+    operand: (register))
+  (instruction
+    mnemonic: (mnemonic)
+    operand: (register_list
+      element: (register_range
+        start: (register)
+        end: (register)))
+    operand: (predicate
+      register: (register)
+      qualifier: (identifier))
+    operand: (memory_operand
+      operand: (register)))
+  (instruction
+    mnemonic: (mnemonic)
+    operand: (register_list
+      element: (register)
+      element: (register)
+      element: (register)
+      element: (register))
+    operand: (predicate
+      register: (register)
+      qualifier: (identifier))
+    operand: (memory_operand
+      operand: (register))))
+
+================================================================================
+Lanes and SME slices
+================================================================================
+
+mov v0.s[1], w0
+mov w0, v0.s [1]
+fmla v0.4s, v1.4s, v2.s[3]
+mova za0h.s[w12, 0], p0/m, z0.s
+mova za0h.b[w12, 0:3], p0/m, z0.b
+luti2 z0.b, zt0, z1[0]
+ld1w {za0h.s[w12, 0]}, p0/z, [x0]
+
+--------------------------------------------------------------------------------
+
+(source_file
+  (instruction
+    mnemonic: (mnemonic)
+    operand: (indexed_register
+      register: (register)
+      index: (integer))
+    operand: (register))
+  (instruction
+    mnemonic: (mnemonic)
+    operand: (register)
+    operand: (indexed_register
+      register: (register)
+      index: (integer)))
+  (instruction
+    mnemonic: (mnemonic)
+    operand: (register)
+    operand: (register)
+    operand: (indexed_register
+      register: (register)
+      index: (integer)))
+  (instruction
+    mnemonic: (mnemonic)
+    operand: (indexed_register
+      register: (register)
+      index: (register)
+      index: (integer))
+    operand: (predicate
+      register: (register)
+      qualifier: (identifier))
+    operand: (register))
+  (instruction
+    mnemonic: (mnemonic)
+    operand: (indexed_register
+      register: (register)
+      index: (register)
+      index: (index_range
+        start: (integer)
+        end: (integer)))
+    operand: (predicate
+      register: (register)
+      qualifier: (identifier))
+    operand: (register))
+  (instruction
+    mnemonic: (mnemonic)
+    operand: (register)
+    operand: (register)
+    operand: (indexed_register
+      register: (register)
+      index: (integer)))
+  (instruction
+    mnemonic: (mnemonic)
+    operand: (register_list
+      element: (indexed_register
+        register: (register)
+        index: (register)
+        index: (integer)))
+    operand: (predicate
+      register: (register)
+      qualifier: (identifier))
+    operand: (memory_operand
+      operand: (register))))
+
+================================================================================
+Literal pools
+================================================================================
+
+ldr x0, =sym
+ldr x0, =0x1234 + 4
+ldr q0, =sym
+
+--------------------------------------------------------------------------------
+
+(source_file
+  (instruction
+    mnemonic: (mnemonic)
+    operand: (register)
+    operand: (literal_pool
+      value: (identifier)))
+  (instruction
+    mnemonic: (mnemonic)
+    operand: (register)
+    operand: (literal_pool
+      value: (binary_expression
+        left: (integer)
+        right: (integer))))
+  (instruction
+    mnemonic: (mnemonic)
+    operand: (register)
+    operand: (literal_pool
+      value: (identifier))))
+
+================================================================================
+Shift and extend operands
+================================================================================
+
+add x0, x1, w2, uxtw #2
+add x0, x1, w2, sxtw
+movi v0.4s, #1, msl #8
+orr x0, x1, x2, ror #3
+movz x0, #1, lsl #16
+
+--------------------------------------------------------------------------------
+
+(source_file
+  (instruction
+    mnemonic: (mnemonic)
+    operand: (register)
+    operand: (register)
+    operand: (register)
+    operand: (shift
+      operator: (shift_operator)
+      amount: (immediate
+        value: (integer))))
+  (instruction
+    mnemonic: (mnemonic)
+    operand: (register)
+    operand: (register)
+    operand: (register)
+    operand: (shift
+      operator: (shift_operator)))
+  (instruction
+    mnemonic: (mnemonic)
+    operand: (register)
+    operand: (immediate
+      value: (integer))
+    operand: (shift
+      operator: (shift_operator)
+      amount: (immediate
+        value: (integer))))
+  (instruction
+    mnemonic: (mnemonic)
+    operand: (register)
+    operand: (register)
+    operand: (register)
+    operand: (shift
+      operator: (shift_operator)
+      amount: (immediate
+        value: (integer))))
+  (instruction
+    mnemonic: (mnemonic)
+    operand: (register)
+    operand: (immediate
+      value: (integer))
+    operand: (shift
+      operator: (shift_operator)
+      amount: (immediate
+        value: (integer)))))

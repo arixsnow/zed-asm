@@ -1,0 +1,31 @@
+================================================================================
+An x86 register in an ARM role slot
+================================================================================
+
+blcs %eax, %ebx
+
+--------------------------------------------------------------------------------
+
+(source_file
+  (instruction
+    mnemonic: (mnemonic)
+    operand: (register)
+    operand: (register)))
+
+================================================================================
+ARM register names read as registers in x86 code too
+================================================================================
+
+movl sp, %eax
+call a1
+
+--------------------------------------------------------------------------------
+
+(source_file
+  (instruction
+    mnemonic: (mnemonic)
+    operand: (register)
+    operand: (register))
+  (instruction
+    mnemonic: (mnemonic)
+    operand: (register)))

@@ -47,3 +47,18 @@ int walk(int count) {
   counter = sum;
   return sum;
 }
+
+_Thread_local int depth;
+
+long long wide(long long left, long long right) {
+  depth++;
+  return left > right ? left - right : right * 3;
+}
+
+void scale(float *out, const float *in, int count) {
+  int index;
+
+  for (index = 0; index < count; index++) {
+    out[index] = in[index] * 2.0f;
+  }
+}

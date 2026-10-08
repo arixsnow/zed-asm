@@ -4,11 +4,16 @@
 set -eu
 
 root=$(CDPATH='' cd -- "$(dirname -- "$0")/.." && pwd)
-tag=$(sha256sum "$root/Containerfile" | cut -c1-12)
-image="localhost/zed-asm-dev:$tag"
+tag=$(sha256sum "${root}/Containerfile" | cut -c1-12)
+image="localhost/zed-asm-dev:${tag}"
 
-if ! podman image exists "$image"; then
-    podman build --target dev --tag "$image" --file "$root/Containerfile" "$root"
+if [ "${1:-}" = --image ]; then
+    printf '%s\n' "${image}"
+    exit 0
+fi
+
+if ! podman image exists "${image}"; then
+    podman build --target dev --tag "${image}" --file "${root}/Containerfile" "${root}"
 fi
 
 tty=false
@@ -19,11 +24,11 @@ if [ "$#" -eq 0 ]; then
     set -- bash
 fi
 
-exec podman run --rm --interactive --tty="$tty" \
+exec podman run --rm --interactive --tty="${tty}" \
     --userns=keep-id \
-    --volume "$root:/work:Z" \
+    --volume "${root}:/work:Z" \
     --volume zed-asm-cache:/cache:U \
     --env HOME=/cache \
     --env XDG_CACHE_HOME=/cache \
     --workdir /work \
-    "$image" "$@"
+    "${image}" "$@"

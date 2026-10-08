@@ -26,6 +26,7 @@ RUN dnf -y install --setopt=install_weak_deps=False \
         arm-none-eabi-gcc-cs \
         nasm \
         yasm \
+        ShellCheck \
     && dnf clean all
 
 COPY --from=tree-sitter /opt/tree-sitter/bin/tree-sitter /usr/local/bin/tree-sitter

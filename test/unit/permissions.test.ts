@@ -62,6 +62,9 @@ Deno.test('every task describes itself', () => {
 Deno.test('every deno command grants only scoped read, write and run permissions', () => {
   for (const { command, script, flags } of invocations()) {
     for (const [flag, value] of flags) {
+      if (script.split(' ')[0] === 'test' && ['--parallel', '--ignore'].includes(flag)) {
+        continue;
+      }
       assert(
         ['--allow-read', '--allow-write', '--allow-run'].includes(flag),
         `${command} uses ${flag}`,
@@ -98,6 +101,7 @@ Deno.test('checking and running commands write nothing, or only the scratch dire
       'tree-sitter.ts generate',
       'tree-sitter.ts test',
       'check-c.ts',
+      'check-shell.ts',
     ]
   ) {
     for (const write of writesOf(`run scripts/${script}`)) {
@@ -112,6 +116,7 @@ Deno.test('checking and running commands write nothing, or only the scratch dire
       'run scripts/sanitize.ts',
       'run scripts/bench.ts',
       'test',
+      'test test/performance',
     ]
   ) {
     for (const write of writesOf(script)) {

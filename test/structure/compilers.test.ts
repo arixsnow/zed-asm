@@ -5,7 +5,7 @@ import { ensureDirSync } from '@std/fs';
 import { join } from '@std/path';
 
 import { ROOT } from '../../scripts/lib/files.ts';
-import { run } from '../../scripts/lib/grammars.ts';
+import { languageArgs, run } from '../../scripts/lib/grammars.ts';
 import { manifest } from '../../scripts/lib/manifest.ts';
 import { outlineItems } from '../lib/zed.ts';
 import { queryMatchesFor } from '../lib/zed-syntax.ts';
@@ -15,6 +15,14 @@ interface Target {
   temporaryPrefix: string;
   grammars: string[];
   compilers: [string, string[]][];
+  parsesCleanly: boolean;
+}
+
+interface Compilation {
+  target: Target;
+  variant: string;
+  file: string;
+  assembly: string;
 }
 
 const TARGETS: Target[] = [
@@ -23,18 +31,21 @@ const TARGETS: Target[] = [
     temporaryPrefix: '.L',
     grammars: ['asm_x86_gas', 'asm_auto'],
     compilers: [['gcc', []], ['clang', []]],
+    parsesCleanly: false,
   },
   {
     name: 'AArch64',
     temporaryPrefix: '.L',
     grammars: ['asm_arm', 'asm_auto'],
     compilers: [['aarch64-linux-gnu-gcc', []], ['clang', ['--target=aarch64-linux-gnu']]],
+    parsesCleanly: true,
   },
   {
     name: 'ARM',
     temporaryPrefix: '.L',
     grammars: ['asm_arm', 'asm_auto'],
     compilers: [['arm-none-eabi-gcc', ['-marm']], ['clang', ['--target=armv7a-none-eabi']]],
+    parsesCleanly: true,
   },
   {
     name: 'Thumb',
@@ -44,12 +55,14 @@ const TARGETS: Target[] = [
       ['arm-none-eabi-gcc', ['-mthumb', '-mcpu=cortex-m3']],
       ['clang', ['--target=thumbv7m-none-eabi']],
     ],
+    parsesCleanly: true,
   },
   {
     name: 'Apple arm64',
     temporaryPrefix: 'L',
     grammars: ['asm_arm_apple'],
-    compilers: [['clang', ['--target=arm64-apple-macos']]],
+    compilers: [['clang', ['--target=arm64-apple-macos11']]],
+    parsesCleanly: true,
   },
 ];
 
@@ -59,6 +72,36 @@ const ASSIGNMENT_DIRECTIVE = /^\s*(\.(?:set|equ|equiv|eqv))\s+([A-Za-z_.$][A-Za-
 const ASSIGNMENT = /^\s*([A-Za-z_.$][A-Za-z0-9_.$]*)\s*==?[^=]/;
 const RODATA = /^\s*\.section\s+\.rodata(?:\s*,.*)?$/;
 const ALIGNMENT = /^\s*\.(?:p2align|align|balign)\b/;
+const ERROR_NODE = /\((?:ERROR|MISSING)\b/;
+
+let compilations: Compilation[] | undefined;
+
+function compileAll(): Compilation[] {
+  if (compilations !== undefined) {
+    return compilations;
+  }
+  const directory = join(ROOT, '.build', 'compilers');
+  ensureDirSync(directory);
+  compilations = TARGETS.flatMap((target) =>
+    target.compilers.flatMap(([compiler, flags]) =>
+      OPTIMIZATIONS.map((optimization) => {
+        const variant = `${target.name} ${compiler} ${optimization.join(' ')}`;
+        const file = join(directory, `${variant.replaceAll(/[^A-Za-z0-9]+/g, '-')}.s`);
+        const compiled = run(compiler, [
+          ...flags,
+          ...optimization,
+          '-S',
+          '-o',
+          file,
+          join(ROOT, 'test', 'structure', 'sample.c'),
+        ]);
+        assert(compiled.ok, `${variant}: ${compiled.output}`);
+        return { target, variant, file, assembly: Deno.readTextFileSync(file) };
+      })
+    )
+  );
+  return compilations;
+}
 
 function symbolOutline(assembly: string, temporaryPrefix: string): string[] {
   const outline: string[] = [];
@@ -98,51 +141,49 @@ function jumpTables(assembly: string): string[] {
 }
 
 Deno.test('the outline of compiler output lists every symbol with the temporary labels it owns, jump tables included', () => {
-  const directory = join(ROOT, '.build', 'compilers');
-  ensureDirSync(directory);
   const failures: string[] = [];
   let jumpTablesSeen = 0;
-  for (const target of TARGETS) {
-    for (const [compiler, flags] of target.compilers) {
-      for (const optimization of OPTIMIZATIONS) {
-        const variant = `${target.name} ${compiler} ${optimization.join(' ')}`;
-        const output = join(directory, `${variant.replaceAll(/[^A-Za-z0-9]+/g, '-')}.s`);
-        const compiled = run(compiler, [
-          ...flags,
-          ...optimization,
-          '-S',
-          '-o',
-          output,
-          join(ROOT, 'test', 'structure', 'sample.c'),
-        ]);
-        assert(compiled.ok, `${variant}: ${compiled.output}`);
-        const assembly = Deno.readTextFileSync(output);
-        const expected = symbolOutline(assembly, target.temporaryPrefix);
-        const tables = jumpTables(assembly);
-        jumpTablesSeen += tables.length;
-        for (const table of tables) {
-          assert(expected.includes(`1 ${table}`), `${variant}: jump table ${table} is not nested`);
-        }
-        for (const grammar of target.grammars) {
-          const language = manifest.languages.find((entry) => entry.grammar === grammar);
-          assert(language !== undefined, grammar);
-          const outline = outlineItems(
-            assembly,
-            queryMatchesFor(language, 'outline', assembly, 'compilers'),
-          ).map((item) => `${item.depth} ${item.text}`);
-          if (JSON.stringify(outline) !== JSON.stringify(expected)) {
-            const missing = expected.filter((entry) => !outline.includes(entry));
-            const extra = outline.filter((entry) => !expected.includes(entry));
-            failures.push(
-              `${variant} in ${grammar}: missing ${JSON.stringify(missing)}, extra ${
-                JSON.stringify(extra)
-              }`,
-            );
-          }
-        }
+  for (const { target, variant, assembly } of compileAll()) {
+    const expected = symbolOutline(assembly, target.temporaryPrefix);
+    const tables = jumpTables(assembly);
+    jumpTablesSeen += tables.length;
+    for (const table of tables) {
+      assert(expected.includes(`1 ${table}`), `${variant}: jump table ${table} is not nested`);
+    }
+    for (const grammar of target.grammars) {
+      const language = manifest.languages.find((entry) => entry.grammar === grammar);
+      assert(language !== undefined, grammar);
+      const outline = outlineItems(
+        assembly,
+        queryMatchesFor(language, 'outline', assembly, 'compilers'),
+      ).map((item) => `${item.depth} ${item.text}`);
+      if (JSON.stringify(outline) !== JSON.stringify(expected)) {
+        const missing = expected.filter((entry) => !outline.includes(entry));
+        const extra = outline.filter((entry) => !expected.includes(entry));
+        failures.push(
+          `${variant} in ${grammar}: missing ${JSON.stringify(missing)}, extra ${
+            JSON.stringify(extra)
+          }`,
+        );
       }
     }
   }
   assert(jumpTablesSeen > 0, 'no compiler emitted a jump table for the sample');
+  assertEquals(failures, []);
+});
+
+Deno.test('compiler output for every ARM target and optimization level parses without errors', () => {
+  const failures: string[] = [];
+  const clean = compileAll().filter(({ target }) => target.parsesCleanly);
+  const grammars = [...new Set(clean.flatMap(({ target }) => target.grammars))];
+  for (const grammar of grammars) {
+    const files = clean.filter(({ target }) => target.grammars.includes(grammar));
+    for (const { variant, file } of files) {
+      const { ok, output } = run('tree-sitter', ['parse', ...languageArgs(grammar), file]);
+      if (!ok || ERROR_NODE.test(output)) {
+        failures.push(`${variant} in ${grammar}`);
+      }
+    }
+  }
   assertEquals(failures, []);
 });

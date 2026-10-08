@@ -22,15 +22,6 @@ module.exports = {
       ].join('|'),
     ),
     sizedDataDirective: /\.[248][bB][yY][tT][eE]/,
-    blankSeparatedDirective: /\.[lL][oO][cC]|\.[fF][iI][lL][eE]/,
-    macroOpen: /\.[mM][aA][cC][rR][oO]/,
-    ifOpen:
-      /\.[iI][fF]([nN]?[dD][eE][fF]|[nN][oO][tT][dD][eE][fF]|[nN]?[bB]|[nN]?[cC]|[eE][qQ][sS]|[nN][eE][sS]|[eE][qQ]|[nN][eE]|[gG][eE]|[gG][tT]|[lL][eE]|[lL][tT])?/,
-    elseif: /\.[eE][lL][sS][eE][iI][fF]/,
-    else: /\.[eE][lL][sS][eE]/,
-    reptOpen: /\.[rR][eE][pP][tT]/,
-    irpOpen: /\.[iI][rR][pP]/,
-    irpcOpen: /\.[iI][rR][pP][cC]/,
     macroArgument: /\\([A-Za-z_][A-Za-z0-9_]*|@|\+)/,
   },
   nasm: {

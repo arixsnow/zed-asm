@@ -7,6 +7,7 @@ import { ROOT } from '../../scripts/lib/files.ts';
 export interface Rule {
   type: string;
   value?: string | number;
+  flags?: string;
   name?: string;
   members?: Rule[];
   content?: Rule;
@@ -41,12 +42,20 @@ function addAll(target: TokenSet, source: TokenSet): boolean {
   return target.terminals.size + target.externals.size !== before;
 }
 
+export function union(...sets: TokenSet[]): TokenSet {
+  const result = emptySet(sets.some((set) => set.nullable));
+  for (const set of sets) {
+    addAll(result, set);
+  }
+  return result;
+}
+
 export function tokenPattern(rule: Rule): string {
   switch (rule.type) {
     case 'STRING':
       return String(rule.value).replace(/[\\^$.*+?()[\]{}|/-]/g, '\\$&');
     case 'PATTERN':
-      return `(?:${rule.value})`;
+      return `(?${rule.flags ?? ''}:${rule.value})`;
     case 'BLANK':
       return '';
     case 'SEQ':
@@ -193,8 +202,15 @@ export class GrammarSets {
     }
   }
 
-  continuations(start: string): TokenSet {
-    const rules = this.closure(start);
+  continuations(start: string, target = start): TokenSet {
+    return this.follows(this.closure(start), target);
+  }
+
+  following(rule: string, symbol: string): TokenSet {
+    return this.follows(new Set([rule, symbol]), symbol);
+  }
+
+  follows(rules: Set<string>, target: string): TokenSet {
     const follow = new Map([...rules].map((name) => [name, emptySet()]));
     let changed = true;
     const visit = (rule: Rule, after: TokenSet) => {
@@ -235,6 +251,6 @@ export class GrammarSets {
         visit(this.grammar.rules[name], follow.get(name) as TokenSet);
       }
     }
-    return follow.get(start) as TokenSet;
+    return follow.get(target) as TokenSet;
   }
 }

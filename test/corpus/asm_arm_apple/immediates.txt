@@ -9,7 +9,7 @@ mov w0, #0 ; =0x0
 (source_file
   (instruction
     mnemonic: (mnemonic)
-    operand: (identifier)
+    operand: (register)
     operand: (immediate
       value: (integer)))
   (line_comment))

@@ -21,7 +21,7 @@ A label on the line after an error still starts a block
 ================================================================================
 
 first:
-    mov x0, )
+    mov dst, )
 second:
     nop
 

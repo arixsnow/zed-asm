@@ -5,7 +5,7 @@ import { emptyDirSync } from '@std/fs';
 import { dirname, join } from '@std/path';
 
 import { ROOT } from '../../scripts/lib/files.ts';
-import { generatedMatcher, repositoryFiles } from '../lib/repository.ts';
+import { generatedMatcher, repositoryFiles } from '../../scripts/lib/repository.ts';
 
 function withTree(files: Record<string, string>, body: (root: string) => void): void {
   const root = join(ROOT, '.build', 'repository-probe');

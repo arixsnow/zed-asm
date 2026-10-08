@@ -29,7 +29,7 @@ nop
 (source_file
   (instruction
     mnemonic: (mnemonic)
-    operand: (identifier)
+    operand: (register)
     (line_comment))
   (instruction
     mnemonic: (mnemonic)))

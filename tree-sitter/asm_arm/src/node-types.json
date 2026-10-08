@@ -1,5 +1,21 @@
 [
   {
+    "type": "alignment",
+    "named": true,
+    "fields": {
+      "value": {
+        "multiple": false,
+        "required": true,
+        "types": [
+          {
+            "type": "integer",
+            "named": true
+          }
+        ]
+      }
+    }
+  },
+  {
     "type": "assignment",
     "named": true,
     "fields": {
@@ -326,6 +342,10 @@
           "named": true
         },
         {
+          "type": "register_alias",
+          "named": true
+        },
+        {
           "type": "repeat_block",
           "named": true
         }
@@ -434,10 +454,6 @@
             "named": true
           },
           {
-            "type": "shift",
-            "named": true
-          },
-          {
             "type": "string",
             "named": true
           },
@@ -528,11 +544,15 @@
             "named": true
           },
           {
-            "type": "relocation",
+            "type": "register",
             "named": true
           },
           {
-            "type": "shift",
+            "type": "register_list",
+            "named": true
+          },
+          {
+            "type": "relocation",
             "named": true
           },
           {
@@ -660,10 +680,6 @@
             "named": true
           },
           {
-            "type": "shift",
-            "named": true
-          },
-          {
             "type": "string",
             "named": true
           },
@@ -744,6 +760,222 @@
     }
   },
   {
+    "type": "index_range",
+    "named": true,
+    "fields": {
+      "end": {
+        "multiple": false,
+        "required": false,
+        "types": [
+          {
+            "type": "binary_expression",
+            "named": true
+          },
+          {
+            "type": "char",
+            "named": true
+          },
+          {
+            "type": "concatenation",
+            "named": true
+          },
+          {
+            "type": "float",
+            "named": true
+          },
+          {
+            "type": "identifier",
+            "named": true
+          },
+          {
+            "type": "integer",
+            "named": true
+          },
+          {
+            "type": "local_identifier",
+            "named": true
+          },
+          {
+            "type": "location_counter",
+            "named": true
+          },
+          {
+            "type": "macro_argument",
+            "named": true
+          },
+          {
+            "type": "numeric_label",
+            "named": true
+          },
+          {
+            "type": "parenthesized_expression",
+            "named": true
+          },
+          {
+            "type": "relocation",
+            "named": true
+          },
+          {
+            "type": "unary_expression",
+            "named": true
+          }
+        ]
+      },
+      "start": {
+        "multiple": false,
+        "required": false,
+        "types": [
+          {
+            "type": "binary_expression",
+            "named": true
+          },
+          {
+            "type": "char",
+            "named": true
+          },
+          {
+            "type": "concatenation",
+            "named": true
+          },
+          {
+            "type": "float",
+            "named": true
+          },
+          {
+            "type": "identifier",
+            "named": true
+          },
+          {
+            "type": "integer",
+            "named": true
+          },
+          {
+            "type": "local_identifier",
+            "named": true
+          },
+          {
+            "type": "location_counter",
+            "named": true
+          },
+          {
+            "type": "macro_argument",
+            "named": true
+          },
+          {
+            "type": "numeric_label",
+            "named": true
+          },
+          {
+            "type": "parenthesized_expression",
+            "named": true
+          },
+          {
+            "type": "relocation",
+            "named": true
+          },
+          {
+            "type": "unary_expression",
+            "named": true
+          }
+        ]
+      }
+    }
+  },
+  {
+    "type": "indexed_register",
+    "named": true,
+    "fields": {
+      "index": {
+        "multiple": true,
+        "required": false,
+        "types": [
+          {
+            "type": "binary_expression",
+            "named": true
+          },
+          {
+            "type": "char",
+            "named": true
+          },
+          {
+            "type": "concatenation",
+            "named": true
+          },
+          {
+            "type": "float",
+            "named": true
+          },
+          {
+            "type": "identifier",
+            "named": true
+          },
+          {
+            "type": "index_range",
+            "named": true
+          },
+          {
+            "type": "integer",
+            "named": true
+          },
+          {
+            "type": "local_identifier",
+            "named": true
+          },
+          {
+            "type": "location_counter",
+            "named": true
+          },
+          {
+            "type": "macro_argument",
+            "named": true
+          },
+          {
+            "type": "numeric_label",
+            "named": true
+          },
+          {
+            "type": "parenthesized_expression",
+            "named": true
+          },
+          {
+            "type": "register",
+            "named": true
+          },
+          {
+            "type": "relocation",
+            "named": true
+          },
+          {
+            "type": "unary_expression",
+            "named": true
+          }
+        ]
+      },
+      "register": {
+        "multiple": false,
+        "required": true,
+        "types": [
+          {
+            "type": "concatenation",
+            "named": true
+          },
+          {
+            "type": "identifier",
+            "named": true
+          },
+          {
+            "type": "macro_argument",
+            "named": true
+          },
+          {
+            "type": "register",
+            "named": true
+          }
+        ]
+      }
+    }
+  },
+  {
     "type": "instruction",
     "named": true,
     "fields": {
@@ -782,6 +1014,10 @@
             "named": true
           },
           {
+            "type": "condition",
+            "named": true
+          },
+          {
             "type": "float",
             "named": true
           },
@@ -794,11 +1030,19 @@
             "named": true
           },
           {
+            "type": "indexed_register",
+            "named": true
+          },
+          {
             "type": "integer",
             "named": true
           },
           {
             "type": "keyword_argument",
+            "named": true
+          },
+          {
+            "type": "literal_pool",
             "named": true
           },
           {
@@ -814,6 +1058,10 @@
             "named": true
           },
           {
+            "type": "memory_operand",
+            "named": true
+          },
+          {
             "type": "numeric_label",
             "named": true
           },
@@ -822,11 +1070,27 @@
             "named": true
           },
           {
+            "type": "predicate",
+            "named": true
+          },
+          {
+            "type": "register",
+            "named": true
+          },
+          {
+            "type": "register_list",
+            "named": true
+          },
+          {
             "type": "relocation",
             "named": true
           },
           {
             "type": "shift",
+            "named": true
+          },
+          {
+            "type": "signed_register",
             "named": true
           },
           {
@@ -839,6 +1103,10 @@
           },
           {
             "type": "unary_expression",
+            "named": true
+          },
+          {
+            "type": "writeback",
             "named": true
           }
         ]
@@ -1015,10 +1283,78 @@
           "named": true
         },
         {
+          "type": "register_alias",
+          "named": true
+        },
+        {
           "type": "repeat_block",
           "named": true
         }
       ]
+    }
+  },
+  {
+    "type": "literal_pool",
+    "named": true,
+    "fields": {
+      "value": {
+        "multiple": false,
+        "required": false,
+        "types": [
+          {
+            "type": "binary_expression",
+            "named": true
+          },
+          {
+            "type": "char",
+            "named": true
+          },
+          {
+            "type": "concatenation",
+            "named": true
+          },
+          {
+            "type": "float",
+            "named": true
+          },
+          {
+            "type": "identifier",
+            "named": true
+          },
+          {
+            "type": "integer",
+            "named": true
+          },
+          {
+            "type": "local_identifier",
+            "named": true
+          },
+          {
+            "type": "location_counter",
+            "named": true
+          },
+          {
+            "type": "macro_argument",
+            "named": true
+          },
+          {
+            "type": "numeric_label",
+            "named": true
+          },
+          {
+            "type": "parenthesized_expression",
+            "named": true
+          },
+          {
+            "type": "relocation",
+            "named": true
+          },
+          {
+            "type": "unary_expression",
+            "named": true
+          }
+        ]
+      }
     }
   },
   {
@@ -1055,6 +1391,104 @@
         "types": [
           {
             "type": "parameter",
+            "named": true
+          }
+        ]
+      }
+    }
+  },
+  {
+    "type": "memory_operand",
+    "named": true,
+    "fields": {
+      "alignment": {
+        "multiple": false,
+        "required": false,
+        "types": [
+          {
+            "type": "alignment",
+            "named": true
+          }
+        ]
+      },
+      "operand": {
+        "multiple": true,
+        "required": false,
+        "types": [
+          {
+            "type": "alignment",
+            "named": true
+          },
+          {
+            "type": "binary_expression",
+            "named": true
+          },
+          {
+            "type": "char",
+            "named": true
+          },
+          {
+            "type": "concatenation",
+            "named": true
+          },
+          {
+            "type": "float",
+            "named": true
+          },
+          {
+            "type": "identifier",
+            "named": true
+          },
+          {
+            "type": "immediate",
+            "named": true
+          },
+          {
+            "type": "indexed_register",
+            "named": true
+          },
+          {
+            "type": "integer",
+            "named": true
+          },
+          {
+            "type": "local_identifier",
+            "named": true
+          },
+          {
+            "type": "location_counter",
+            "named": true
+          },
+          {
+            "type": "macro_argument",
+            "named": true
+          },
+          {
+            "type": "numeric_label",
+            "named": true
+          },
+          {
+            "type": "parenthesized_expression",
+            "named": true
+          },
+          {
+            "type": "register",
+            "named": true
+          },
+          {
+            "type": "relocation",
+            "named": true
+          },
+          {
+            "type": "shift",
+            "named": true
+          },
+          {
+            "type": "signed_register",
+            "named": true
+          },
+          {
+            "type": "unary_expression",
             "named": true
           }
         ]
@@ -1221,6 +1655,32 @@
     }
   },
   {
+    "type": "predicate",
+    "named": true,
+    "fields": {
+      "qualifier": {
+        "multiple": false,
+        "required": true,
+        "types": [
+          {
+            "type": "identifier",
+            "named": true
+          }
+        ]
+      },
+      "register": {
+        "multiple": false,
+        "required": true,
+        "types": [
+          {
+            "type": "register",
+            "named": true
+          }
+        ]
+      }
+    }
+  },
+  {
     "type": "preproc_define",
     "named": true,
     "fields": {
@@ -1338,6 +1798,210 @@
     }
   },
   {
+    "type": "register_alias",
+    "named": true,
+    "fields": {
+      "directive": {
+        "multiple": false,
+        "required": true,
+        "types": [
+          {
+            "type": "directive_name",
+            "named": true
+          }
+        ]
+      },
+      "name": {
+        "multiple": false,
+        "required": true,
+        "types": [
+          {
+            "type": "identifier",
+            "named": true
+          },
+          {
+            "type": "local_identifier",
+            "named": true
+          },
+          {
+            "type": "location_counter",
+            "named": true
+          }
+        ]
+      },
+      "register": {
+        "multiple": false,
+        "required": false,
+        "types": [
+          {
+            "type": "concatenation",
+            "named": true
+          },
+          {
+            "type": "identifier",
+            "named": true
+          },
+          {
+            "type": "indexed_register",
+            "named": true
+          },
+          {
+            "type": "macro_argument",
+            "named": true
+          },
+          {
+            "type": "register",
+            "named": true
+          }
+        ]
+      }
+    }
+  },
+  {
+    "type": "register_list",
+    "named": true,
+    "fields": {
+      "element": {
+        "multiple": true,
+        "required": false,
+        "types": [
+          {
+            "type": "concatenation",
+            "named": true
+          },
+          {
+            "type": "identifier",
+            "named": true
+          },
+          {
+            "type": "indexed_register",
+            "named": true
+          },
+          {
+            "type": "macro_argument",
+            "named": true
+          },
+          {
+            "type": "register",
+            "named": true
+          },
+          {
+            "type": "register_range",
+            "named": true
+          }
+        ]
+      },
+      "index": {
+        "multiple": false,
+        "required": false,
+        "types": [
+          {
+            "type": "binary_expression",
+            "named": true
+          },
+          {
+            "type": "char",
+            "named": true
+          },
+          {
+            "type": "concatenation",
+            "named": true
+          },
+          {
+            "type": "float",
+            "named": true
+          },
+          {
+            "type": "identifier",
+            "named": true
+          },
+          {
+            "type": "integer",
+            "named": true
+          },
+          {
+            "type": "local_identifier",
+            "named": true
+          },
+          {
+            "type": "location_counter",
+            "named": true
+          },
+          {
+            "type": "macro_argument",
+            "named": true
+          },
+          {
+            "type": "numeric_label",
+            "named": true
+          },
+          {
+            "type": "parenthesized_expression",
+            "named": true
+          },
+          {
+            "type": "relocation",
+            "named": true
+          },
+          {
+            "type": "unary_expression",
+            "named": true
+          }
+        ]
+      }
+    }
+  },
+  {
+    "type": "register_range",
+    "named": true,
+    "fields": {
+      "end": {
+        "multiple": false,
+        "required": false,
+        "types": [
+          {
+            "type": "concatenation",
+            "named": true
+          },
+          {
+            "type": "identifier",
+            "named": true
+          },
+          {
+            "type": "macro_argument",
+            "named": true
+          },
+          {
+            "type": "register",
+            "named": true
+          }
+        ]
+      },
+      "start": {
+        "multiple": false,
+        "required": true,
+        "types": [
+          {
+            "type": "concatenation",
+            "named": true
+          },
+          {
+            "type": "identifier",
+            "named": true
+          },
+          {
+            "type": "macro_argument",
+            "named": true
+          },
+          {
+            "type": "register",
+            "named": true
+          }
+        ]
+      }
+    }
+  },
+  {
     "type": "relocation",
     "named": true,
     "fields": {
@@ -1353,7 +2017,7 @@
       },
       "symbol": {
         "multiple": false,
-        "required": true,
+        "required": false,
         "types": [
           {
             "type": "identifier",
@@ -1361,6 +2025,64 @@
           },
           {
             "type": "local_identifier",
+            "named": true
+          }
+        ]
+      },
+      "value": {
+        "multiple": false,
+        "required": false,
+        "types": [
+          {
+            "type": "binary_expression",
+            "named": true
+          },
+          {
+            "type": "char",
+            "named": true
+          },
+          {
+            "type": "concatenation",
+            "named": true
+          },
+          {
+            "type": "float",
+            "named": true
+          },
+          {
+            "type": "identifier",
+            "named": true
+          },
+          {
+            "type": "integer",
+            "named": true
+          },
+          {
+            "type": "local_identifier",
+            "named": true
+          },
+          {
+            "type": "location_counter",
+            "named": true
+          },
+          {
+            "type": "macro_argument",
+            "named": true
+          },
+          {
+            "type": "numeric_label",
+            "named": true
+          },
+          {
+            "type": "parenthesized_expression",
+            "named": true
+          },
+          {
+            "type": "relocation",
+            "named": true
+          },
+          {
+            "type": "unary_expression",
             "named": true
           }
         ]
@@ -1531,10 +2253,66 @@
     "fields": {
       "amount": {
         "multiple": false,
-        "required": true,
+        "required": false,
         "types": [
           {
+            "type": "binary_expression",
+            "named": true
+          },
+          {
+            "type": "char",
+            "named": true
+          },
+          {
+            "type": "concatenation",
+            "named": true
+          },
+          {
+            "type": "float",
+            "named": true
+          },
+          {
+            "type": "identifier",
+            "named": true
+          },
+          {
             "type": "immediate",
+            "named": true
+          },
+          {
+            "type": "integer",
+            "named": true
+          },
+          {
+            "type": "local_identifier",
+            "named": true
+          },
+          {
+            "type": "location_counter",
+            "named": true
+          },
+          {
+            "type": "macro_argument",
+            "named": true
+          },
+          {
+            "type": "numeric_label",
+            "named": true
+          },
+          {
+            "type": "parenthesized_expression",
+            "named": true
+          },
+          {
+            "type": "register",
+            "named": true
+          },
+          {
+            "type": "relocation",
+            "named": true
+          },
+          {
+            "type": "unary_expression",
             "named": true
           }
         ]
@@ -1546,6 +2324,36 @@
           {
             "type": "shift_operator",
             "named": true
+          }
+        ]
+      }
+    }
+  },
+  {
+    "type": "signed_register",
+    "named": true,
+    "fields": {
+      "register": {
+        "multiple": false,
+        "required": true,
+        "types": [
+          {
+            "type": "register",
+            "named": true
+          }
+        ]
+      },
+      "sign": {
+        "multiple": false,
+        "required": true,
+        "types": [
+          {
+            "type": "+",
+            "named": false
+          },
+          {
+            "type": "-",
+            "named": false
           }
         ]
       }
@@ -1594,6 +2402,10 @@
         },
         {
           "type": "preproc_line",
+          "named": true
+        },
+        {
+          "type": "register_alias",
           "named": true
         },
         {
@@ -1754,10 +2566,42 @@
           "named": true
         },
         {
+          "type": "register_alias",
+          "named": true
+        },
+        {
           "type": "repeat_block",
           "named": true
         }
       ]
+    }
+  },
+  {
+    "type": "writeback",
+    "named": true,
+    "fields": {
+      "register": {
+        "multiple": false,
+        "required": true,
+        "types": [
+          {
+            "type": "concatenation",
+            "named": true
+          },
+          {
+            "type": "identifier",
+            "named": true
+          },
+          {
+            "type": "macro_argument",
+            "named": true
+          },
+          {
+            "type": "register",
+            "named": true
+          }
+        ]
+      }
     }
   },
   {
@@ -1901,7 +2745,15 @@
     "named": false
   },
   {
+    "type": "[",
+    "named": false
+  },
+  {
     "type": "\\()",
+    "named": false
+  },
+  {
+    "type": "]",
     "named": false
   },
   {
@@ -1915,6 +2767,10 @@
   },
   {
     "type": "char",
+    "named": true
+  },
+  {
+    "type": "condition",
     "named": true
   },
   {
@@ -1980,8 +2836,16 @@
     "named": true
   },
   {
+    "type": "register",
+    "named": true
+  },
+  {
     "type": "shift_operator",
     "named": true
+  },
+  {
+    "type": "{",
+    "named": false
   },
   {
     "type": "|",
@@ -1989,6 +2853,10 @@
   },
   {
     "type": "||",
+    "named": false
+  },
+  {
+    "type": "}",
     "named": false
   },
   {

@@ -63,17 +63,19 @@ module.exports = (ctx) => {
           ),
           seq(
             field('name', alias($._blank_separated_directive, $.directive_name)),
-            repeat(field('argument', choice($._symbol, $.integer, $.string))),
+            repeat(field('argument', choice($._symbol, $.integer, $.unary_expression, $.string))),
           ),
         ),
       _sized_data_directive: () => token(ctx.lexical.sizedDataDirective),
-      _blank_separated_directive: () => token(prec(1, ctx.lexical.blankSeparatedDirective)),
 
       assignment: ($) =>
-        seq(
-          field('name', choice($._symbol, $.location_counter)),
-          choice('=', '=='),
-          field('value', $._expression),
+        prec(
+          1,
+          seq(
+            field('name', $._defined_name),
+            choice('=', '=='),
+            field('value', $._expression),
+          ),
         ),
 
       _body_items: ($) =>
@@ -101,7 +103,6 @@ module.exports = (ctx) => {
             ),
           ),
         ),
-      _macro_open: () => token(prec(1, ctx.lexical.macroOpen)),
 
       conditional: ($) =>
         seq(
@@ -134,7 +135,6 @@ module.exports = (ctx) => {
         seq(alias($._elseif, '.elseif'), optional(operandList($, 'condition'))),
       else_clause: ($) => seq(alias($._else, '.else'), field('body', $.body)),
       _unclosed_else_clause: ($) => seq(alias($._else, '.else'), field('body', $.unclosed_body)),
-      _if_open: () => token(prec(1, ctx.lexical.ifOpen)),
 
       repeat_block: ($) =>
         seq($._repeat_header, field('body', $.body), alias($._repeat_close, '.endr')),
@@ -148,25 +148,15 @@ module.exports = (ctx) => {
             listRest($, ctx, field('value', $._value)),
           ),
         ),
-      _rept_open: () => token(prec(1, ctx.lexical.reptOpen)),
-      _irp_open: () => token(prec(1, ctx.lexical.irpOpen)),
-      _irpc_open: () => token(prec(1, ctx.lexical.irpcOpen)),
 
       macro_argument: () => ctx.lexical.macroArgument,
-      concatenation: ($) =>
-        seq(
+      concatenation: ($) => seq($._glue_head, $._glued_pieces),
+      _glued_pieces: ($) =>
+        repeat1(
           choice(
-            $.identifier,
-            alias($._dot_identifier, $.identifier),
-            ...(dotLocals ? [alias($._local_identifier, $.local_identifier)] : []),
-            $.macro_argument,
-          ),
-          repeat1(
-            choice(
-              alias($._glued_argument, $.macro_argument),
-              alias($._glued_separator, '\\()'),
-              alias($._glued_text, $.identifier),
-            ),
+            alias($._glued_argument, $.macro_argument),
+            alias($._glued_separator, '\\()'),
+            alias($._glued_text, $.identifier),
           ),
         ),
       keyword_argument: ($) => seq(field('name', $.identifier), '=', field('value', $._value)),
@@ -272,6 +262,8 @@ module.exports = (ctx) => {
         ($) => $.conditional,
         ($) => $.repeat_block,
       ],
+      _defined_name: [($) => $._symbol, ($) => $.location_counter],
+      _glue_head: [($) => $._symbol, ($) => $.macro_argument],
       _value: [($) => $.string, ($) => $.symbol_type],
       _operand: [($) => $.keyword_argument],
       _expression: [

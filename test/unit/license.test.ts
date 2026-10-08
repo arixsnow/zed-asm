@@ -4,7 +4,7 @@ import { assertEquals } from '@std/assert';
 import { join } from '@std/path';
 
 import { ROOT } from '../../scripts/lib/files.ts';
-import { generatedMatcher, repositoryFiles } from '../lib/repository.ts';
+import { generatedMatcher, repositoryFiles } from '../../scripts/lib/repository.ts';
 
 const SPDX = 'SPDX-License-Identifier: MIT';
 const SOURCE = /\.(c|h|js|cjs|ts)$/;

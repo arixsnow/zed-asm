@@ -1,0 +1,956 @@
+================================================================================
+AArch32 core registers, aliases and APCS names
+================================================================================
+
+mov r0, r15
+mov sb, sl
+mov ip, pc
+mov a1, a4
+mov v1, v8
+add r0, sp, lr
+MOV R1, PC
+
+--------------------------------------------------------------------------------
+
+(source_file
+  (instruction
+    mnemonic: (mnemonic)
+    operand: (register)
+    operand: (register))
+  (instruction
+    mnemonic: (mnemonic)
+    operand: (register)
+    operand: (register))
+  (instruction
+    mnemonic: (mnemonic)
+    operand: (register)
+    operand: (register))
+  (instruction
+    mnemonic: (mnemonic)
+    operand: (register)
+    operand: (register))
+  (instruction
+    mnemonic: (mnemonic)
+    operand: (register)
+    operand: (register))
+  (instruction
+    mnemonic: (mnemonic)
+    operand: (register)
+    operand: (register)
+    operand: (register))
+  (instruction
+    mnemonic: (mnemonic)
+    operand: (register)
+    operand: (register)))
+
+================================================================================
+Status, VFP, coprocessor and MVE special registers
+================================================================================
+
+msr cpsr_fc, r0
+msr CPSR_c, r0
+msr apsr_nzcvq, r0
+mrs r0, spsr
+msr spsr_fsxc, r0
+vmrs r0, fpscr
+vmsr fpexc, r0
+vmrs r0, mvfr2
+vmsr vpr, r0
+mrc p15, 0, r0, c1, c0, 0
+ldc p1, c2, [r0]
+
+--------------------------------------------------------------------------------
+
+(source_file
+  (instruction
+    mnemonic: (mnemonic)
+    operand: (register)
+    operand: (register))
+  (instruction
+    mnemonic: (mnemonic)
+    operand: (register)
+    operand: (register))
+  (instruction
+    mnemonic: (mnemonic)
+    operand: (register)
+    operand: (register))
+  (instruction
+    mnemonic: (mnemonic)
+    operand: (register)
+    operand: (register))
+  (instruction
+    mnemonic: (mnemonic)
+    operand: (register)
+    operand: (register))
+  (instruction
+    mnemonic: (mnemonic)
+    operand: (register)
+    operand: (register))
+  (instruction
+    mnemonic: (mnemonic)
+    operand: (register)
+    operand: (register))
+  (instruction
+    mnemonic: (mnemonic)
+    operand: (register)
+    operand: (register))
+  (instruction
+    mnemonic: (mnemonic)
+    operand: (register)
+    operand: (register))
+  (instruction
+    mnemonic: (mnemonic)
+    operand: (register)
+    operand: (integer)
+    operand: (register)
+    operand: (register)
+    operand: (register)
+    operand: (integer))
+  (instruction
+    mnemonic: (mnemonic)
+    operand: (register)
+    operand: (register)
+    operand: (memory_operand
+      operand: (register))))
+
+================================================================================
+Banked registers of GNU as
+================================================================================
+
+mrs r0, r8_usr
+msr sp_svc, r0
+mrs r0, lr_irq
+mrs r0, elr_hyp
+
+--------------------------------------------------------------------------------
+
+(source_file
+  (instruction
+    mnemonic: (mnemonic)
+    operand: (register)
+    operand: (register))
+  (instruction
+    mnemonic: (mnemonic)
+    operand: (register)
+    operand: (register))
+  (instruction
+    mnemonic: (mnemonic)
+    operand: (register)
+    operand: (register))
+  (instruction
+    mnemonic: (mnemonic)
+    operand: (register)
+    operand: (register)))
+
+================================================================================
+Intra-procedure-call aliases of GNU as for AArch64
+================================================================================
+
+mov ip0, ip1
+
+--------------------------------------------------------------------------------
+
+(source_file
+  (instruction
+    mnemonic: (mnemonic)
+    operand: (register)
+    operand: (register)))
+
+================================================================================
+A32 memory operands with signed registers, shifts and writeback
+================================================================================
+
+ldr r0, [r1, -r2]
+ldr r0, [r1, +r2, lsl #2]!
+ldr r0, [r1], -r2
+ldr r0, [r1], r2, asr #3
+ldr r0, [pc, #-8]
+
+--------------------------------------------------------------------------------
+
+(source_file
+  (instruction
+    mnemonic: (mnemonic)
+    operand: (register)
+    operand: (memory_operand
+      operand: (register)
+      operand: (signed_register
+        register: (register))))
+  (instruction
+    mnemonic: (mnemonic)
+    operand: (register)
+    operand: (memory_operand
+      operand: (register)
+      operand: (signed_register
+        register: (register))
+      operand: (shift
+        operator: (shift_operator)
+        amount: (immediate
+          value: (integer)))))
+  (instruction
+    mnemonic: (mnemonic)
+    operand: (register)
+    operand: (memory_operand
+      operand: (register))
+    operand: (signed_register
+      register: (register)))
+  (instruction
+    mnemonic: (mnemonic)
+    operand: (register)
+    operand: (memory_operand
+      operand: (register))
+    operand: (register)
+    operand: (shift
+      operator: (shift_operator)
+      amount: (immediate
+        value: (integer))))
+  (instruction
+    mnemonic: (mnemonic)
+    operand: (register)
+    operand: (memory_operand
+      operand: (register)
+      operand: (immediate
+        value: (unary_expression
+          argument: (integer))))))
+
+================================================================================
+Alignment in NEON memory operands
+================================================================================
+
+vld1.8 {d0, d1}, [r0:128]
+vld1.8 {d0, d1}, [r0:128]!
+vld1.8 {d0, d1}, [r0 :128]
+vld1.8 {d0, d1}, [r0, :128]
+vld1.8 {d0}, [r0], r2
+
+--------------------------------------------------------------------------------
+
+(source_file
+  (instruction
+    mnemonic: (mnemonic)
+    operand: (register_list
+      element: (register)
+      element: (register))
+    operand: (memory_operand
+      operand: (register)
+      alignment: (alignment
+        value: (integer))))
+  (instruction
+    mnemonic: (mnemonic)
+    operand: (register_list
+      element: (register)
+      element: (register))
+    operand: (memory_operand
+      operand: (register)
+      alignment: (alignment
+        value: (integer))))
+  (instruction
+    mnemonic: (mnemonic)
+    operand: (register_list
+      element: (register)
+      element: (register))
+    operand: (memory_operand
+      operand: (register)
+      alignment: (alignment
+        value: (integer))))
+  (instruction
+    mnemonic: (mnemonic)
+    operand: (register_list
+      element: (register)
+      element: (register))
+    operand: (memory_operand
+      operand: (register)
+      operand: (alignment
+        value: (integer))))
+  (instruction
+    mnemonic: (mnemonic)
+    operand: (register_list
+      element: (register))
+    operand: (memory_operand
+      operand: (register))
+    operand: (register)))
+
+================================================================================
+Register lists with base writeback, ranges, lanes and ^
+================================================================================
+
+push {r4-r7, lr}
+push {r4 - r7}
+ldm r0!, {r1-r3}
+ldm r0 !, {r1}
+ldm r0, {r1-r3}^
+ldm r0, {r1} ^
+vpush {d8-d15}
+vld1.32 {d0[], d1[]}, [r0]
+vld1.32 {d0[1]}, [r0]
+vldm r0!, {s0-s3}
+
+--------------------------------------------------------------------------------
+
+(source_file
+  (instruction
+    mnemonic: (mnemonic)
+    operand: (register_list
+      element: (register_range
+        start: (register)
+        end: (register))
+      element: (register)))
+  (instruction
+    mnemonic: (mnemonic)
+    operand: (register_list
+      element: (register_range
+        start: (register)
+        end: (register))))
+  (instruction
+    mnemonic: (mnemonic)
+    operand: (writeback
+      register: (register))
+    operand: (register_list
+      element: (register_range
+        start: (register)
+        end: (register))))
+  (instruction
+    mnemonic: (mnemonic)
+    operand: (writeback
+      register: (register))
+    operand: (register_list
+      element: (register)))
+  (instruction
+    mnemonic: (mnemonic)
+    operand: (register)
+    operand: (register_list
+      element: (register_range
+        start: (register)
+        end: (register))))
+  (instruction
+    mnemonic: (mnemonic)
+    operand: (register)
+    operand: (register_list
+      element: (register)))
+  (instruction
+    mnemonic: (mnemonic)
+    operand: (register_list
+      element: (register_range
+        start: (register)
+        end: (register))))
+  (instruction
+    mnemonic: (mnemonic)
+    operand: (register_list
+      element: (indexed_register
+        register: (register))
+      element: (indexed_register
+        register: (register)))
+    operand: (memory_operand
+      operand: (register)))
+  (instruction
+    mnemonic: (mnemonic)
+    operand: (register_list
+      element: (indexed_register
+        register: (register)
+        index: (integer)))
+    operand: (memory_operand
+      operand: (register)))
+  (instruction
+    mnemonic: (mnemonic)
+    operand: (writeback
+      register: (register))
+    operand: (register_list
+      element: (register_range
+        start: (register)
+        end: (register)))))
+
+================================================================================
+Shifts by a register and rrx
+================================================================================
+
+mov r0, r1, lsl r2
+mov r0, r1, rrx
+mov r0, r1, asl #2
+add r0, r1, r2, ror r3
+
+--------------------------------------------------------------------------------
+
+(source_file
+  (instruction
+    mnemonic: (mnemonic)
+    operand: (register)
+    operand: (register)
+    operand: (shift
+      operator: (shift_operator)
+      amount: (register)))
+  (instruction
+    mnemonic: (mnemonic)
+    operand: (register)
+    operand: (register)
+    operand: (shift
+      operator: (shift_operator)))
+  (instruction
+    mnemonic: (mnemonic)
+    operand: (register)
+    operand: (register)
+    operand: (shift
+      operator: (shift_operator)
+      amount: (immediate
+        value: (integer))))
+  (instruction
+    mnemonic: (mnemonic)
+    operand: (register)
+    operand: (register)
+    operand: (register)
+    operand: (shift
+      operator: (shift_operator)
+      amount: (register))))
+
+================================================================================
+MVE operands
+================================================================================
+
+vldrw.u32 q0, [r0, #4]!
+vldrb.u8 q0, [r0, q1]
+vldrw.u32 q0, [q1, #4]
+vldrw.u32 q0, [r0, q1, uxtw #2]
+vld20.32 {q0, q1}, [r0]
+
+--------------------------------------------------------------------------------
+
+(source_file
+  (instruction
+    mnemonic: (mnemonic)
+    operand: (register)
+    operand: (memory_operand
+      operand: (register)
+      operand: (immediate
+        value: (integer))))
+  (instruction
+    mnemonic: (mnemonic)
+    operand: (register)
+    operand: (memory_operand
+      operand: (register)
+      operand: (register)))
+  (instruction
+    mnemonic: (mnemonic)
+    operand: (register)
+    operand: (memory_operand
+      operand: (register)
+      operand: (immediate
+        value: (integer))))
+  (instruction
+    mnemonic: (mnemonic)
+    operand: (register)
+    operand: (memory_operand
+      operand: (register)
+      operand: (register)
+      operand: (shift
+        operator: (shift_operator)
+        amount: (immediate
+          value: (integer)))))
+  (instruction
+    mnemonic: (mnemonic)
+    operand: (register_list
+      element: (register)
+      element: (register))
+    operand: (memory_operand
+      operand: (register))))
+
+================================================================================
+Relocation specifiers of GNU as
+================================================================================
+
+add x0, x0, :lo12:sym
+adrp x0, :got:sym
+ldr x0, [x0, :got_lo12:sym]
+add x0, x0, #:tprel_lo12_nc:var
+movz x0, #:abs_g1:sym + 4
+add x0, x0, : lo12 : sym
+add x0, x0, :LO12:sym
+movw r0, #:lower16:sym
+movt r0, #:upper16:sym
+
+--------------------------------------------------------------------------------
+
+(source_file
+  (instruction
+    mnemonic: (mnemonic)
+    operand: (register)
+    operand: (register)
+    operand: (relocation
+      specifier: (identifier)
+      value: (identifier)))
+  (instruction
+    mnemonic: (mnemonic)
+    operand: (register)
+    operand: (relocation
+      specifier: (identifier)
+      value: (identifier)))
+  (instruction
+    mnemonic: (mnemonic)
+    operand: (register)
+    operand: (memory_operand
+      operand: (register)
+      operand: (relocation
+        specifier: (identifier)
+        value: (identifier))))
+  (instruction
+    mnemonic: (mnemonic)
+    operand: (register)
+    operand: (register)
+    operand: (immediate
+      value: (relocation
+        specifier: (identifier)
+        value: (identifier))))
+  (instruction
+    mnemonic: (mnemonic)
+    operand: (register)
+    operand: (immediate
+      value: (relocation
+        specifier: (identifier)
+        value: (binary_expression
+          left: (identifier)
+          right: (integer)))))
+  (instruction
+    mnemonic: (mnemonic)
+    operand: (register)
+    operand: (register)
+    operand: (relocation
+      specifier: (identifier)
+      value: (identifier)))
+  (instruction
+    mnemonic: (mnemonic)
+    operand: (register)
+    operand: (register)
+    operand: (relocation
+      specifier: (identifier)
+      value: (identifier)))
+  (instruction
+    mnemonic: (mnemonic)
+    operand: (register)
+    operand: (immediate
+      value: (relocation
+        specifier: (identifier)
+        value: (identifier))))
+  (instruction
+    mnemonic: (mnemonic)
+    operand: (register)
+    operand: (immediate
+      value: (relocation
+        specifier: (identifier)
+        value: (identifier)))))
+
+================================================================================
+AArch32 role words with conditions and width suffixes
+================================================================================
+
+beq label
+BNE label
+bleq r0
+b.w r1
+bne.n x0
+blx r0
+pld r0
+adr r0, r1
+adreq.w r0, lt
+adrl r0, r1
+ldreq r0, r1
+ldreqb r0, r1
+ldrb.w r0, r1
+vldr d0, r1
+ldrd r0, r1, r2
+ldrd r0, r2
+ldrd r0, [r1]
+cbz.n r0, r1
+le lr, r1
+le r1
+le lr
+letp lr, r1
+wls lr, r0, r1
+wlstp.32 lr, r0, r1
+bf r0, r1
+bfx r0, r1
+
+--------------------------------------------------------------------------------
+
+(source_file
+  (instruction
+    mnemonic: (mnemonic)
+    operand: (identifier))
+  (instruction
+    mnemonic: (mnemonic)
+    operand: (identifier))
+  (instruction
+    mnemonic: (mnemonic)
+    operand: (identifier))
+  (instruction
+    mnemonic: (mnemonic)
+    operand: (identifier))
+  (instruction
+    mnemonic: (mnemonic)
+    operand: (identifier))
+  (instruction
+    mnemonic: (mnemonic)
+    operand: (register))
+  (instruction
+    mnemonic: (mnemonic)
+    operand: (identifier))
+  (instruction
+    mnemonic: (mnemonic)
+    operand: (register)
+    operand: (identifier))
+  (instruction
+    mnemonic: (mnemonic)
+    operand: (register)
+    operand: (identifier))
+  (instruction
+    mnemonic: (mnemonic)
+    operand: (register)
+    operand: (identifier))
+  (instruction
+    mnemonic: (mnemonic)
+    operand: (register)
+    operand: (identifier))
+  (instruction
+    mnemonic: (mnemonic)
+    operand: (register)
+    operand: (identifier))
+  (instruction
+    mnemonic: (mnemonic)
+    operand: (register)
+    operand: (identifier))
+  (instruction
+    mnemonic: (mnemonic)
+    operand: (register)
+    operand: (identifier))
+  (instruction
+    mnemonic: (mnemonic)
+    operand: (register)
+    operand: (register)
+    operand: (identifier))
+  (instruction
+    mnemonic: (mnemonic)
+    operand: (register)
+    operand: (identifier))
+  (instruction
+    mnemonic: (mnemonic)
+    operand: (register)
+    operand: (memory_operand
+      operand: (register)))
+  (instruction
+    mnemonic: (mnemonic)
+    operand: (register)
+    operand: (identifier))
+  (instruction
+    mnemonic: (mnemonic)
+    operand: (register)
+    operand: (identifier))
+  (instruction
+    mnemonic: (mnemonic)
+    operand: (identifier))
+  (instruction
+    mnemonic: (mnemonic)
+    operand: (identifier))
+  (instruction
+    mnemonic: (mnemonic)
+    operand: (register)
+    operand: (identifier))
+  (instruction
+    mnemonic: (mnemonic)
+    operand: (register)
+    operand: (register)
+    operand: (identifier))
+  (instruction
+    mnemonic: (mnemonic)
+    operand: (register)
+    operand: (register)
+    operand: (identifier))
+  (instruction
+    mnemonic: (mnemonic)
+    operand: (identifier)
+    operand: (identifier))
+  (instruction
+    mnemonic: (mnemonic)
+    operand: (identifier)
+    operand: (register)))
+
+================================================================================
+AArch32 condition slots
+================================================================================
+
+it le
+ite eq
+itttt ne
+vpt.s32 ge, q0, q1
+vcmp.f32 lt, q0, q1
+csel r0, r1, r2, le
+
+--------------------------------------------------------------------------------
+
+(source_file
+  (instruction
+    mnemonic: (mnemonic)
+    operand: (condition))
+  (instruction
+    mnemonic: (mnemonic)
+    operand: (condition))
+  (instruction
+    mnemonic: (mnemonic)
+    operand: (condition))
+  (instruction
+    mnemonic: (mnemonic)
+    operand: (condition)
+    operand: (register)
+    operand: (register))
+  (instruction
+    mnemonic: (mnemonic)
+    operand: (condition)
+    operand: (register)
+    operand: (register))
+  (instruction
+    mnemonic: (mnemonic)
+    operand: (register)
+    operand: (register)
+    operand: (register)
+    operand: (condition)))
+
+================================================================================
+Unwind directives read register lists and registers
+================================================================================
+
+.fnstart
+.save {r4-r7, lr}
+.vsave {d8-d15}
+.setfp fp, sp, #8
+.movsp ip
+.pad #8
+.fnend
+.seh_save_regp x19, 16
+.seh_save_freg d8, 24
+
+--------------------------------------------------------------------------------
+
+(source_file
+  (directive
+    name: (directive_name))
+  (directive
+    name: (directive_name)
+    argument: (register_list
+      element: (register_range
+        start: (register)
+        end: (register))
+      element: (register)))
+  (directive
+    name: (directive_name)
+    argument: (register_list
+      element: (register_range
+        start: (register)
+        end: (register))))
+  (directive
+    name: (directive_name)
+    argument: (register)
+    argument: (register)
+    argument: (immediate
+      value: (integer)))
+  (directive
+    name: (directive_name)
+    argument: (register))
+  (directive
+    name: (directive_name)
+    argument: (immediate
+      value: (integer)))
+  (directive
+    name: (directive_name))
+  (directive
+    name: (directive_name)
+    argument: (register)
+    argument: (integer))
+  (directive
+    name: (directive_name)
+    argument: (register)
+    argument: (integer)))
+
+================================================================================
+Relocation suffixes of AArch32 assembly
+================================================================================
+
+.word sym(GOT)
+.word sym (GOTOFF)
+.word sym(got_prel) + 4
+.word sym + 4(TARGET1)
+.long a, b(TPOFF)
+bl sym(PLT)
+bl sym (PLT)
+ldr r0, =sym(TLSGD)
+.irp r a (b)
+.endr
+
+--------------------------------------------------------------------------------
+
+(source_file
+  (directive
+    name: (directive_name)
+    argument: (relocation
+      value: (identifier)
+      specifier: (identifier)))
+  (directive
+    name: (directive_name)
+    argument: (relocation
+      value: (identifier)
+      specifier: (identifier)))
+  (directive
+    name: (directive_name)
+    argument: (binary_expression
+      left: (relocation
+        value: (identifier)
+        specifier: (identifier))
+      right: (integer)))
+  (directive
+    name: (directive_name)
+    argument: (relocation
+      value: (binary_expression
+        left: (identifier)
+        right: (integer))
+      specifier: (identifier)))
+  (directive
+    name: (directive_name)
+    argument: (identifier)
+    argument: (relocation
+      value: (identifier)
+      specifier: (identifier)))
+  (instruction
+    mnemonic: (mnemonic)
+    operand: (relocation
+      value: (identifier)
+      specifier: (identifier)))
+  (instruction
+    mnemonic: (mnemonic)
+    operand: (relocation
+      value: (identifier)
+      specifier: (identifier)))
+  (instruction
+    mnemonic: (mnemonic)
+    operand: (register)
+    operand: (literal_pool
+      value: (relocation
+        value: (identifier)
+        specifier: (identifier))))
+  (repeat_block
+    parameter: (identifier)
+    value: (identifier)
+    value: (parenthesized_expression
+      (identifier))
+    body: (body)))
+
+================================================================================
+NEON register aliases of GNU as, in lower case, with types and lanes
+================================================================================
+
+sum .dn d4.f32
+pair .qn q2.s16
+lane .dn d5.f32[1]
+sum .DN d0
+
+--------------------------------------------------------------------------------
+
+(source_file
+  (register_alias
+    name: (identifier)
+    directive: (directive_name)
+    register: (register))
+  (register_alias
+    name: (identifier)
+    directive: (directive_name)
+    register: (register))
+  (register_alias
+    name: (identifier)
+    directive: (directive_name)
+    register: (indexed_register
+      register: (register)
+      index: (integer)))
+  (instruction
+    mnemonic: (mnemonic)
+    operand: (identifier)
+    operand: (register)))
+
+================================================================================
+Registers with a NEON type in GNU as
+================================================================================
+
+vadd d0.f32, d1.F32, d2.f32
+vmov r0, d0.u32[1]
+vmov.32 r0, d0.32[1]
+vld1 {d0.u8-d1.u8}, [r0]
+vdot d0.bf16, d1.bf16, d2.bf16
+mov r1.i32, r2
+vadd d0.x32, d1, d2
+
+--------------------------------------------------------------------------------
+
+(source_file
+  (instruction
+    mnemonic: (mnemonic)
+    operand: (register)
+    operand: (register)
+    operand: (register))
+  (instruction
+    mnemonic: (mnemonic)
+    operand: (register)
+    operand: (indexed_register
+      register: (register)
+      index: (integer)))
+  (instruction
+    mnemonic: (mnemonic)
+    operand: (register)
+    operand: (indexed_register
+      register: (register)
+      index: (integer)))
+  (instruction
+    mnemonic: (mnemonic)
+    operand: (register_list
+      element: (register_range
+        start: (register)
+        end: (register)))
+    operand: (memory_operand
+      operand: (register)))
+  (instruction
+    mnemonic: (mnemonic)
+    operand: (register)
+    operand: (register)
+    operand: (register))
+  (instruction
+    mnemonic: (mnemonic)
+    operand: (register)
+    operand: (register))
+  (instruction
+    mnemonic: (mnemonic)
+    operand: (identifier)
+    operand: (register)
+    operand: (register)))
+
+================================================================================
+VPT blocks with masks and branch future with a condition
+================================================================================
+
+vptt.s32 ge, q0, q1
+VPTTET.S32 GE, q0, q1
+vpst
+bfcsel 1f, r2, 3f, eq
+
+--------------------------------------------------------------------------------
+
+(source_file
+  (instruction
+    mnemonic: (mnemonic)
+    operand: (condition)
+    operand: (register)
+    operand: (register))
+  (instruction
+    mnemonic: (mnemonic)
+    operand: (condition)
+    operand: (register)
+    operand: (register))
+  (instruction
+    mnemonic: (mnemonic))
+  (instruction
+    mnemonic: (mnemonic)
+    operand: (numeric_label)
+    operand: (identifier)
+    operand: (numeric_label)
+    operand: (condition)))

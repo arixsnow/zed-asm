@@ -16,6 +16,124 @@ A macro argument as an ARM immediate
     body: (body
       (instruction
         mnemonic: (mnemonic)
-        operand: (identifier)
+        operand: (register)
         operand: (immediate
           value: (macro_argument))))))
+
+================================================================================
+A role mnemonic glued to a macro argument is one mnemonic
+================================================================================
+
+.macro jump cond, size
+    b\cond 1f
+    ldr\size x0, [x1]
+    csel\()\size x0, x1, x2, eq
+    b \cond
+1:
+.endm
+
+--------------------------------------------------------------------------------
+
+(source_file
+  (macro_definition
+    name: (identifier)
+    parameter: (parameter
+      name: (identifier))
+    parameter: (parameter
+      name: (identifier))
+    body: (body
+      (instruction
+        mnemonic: (concatenation
+          (identifier)
+          (macro_argument))
+        operand: (numeric_label))
+      (instruction
+        mnemonic: (concatenation
+          (identifier)
+          (macro_argument))
+        operand: (register)
+        operand: (memory_operand
+          operand: (register)))
+      (instruction
+        mnemonic: (concatenation
+          (identifier)
+          (macro_argument))
+        operand: (register)
+        operand: (register)
+        operand: (register)
+        operand: (identifier))
+      (instruction
+        mnemonic: (mnemonic)
+        operand: (macro_argument))
+      (label
+        name: (numeric_label)))))
+
+================================================================================
+A macro argument may stand where only a register may
+================================================================================
+
+.macro copy a, b, base
+    ld1 {\a\().16b, \b\().16b}, [\base], #32
+    ld1 {\a\().16b - \b\().16b}, [\base]
+    st1 {\a}, [x0]
+    ins \a\().s[1], w0
+    ldm \base!, {\a}
+.endm
+
+--------------------------------------------------------------------------------
+
+(source_file
+  (macro_definition
+    name: (identifier)
+    parameter: (parameter
+      name: (identifier))
+    parameter: (parameter
+      name: (identifier))
+    parameter: (parameter
+      name: (identifier))
+    body: (body
+      (instruction
+        mnemonic: (mnemonic)
+        operand: (register_list
+          element: (concatenation
+            (macro_argument)
+            (identifier))
+          element: (concatenation
+            (macro_argument)
+            (identifier)))
+        operand: (memory_operand
+          operand: (macro_argument))
+        operand: (immediate
+          value: (integer)))
+      (instruction
+        mnemonic: (mnemonic)
+        operand: (register_list
+          element: (register_range
+            start: (concatenation
+              (macro_argument)
+              (identifier))
+            end: (concatenation
+              (macro_argument)
+              (identifier))))
+        operand: (memory_operand
+          operand: (macro_argument)))
+      (instruction
+        mnemonic: (mnemonic)
+        operand: (register_list
+          element: (macro_argument))
+        operand: (memory_operand
+          operand: (register)))
+      (instruction
+        mnemonic: (mnemonic)
+        operand: (indexed_register
+          register: (concatenation
+            (macro_argument)
+            (identifier))
+          index: (integer))
+        operand: (register))
+      (instruction
+        mnemonic: (mnemonic)
+        operand: (writeback
+          register: (macro_argument))
+        operand: (register_list
+          element: (macro_argument))))))

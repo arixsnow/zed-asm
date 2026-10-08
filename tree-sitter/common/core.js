@@ -37,11 +37,11 @@ function operandList($, name) {
 
 function instructionOperands($) {
   return seq(
-    field('operand', $._operand),
+    field('operand', $._instruction_operand),
     repeat(
       choice(
-        seq(',', choice(field('operand', $._operand), $._missing_operand)),
-        seq($._blank, field('operand', $._operand)),
+        seq(',', choice(field('operand', $._instruction_operand), $._missing_operand)),
+        seq($._blank, field('operand', $._instruction_operand)),
       ),
     ),
   );
@@ -57,12 +57,6 @@ module.exports = (ctx) => ({
     _newline: () => /\r?\n/,
 
     _global_label: ($) => seq(field('name', alias($._global_label_name, $.identifier)), ':'),
-
-    instruction: ($) =>
-      seq(
-        field('mnemonic', $._mnemonic),
-        optional(instructionOperands($)),
-      ),
 
     identifier: () => ctx.lexical.identifier,
     _dot_identifier: () => ctx.lexical.dotIdentifier,
@@ -89,6 +83,9 @@ module.exports = (ctx) => ({
     parenthesized_expression: ($) => seq('(', $._expression, choice(')', $._unclosed)),
   },
   choices: {
+    instruction: [
+      ($) => seq(field('mnemonic', $._mnemonic), optional(instructionOperands($))),
+    ],
     _item: [
       ($) => alias($._local_label, $.label),
       ($) => $._newline,
@@ -102,6 +99,7 @@ module.exports = (ctx) => ({
     ],
     _symbol: [($) => $.identifier],
     _statement: [($) => $.instruction],
+    _instruction_operand: [($) => $._operand],
     _operand: [($) => $._value],
     _value: [($) => $._expression],
     _expression: [

@@ -1,0 +1,171 @@
+================================================================================
+AArch32 registers and GNU aliases are symbols in Apple assembly
+================================================================================
+
+mov x0, r0
+mov x0, ip0
+mov x0, cpsr
+
+--------------------------------------------------------------------------------
+
+(source_file
+  (instruction
+    mnemonic: (mnemonic)
+    operand: (register)
+    operand: (identifier))
+  (instruction
+    mnemonic: (mnemonic)
+    operand: (register)
+    operand: (identifier))
+  (instruction
+    mnemonic: (mnemonic)
+    operand: (register)
+    operand: (identifier)))
+
+================================================================================
+L names are local in operands, except register, condition, shift and role words
+================================================================================
+
+mov x0, LR
+csel x0, x1, x2, LT
+adrp x0, Ltmp0@PAGE
+add x0, x0, Ltmp0@PAGEOFF
+ldr x0, [x0, Ltmp1@PAGEOFF]
+b Lfoo
+b LDR
+b L
+.quad Ltmp0 - Lfunc_begin0
+Lskip = 4
+
+--------------------------------------------------------------------------------
+
+(source_file
+  (instruction
+    mnemonic: (mnemonic)
+    operand: (register)
+    operand: (register))
+  (instruction
+    mnemonic: (mnemonic)
+    operand: (register)
+    operand: (register)
+    operand: (register)
+    operand: (condition))
+  (instruction
+    mnemonic: (mnemonic)
+    operand: (register)
+    operand: (relocation
+      symbol: (local_identifier)
+      specifier: (identifier)))
+  (instruction
+    mnemonic: (mnemonic)
+    operand: (register)
+    operand: (register)
+    operand: (relocation
+      symbol: (local_identifier)
+      specifier: (identifier)))
+  (instruction
+    mnemonic: (mnemonic)
+    operand: (register)
+    operand: (memory_operand
+      operand: (register)
+      operand: (relocation
+        symbol: (local_identifier)
+        specifier: (identifier))))
+  (instruction
+    mnemonic: (mnemonic)
+    operand: (local_identifier))
+  (instruction
+    mnemonic: (mnemonic)
+    operand: (identifier))
+  (instruction
+    mnemonic: (mnemonic)
+    operand: (local_identifier))
+  (directive
+    name: (directive_name)
+    argument: (binary_expression
+      left: (local_identifier)
+      right: (local_identifier)))
+  (assignment
+    name: (local_identifier)
+    value: (integer)))
+
+================================================================================
+Linker optimization hints
+================================================================================
+
+.loh AdrpAdd Lloh0, Lloh1
+.loh AdrpLdrGotLdr Lloh2, Lloh3, Lloh4
+.loh 1 Lloh5, Lloh6
+
+--------------------------------------------------------------------------------
+
+(source_file
+  (directive
+    name: (directive_name)
+    argument: (identifier)
+    argument: (local_identifier)
+    argument: (local_identifier))
+  (directive
+    name: (directive_name)
+    argument: (identifier)
+    argument: (local_identifier)
+    argument: (local_identifier)
+    argument: (local_identifier))
+  (directive
+    name: (directive_name)
+    argument: (integer)
+    argument: (local_identifier)
+    argument: (local_identifier)))
+
+================================================================================
+Upper-case mnemonics that start with L are mnemonics
+================================================================================
+
+LDP x0, x1, [sp]
+LDR x0, x1
+LD1 {v0.16b}, [x0]
+LSL x0, x1, #2
+Lmacro x0
+
+--------------------------------------------------------------------------------
+
+(source_file
+  (instruction
+    mnemonic: (mnemonic)
+    operand: (register)
+    operand: (register)
+    operand: (memory_operand
+      operand: (register)))
+  (instruction
+    mnemonic: (mnemonic)
+    operand: (register)
+    operand: (identifier))
+  (instruction
+    mnemonic: (mnemonic)
+    operand: (register_list
+      element: (register))
+    operand: (memory_operand
+      operand: (register)))
+  (instruction
+    mnemonic: (mnemonic)
+    operand: (register)
+    operand: (register)
+    operand: (immediate
+      value: (integer)))
+  (instruction
+    mnemonic: (mnemonic)
+    operand: (register)))
+
+================================================================================
+NEON alias words are not directives in Apple assembly
+================================================================================
+
+sum .dn d0
+
+--------------------------------------------------------------------------------
+
+(source_file
+  (instruction
+    mnemonic: (mnemonic)
+    operand: (identifier)
+    operand: (register)))

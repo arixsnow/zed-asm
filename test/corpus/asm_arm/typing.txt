@@ -11,7 +11,7 @@ nop
 (source_file
   (instruction
     mnemonic: (mnemonic)
-    operand: (identifier)
+    operand: (register)
     operand: (immediate))
   (directive
     name: (directive_name)

@@ -217,12 +217,6 @@ Deno.test('a line being typed in a fixture never changes how any other line pars
 });
 
 const UNSUPPORTED: [string, string[]][] = [
-  ['ldr x0, [x1, #8]', ['asm_auto', 'asm_arm', 'asm_arm_apple']],
-  ['stp x29, x30, [sp, #-16]!', ['asm_auto', 'asm_arm', 'asm_arm_apple']],
-  ['add x0, x0, #:lo12:sym', ['asm_auto', 'asm_arm']],
-  ['add x0, x0, :lo12:sym', ['asm_auto', 'asm_arm']],
-  ['ld1 {v0.16b}, [x0]', ['asm_auto', 'asm_arm', 'asm_arm_apple']],
-  ['ldr x1, [x0, _msg@PAGEOFF]', ['asm_arm_apple']],
   ['movq 8(%rsp), %rax', ['asm_auto', 'asm_x86_gas']],
   ['lea (%rax,%rbx,4), %rcx', ['asm_auto', 'asm_x86_gas']],
   ['jmp *%rax', ['asm_auto', 'asm_x86_gas']],
@@ -257,9 +251,8 @@ Deno.test('syntax the grammars do not parse yet keeps its errors on its own line
 });
 
 const STRAY_LABELS: [string, string[]][] = [
-  ['add x0, x0, :lo12:.LC0 // c', ['asm_auto', 'asm_arm', 'asm_arm_apple']],
-  ['ldr x1, [x0, :got_lo12:sym]', ['asm_auto', 'asm_arm', 'asm_arm_apple']],
-  ['movw r0, #:lower16:sym', ['asm_auto', 'asm_arm']],
+  ['add x0, x0, :lo12:.LC0 // c', ['asm_arm_apple']],
+  ['ldr x1, [x0, :got_lo12:sym]', ['asm_arm_apple']],
   ['movq %fs:sym@tpoff, %rax', ['asm_auto', 'asm_x86_gas']],
   ['mov rax, qword ptr fs:[0x28]', ['asm_auto', 'asm_x86_gas']],
   ['mov rax, [fs:0x28]', ['asm_x86_nasm']],
