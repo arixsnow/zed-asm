@@ -27,6 +27,7 @@ interface Tree {
 }
 
 const SPANNING_TYPES = new Set(['block_comment', 'preproc_line', 'preproc_define']);
+const SYNTAX_DIRECTIVE = /^\s*\.(?:intel|att)_syntax\b/i;
 const BLOCK_TYPES = new Set(['macro_definition', 'conditional', 'repeat_block']);
 const CLAUSE_TYPES = new Set(['elseif_clause', 'else_clause']);
 const CONTAINER_TYPES = new Set([
@@ -155,7 +156,11 @@ function typingFailures(grammar: string, label: string, text: string): string[] 
     ...typing.map((variant) => variant.source),
   ]);
   const failures: string[] = [];
+  const lines = text.split('\n');
   for (const [index, { row, typed }] of typing.entries()) {
+    if (SYNTAX_DIRECTIVE.test(lines[row])) {
+      continue;
+    }
     const touching = baseline.nodes.filter((node) => node.startRow <= row && row <= node.endRow);
     const first = Math.min(row, ...touching.map((node) => node.startRow));
     const last = Math.max(row, ...touching.map((node) => node.endRow));
@@ -217,9 +222,6 @@ Deno.test('a line being typed in a fixture never changes how any other line pars
 });
 
 const UNSUPPORTED: [string, string[]][] = [
-  ['movq 8(%rsp), %rax', ['asm_auto', 'asm_x86_gas']],
-  ['lea (%rax,%rbx,4), %rcx', ['asm_auto', 'asm_x86_gas']],
-  ['jmp *%rax', ['asm_auto', 'asm_x86_gas']],
   ['mov eax, dword ptr [rbx]', ['asm_auto', 'asm_x86_gas']],
   ['mov rax, [rbp-8]', ['asm_x86_nasm']],
   ['%define N 4', ['asm_x86_nasm']],
@@ -253,7 +255,6 @@ Deno.test('syntax the grammars do not parse yet keeps its errors on its own line
 const STRAY_LABELS: [string, string[]][] = [
   ['add x0, x0, :lo12:.LC0 // c', ['asm_arm_apple']],
   ['ldr x1, [x0, :got_lo12:sym]', ['asm_arm_apple']],
-  ['movq %fs:sym@tpoff, %rax', ['asm_auto', 'asm_x86_gas']],
   ['mov rax, qword ptr fs:[0x28]', ['asm_auto', 'asm_x86_gas']],
   ['mov rax, [fs:0x28]', ['asm_x86_nasm']],
   ['mov ax, es:[bx]', ['asm_x86_nasm']],

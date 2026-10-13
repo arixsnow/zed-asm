@@ -1,0 +1,36 @@
+================================================================================
+C macro calls with empty arguments
+================================================================================
+
+.word F(,1)
+.word F(1,)
+.word F(1,,2)
+.word F()
+
+--------------------------------------------------------------------------------
+
+(source_file
+  (directive
+    name: (directive_name)
+    argument: (macro_call
+      function: (identifier)
+      arguments: (argument_list
+        argument: (integer))))
+  (directive
+    name: (directive_name)
+    argument: (macro_call
+      function: (identifier)
+      arguments: (argument_list
+        argument: (integer))))
+  (directive
+    name: (directive_name)
+    argument: (macro_call
+      function: (identifier)
+      arguments: (argument_list
+        argument: (integer)
+        argument: (integer))))
+  (directive
+    name: (directive_name)
+    argument: (macro_call
+      function: (identifier)
+      arguments: (argument_list))))

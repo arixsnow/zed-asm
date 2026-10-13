@@ -16,6 +16,78 @@
     }
   },
   {
+    "type": "argument_list",
+    "named": true,
+    "fields": {
+      "argument": {
+        "multiple": true,
+        "required": false,
+        "types": [
+          {
+            "type": "binary_expression",
+            "named": true
+          },
+          {
+            "type": "char",
+            "named": true
+          },
+          {
+            "type": "concatenation",
+            "named": true
+          },
+          {
+            "type": "float",
+            "named": true
+          },
+          {
+            "type": "identifier",
+            "named": true
+          },
+          {
+            "type": "integer",
+            "named": true
+          },
+          {
+            "type": "local_identifier",
+            "named": true
+          },
+          {
+            "type": "location_counter",
+            "named": true
+          },
+          {
+            "type": "macro_argument",
+            "named": true
+          },
+          {
+            "type": "macro_call",
+            "named": true
+          },
+          {
+            "type": "numeric_label",
+            "named": true
+          },
+          {
+            "type": "parenthesized_expression",
+            "named": true
+          },
+          {
+            "type": "relocation",
+            "named": true
+          },
+          {
+            "type": "string",
+            "named": true
+          },
+          {
+            "type": "unary_expression",
+            "named": true
+          }
+        ]
+      }
+    }
+  },
+  {
     "type": "assignment",
     "named": true,
     "fields": {
@@ -75,6 +147,10 @@
           },
           {
             "type": "macro_argument",
+            "named": true
+          },
+          {
+            "type": "macro_call",
             "named": true
           },
           {
@@ -142,6 +218,10 @@
             "named": true
           },
           {
+            "type": "macro_call",
+            "named": true
+          },
+          {
             "type": "numeric_label",
             "named": true
           },
@@ -164,7 +244,15 @@
         "required": true,
         "types": [
           {
+            "type": "!",
+            "named": false
+          },
+          {
             "type": "!=",
+            "named": false
+          },
+          {
+            "type": "%",
             "named": false
           },
           {
@@ -275,6 +363,10 @@
           },
           {
             "type": "macro_argument",
+            "named": true
+          },
+          {
+            "type": "macro_call",
             "named": true
           },
           {
@@ -442,6 +534,10 @@
             "named": true
           },
           {
+            "type": "macro_call",
+            "named": true
+          },
+          {
             "type": "numeric_label",
             "named": true
           },
@@ -533,6 +629,10 @@
           },
           {
             "type": "macro_argument",
+            "named": true
+          },
+          {
+            "type": "macro_call",
             "named": true
           },
           {
@@ -668,6 +768,10 @@
             "named": true
           },
           {
+            "type": "macro_call",
+            "named": true
+          },
+          {
             "type": "numeric_label",
             "named": true
           },
@@ -693,6 +797,21 @@
           }
         ]
       }
+    }
+  },
+  {
+    "type": "identifier",
+    "named": true,
+    "fields": {},
+    "children": {
+      "multiple": true,
+      "required": false,
+      "types": [
+        {
+          "type": "escape_sequence",
+          "named": true
+        }
+      ]
     }
   },
   {
@@ -737,6 +856,10 @@
           },
           {
             "type": "macro_argument",
+            "named": true
+          },
+          {
+            "type": "macro_call",
             "named": true
           },
           {
@@ -804,6 +927,10 @@
             "named": true
           },
           {
+            "type": "macro_call",
+            "named": true
+          },
+          {
             "type": "numeric_label",
             "named": true
           },
@@ -859,6 +986,10 @@
           },
           {
             "type": "macro_argument",
+            "named": true
+          },
+          {
+            "type": "macro_call",
             "named": true
           },
           {
@@ -927,6 +1058,10 @@
           },
           {
             "type": "macro_argument",
+            "named": true
+          },
+          {
+            "type": "macro_call",
             "named": true
           },
           {
@@ -1002,6 +1137,10 @@
         "required": false,
         "types": [
           {
+            "type": "argument_list",
+            "named": true
+          },
+          {
             "type": "binary_expression",
             "named": true
           },
@@ -1055,6 +1194,10 @@
           },
           {
             "type": "macro_argument",
+            "named": true
+          },
+          {
+            "type": "macro_call",
             "named": true
           },
           {
@@ -1172,6 +1315,10 @@
             "named": true
           },
           {
+            "type": "macro_call",
+            "named": true
+          },
+          {
             "type": "numeric_label",
             "named": true
           },
@@ -1221,6 +1368,10 @@
           },
           {
             "type": "macro_argument",
+            "named": true
+          },
+          {
+            "type": "macro_call",
             "named": true
           },
           {
@@ -1338,6 +1489,10 @@
             "named": true
           },
           {
+            "type": "macro_call",
+            "named": true
+          },
+          {
             "type": "numeric_label",
             "named": true
           },
@@ -1351,6 +1506,32 @@
           },
           {
             "type": "unary_expression",
+            "named": true
+          }
+        ]
+      }
+    }
+  },
+  {
+    "type": "macro_call",
+    "named": true,
+    "fields": {
+      "arguments": {
+        "multiple": false,
+        "required": true,
+        "types": [
+          {
+            "type": "argument_list",
+            "named": true
+          }
+        ]
+      },
+      "function": {
+        "multiple": false,
+        "required": true,
+        "types": [
+          {
+            "type": "identifier",
             "named": true
           }
         ]
@@ -1464,6 +1645,10 @@
             "named": true
           },
           {
+            "type": "macro_call",
+            "named": true
+          },
+          {
             "type": "numeric_label",
             "named": true
           },
@@ -1541,6 +1726,10 @@
           },
           {
             "type": "macro_argument",
+            "named": true
+          },
+          {
+            "type": "macro_call",
             "named": true
           },
           {
@@ -1633,6 +1822,10 @@
         },
         {
           "type": "macro_argument",
+          "named": true
+        },
+        {
+          "type": "macro_call",
           "named": true
         },
         {
@@ -1932,6 +2125,10 @@
             "named": true
           },
           {
+            "type": "macro_call",
+            "named": true
+          },
+          {
             "type": "numeric_label",
             "named": true
           },
@@ -2070,6 +2267,10 @@
             "named": true
           },
           {
+            "type": "macro_call",
+            "named": true
+          },
+          {
             "type": "numeric_label",
             "named": true
           },
@@ -2148,6 +2349,10 @@
             "named": true
           },
           {
+            "type": "macro_call",
+            "named": true
+          },
+          {
             "type": "numeric_label",
             "named": true
           },
@@ -2217,6 +2422,10 @@
           },
           {
             "type": "macro_argument",
+            "named": true
+          },
+          {
+            "type": "macro_call",
             "named": true
           },
           {
@@ -2293,6 +2502,10 @@
           },
           {
             "type": "macro_argument",
+            "named": true
+          },
+          {
+            "type": "macro_call",
             "named": true
           },
           {
@@ -2480,6 +2693,10 @@
             "named": true
           },
           {
+            "type": "macro_call",
+            "named": true
+          },
+          {
             "type": "numeric_label",
             "named": true
           },
@@ -2618,6 +2835,10 @@
   },
   {
     "type": "#",
+    "named": false
+  },
+  {
+    "type": "%",
     "named": false
   },
   {
@@ -2783,10 +3004,6 @@
   },
   {
     "type": "float",
-    "named": true
-  },
-  {
-    "type": "identifier",
     "named": true
   },
   {

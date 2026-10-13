@@ -1,0 +1,145 @@
+================================================================================
+C macro calls in x86 operands, and memory operands that look like calls
+================================================================================
+
+L(start):
+    jmp L(less_vec)
+    vmovdqu VMM(0), (%rdi)
+    movq PER_CPU_VAR(pcpu_hot + 8), %rax
+    movq $FOO(1), %rax
+    movq sym(%rip), %rax
+    movq FOO(1)(%rax), %rbx
+    movq FOO(%rax), %rbx
+
+--------------------------------------------------------------------------------
+
+(source_file
+  (label
+    name: (macro_call
+      function: (identifier)
+      arguments: (argument_list
+        argument: (identifier))))
+  (instruction
+    mnemonic: (mnemonic)
+    operand: (macro_call
+      function: (identifier)
+      arguments: (argument_list
+        argument: (identifier))))
+  (instruction
+    mnemonic: (mnemonic)
+    operand: (macro_call
+      function: (identifier)
+      arguments: (argument_list
+        argument: (integer)))
+    operand: (memory_operand
+      base: (register)))
+  (instruction
+    mnemonic: (mnemonic)
+    operand: (macro_call
+      function: (identifier)
+      arguments: (argument_list
+        argument: (binary_expression
+          left: (identifier)
+          right: (integer))))
+    operand: (register))
+  (instruction
+    mnemonic: (mnemonic)
+    operand: (immediate
+      value: (macro_call
+        function: (identifier)
+        arguments: (argument_list
+          argument: (integer))))
+    operand: (register))
+  (instruction
+    mnemonic: (mnemonic)
+    operand: (memory_operand
+      displacement: (identifier)
+      base: (register))
+    operand: (register))
+  (instruction
+    mnemonic: (mnemonic)
+    operand: (memory_operand
+      displacement: (macro_call
+        function: (identifier)
+        arguments: (argument_list
+          argument: (integer)))
+      base: (register))
+    operand: (register))
+  (instruction
+    mnemonic: (mnemonic)
+    operand: (memory_operand
+      displacement: (identifier)
+      base: (register))
+    operand: (register)))
+
+================================================================================
+C macro calls in Intel operands
+================================================================================
+
+.intel_syntax noprefix
+    call HIDDEN_JUMPTARGET(f)
+    mov rax, qword ptr PER_CPU_VAR(x)
+
+--------------------------------------------------------------------------------
+
+(source_file
+  (directive
+    name: (directive_name)
+    argument: (identifier))
+  (instruction
+    mnemonic: (mnemonic)
+    operand: (macro_call
+      function: (identifier)
+      arguments: (argument_list
+        argument: (identifier))))
+  (instruction
+    mnemonic: (mnemonic)
+    operand: (register)
+    operand: (typed_operand
+      type: (operand_type)
+      operand: (macro_call
+        function: (identifier)
+        arguments: (argument_list
+          argument: (identifier))))))
+
+================================================================================
+Registers and immediates as macro defaults and keyword arguments
+================================================================================
+
+.macro PUSH_REGS rdx=%rdx, rax=$-ENOSYS
+.endm
+    PUSH_AND_CLEAR_REGS rdx=%rdx rcx=%rcx rax=$-ENOSYS
+    m a $1
+
+--------------------------------------------------------------------------------
+
+(source_file
+  (macro_definition
+    name: (identifier)
+    parameter: (parameter
+      name: (identifier)
+      default: (register))
+    parameter: (parameter
+      name: (identifier)
+      default: (immediate
+        value: (unary_expression
+          argument: (identifier))))
+    body: (body))
+  (instruction
+    mnemonic: (mnemonic)
+    operand: (keyword_argument
+      name: (identifier)
+      value: (register))
+    operand: (keyword_argument
+      name: (identifier)
+      value: (register))
+    operand: (keyword_argument
+      name: (identifier)
+      value: (immediate
+        value: (unary_expression
+          argument: (identifier)))))
+  (instruction
+    mnemonic: (mnemonic)
+    operand: (identifier)
+    operand: (immediate
+      value: (integer))))

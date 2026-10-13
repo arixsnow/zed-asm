@@ -16,6 +16,94 @@
     }
   },
   {
+    "type": "argument_list",
+    "named": true,
+    "fields": {
+      "argument": {
+        "multiple": true,
+        "required": false,
+        "types": [
+          {
+            "type": "binary_expression",
+            "named": true
+          },
+          {
+            "type": "char",
+            "named": true
+          },
+          {
+            "type": "concatenation",
+            "named": true
+          },
+          {
+            "type": "float",
+            "named": true
+          },
+          {
+            "type": "identifier",
+            "named": true
+          },
+          {
+            "type": "integer",
+            "named": true
+          },
+          {
+            "type": "local_identifier",
+            "named": true
+          },
+          {
+            "type": "location_counter",
+            "named": true
+          },
+          {
+            "type": "macro_argument",
+            "named": true
+          },
+          {
+            "type": "macro_call",
+            "named": true
+          },
+          {
+            "type": "memory_operand",
+            "named": true
+          },
+          {
+            "type": "numeric_label",
+            "named": true
+          },
+          {
+            "type": "parenthesized_expression",
+            "named": true
+          },
+          {
+            "type": "register",
+            "named": true
+          },
+          {
+            "type": "relocation",
+            "named": true
+          },
+          {
+            "type": "segment_override",
+            "named": true
+          },
+          {
+            "type": "string",
+            "named": true
+          },
+          {
+            "type": "typed_operand",
+            "named": true
+          },
+          {
+            "type": "unary_expression",
+            "named": true
+          }
+        ]
+      }
+    }
+  },
+  {
     "type": "assignment",
     "named": true,
     "fields": {
@@ -75,6 +163,10 @@
           },
           {
             "type": "macro_argument",
+            "named": true
+          },
+          {
+            "type": "macro_call",
             "named": true
           },
           {
@@ -142,6 +234,14 @@
             "named": true
           },
           {
+            "type": "macro_call",
+            "named": true
+          },
+          {
+            "type": "memory_operand",
+            "named": true
+          },
+          {
             "type": "numeric_label",
             "named": true
           },
@@ -150,7 +250,19 @@
             "named": true
           },
           {
+            "type": "register",
+            "named": true
+          },
+          {
             "type": "relocation",
+            "named": true
+          },
+          {
+            "type": "segment_override",
+            "named": true
+          },
+          {
+            "type": "typed_operand",
             "named": true
           },
           {
@@ -164,7 +276,15 @@
         "required": true,
         "types": [
           {
+            "type": "!",
+            "named": false
+          },
+          {
             "type": "!=",
+            "named": false
+          },
+          {
+            "type": "%",
             "named": false
           },
           {
@@ -228,6 +348,10 @@
             "named": false
           },
           {
+            "type": "operator_word",
+            "named": true
+          },
+          {
             "type": "|",
             "named": false
           },
@@ -278,6 +402,14 @@
             "named": true
           },
           {
+            "type": "macro_call",
+            "named": true
+          },
+          {
+            "type": "memory_operand",
+            "named": true
+          },
+          {
             "type": "numeric_label",
             "named": true
           },
@@ -286,7 +418,19 @@
             "named": true
           },
           {
+            "type": "register",
+            "named": true
+          },
+          {
             "type": "relocation",
+            "named": true
+          },
+          {
+            "type": "segment_override",
+            "named": true
+          },
+          {
+            "type": "typed_operand",
             "named": true
           },
           {
@@ -371,6 +515,10 @@
         {
           "type": "macro_argument",
           "named": true
+        },
+        {
+          "type": "register",
+          "named": true
         }
       ]
     }
@@ -442,6 +590,10 @@
             "named": true
           },
           {
+            "type": "macro_call",
+            "named": true
+          },
+          {
             "type": "numeric_label",
             "named": true
           },
@@ -485,6 +637,100 @@
           "named": true
         }
       ]
+    }
+  },
+  {
+    "type": "decorated_operand",
+    "named": true,
+    "fields": {
+      "decorator": {
+        "multiple": true,
+        "required": true,
+        "types": [
+          {
+            "type": "decorator",
+            "named": true
+          }
+        ]
+      },
+      "operand": {
+        "multiple": false,
+        "required": false,
+        "types": [
+          {
+            "type": "binary_expression",
+            "named": true
+          },
+          {
+            "type": "char",
+            "named": true
+          },
+          {
+            "type": "concatenation",
+            "named": true
+          },
+          {
+            "type": "float",
+            "named": true
+          },
+          {
+            "type": "identifier",
+            "named": true
+          },
+          {
+            "type": "integer",
+            "named": true
+          },
+          {
+            "type": "local_identifier",
+            "named": true
+          },
+          {
+            "type": "location_counter",
+            "named": true
+          },
+          {
+            "type": "macro_argument",
+            "named": true
+          },
+          {
+            "type": "macro_call",
+            "named": true
+          },
+          {
+            "type": "memory_operand",
+            "named": true
+          },
+          {
+            "type": "numeric_label",
+            "named": true
+          },
+          {
+            "type": "parenthesized_expression",
+            "named": true
+          },
+          {
+            "type": "register",
+            "named": true
+          },
+          {
+            "type": "relocation",
+            "named": true
+          },
+          {
+            "type": "segment_override",
+            "named": true
+          },
+          {
+            "type": "typed_operand",
+            "named": true
+          },
+          {
+            "type": "unary_expression",
+            "named": true
+          }
+        ]
+      }
     }
   },
   {
@@ -537,6 +783,10 @@
           },
           {
             "type": "macro_argument",
+            "named": true
+          },
+          {
+            "type": "macro_call",
             "named": true
           },
           {
@@ -672,6 +922,10 @@
             "named": true
           },
           {
+            "type": "macro_call",
+            "named": true
+          },
+          {
             "type": "numeric_label",
             "named": true
           },
@@ -701,6 +955,21 @@
           }
         ]
       }
+    }
+  },
+  {
+    "type": "identifier",
+    "named": true,
+    "fields": {},
+    "children": {
+      "multiple": true,
+      "required": false,
+      "types": [
+        {
+          "type": "escape_sequence",
+          "named": true
+        }
+      ]
     }
   },
   {
@@ -745,6 +1014,10 @@
           },
           {
             "type": "macro_argument",
+            "named": true
+          },
+          {
+            "type": "macro_call",
             "named": true
           },
           {
@@ -812,6 +1085,10 @@
             "named": true
           },
           {
+            "type": "macro_call",
+            "named": true
+          },
+          {
             "type": "numeric_label",
             "named": true
           },
@@ -867,6 +1144,10 @@
           },
           {
             "type": "macro_argument",
+            "named": true
+          },
+          {
+            "type": "macro_call",
             "named": true
           },
           {
@@ -938,6 +1219,10 @@
             "named": true
           },
           {
+            "type": "macro_call",
+            "named": true
+          },
+          {
             "type": "numeric_label",
             "named": true
           },
@@ -984,12 +1269,88 @@
     }
   },
   {
+    "type": "indirect",
+    "named": true,
+    "fields": {
+      "operand": {
+        "multiple": false,
+        "required": false,
+        "types": [
+          {
+            "type": "binary_expression",
+            "named": true
+          },
+          {
+            "type": "char",
+            "named": true
+          },
+          {
+            "type": "concatenation",
+            "named": true
+          },
+          {
+            "type": "float",
+            "named": true
+          },
+          {
+            "type": "identifier",
+            "named": true
+          },
+          {
+            "type": "integer",
+            "named": true
+          },
+          {
+            "type": "local_identifier",
+            "named": true
+          },
+          {
+            "type": "location_counter",
+            "named": true
+          },
+          {
+            "type": "macro_argument",
+            "named": true
+          },
+          {
+            "type": "macro_call",
+            "named": true
+          },
+          {
+            "type": "memory_operand",
+            "named": true
+          },
+          {
+            "type": "numeric_label",
+            "named": true
+          },
+          {
+            "type": "parenthesized_expression",
+            "named": true
+          },
+          {
+            "type": "register",
+            "named": true
+          },
+          {
+            "type": "relocation",
+            "named": true
+          },
+          {
+            "type": "unary_expression",
+            "named": true
+          }
+        ]
+      }
+    }
+  },
+  {
     "type": "instruction",
     "named": true,
     "fields": {
       "mnemonic": {
         "multiple": false,
-        "required": true,
+        "required": false,
         "types": [
           {
             "type": "concatenation",
@@ -1010,6 +1371,10 @@
         "required": false,
         "types": [
           {
+            "type": "argument_list",
+            "named": true
+          },
+          {
             "type": "binary_expression",
             "named": true
           },
@@ -1026,6 +1391,14 @@
             "named": true
           },
           {
+            "type": "decorated_operand",
+            "named": true
+          },
+          {
+            "type": "decorator",
+            "named": true
+          },
+          {
             "type": "float",
             "named": true
           },
@@ -1039,6 +1412,10 @@
           },
           {
             "type": "indexed_register",
+            "named": true
+          },
+          {
+            "type": "indirect",
             "named": true
           },
           {
@@ -1063,6 +1440,10 @@
           },
           {
             "type": "macro_argument",
+            "named": true
+          },
+          {
+            "type": "macro_call",
             "named": true
           },
           {
@@ -1094,6 +1475,10 @@
             "named": true
           },
           {
+            "type": "segment_override",
+            "named": true
+          },
+          {
             "type": "shift",
             "named": true
           },
@@ -1110,11 +1495,25 @@
             "named": true
           },
           {
+            "type": "typed_operand",
+            "named": true
+          },
+          {
             "type": "unary_expression",
             "named": true
           },
           {
             "type": "writeback",
+            "named": true
+          }
+        ]
+      },
+      "prefix": {
+        "multiple": true,
+        "required": false,
+        "types": [
+          {
+            "type": "prefix",
             "named": true
           }
         ]
@@ -1180,6 +1579,10 @@
             "named": true
           },
           {
+            "type": "macro_call",
+            "named": true
+          },
+          {
             "type": "numeric_label",
             "named": true
           },
@@ -1233,6 +1636,10 @@
           },
           {
             "type": "macro_argument",
+            "named": true
+          },
+          {
+            "type": "macro_call",
             "named": true
           },
           {
@@ -1350,6 +1757,10 @@
             "named": true
           },
           {
+            "type": "macro_call",
+            "named": true
+          },
+          {
             "type": "numeric_label",
             "named": true
           },
@@ -1363,6 +1774,32 @@
           },
           {
             "type": "unary_expression",
+            "named": true
+          }
+        ]
+      }
+    }
+  },
+  {
+    "type": "macro_call",
+    "named": true,
+    "fields": {
+      "arguments": {
+        "multiple": false,
+        "required": true,
+        "types": [
+          {
+            "type": "argument_list",
+            "named": true
+          }
+        ]
+      },
+      "function": {
+        "multiple": false,
+        "required": true,
+        "types": [
+          {
+            "type": "identifier",
             "named": true
           }
         ]
@@ -1413,12 +1850,196 @@
     "type": "memory_operand",
     "named": true,
     "fields": {
+      "address": {
+        "multiple": false,
+        "required": false,
+        "types": [
+          {
+            "type": "binary_expression",
+            "named": true
+          },
+          {
+            "type": "char",
+            "named": true
+          },
+          {
+            "type": "concatenation",
+            "named": true
+          },
+          {
+            "type": "float",
+            "named": true
+          },
+          {
+            "type": "identifier",
+            "named": true
+          },
+          {
+            "type": "integer",
+            "named": true
+          },
+          {
+            "type": "local_identifier",
+            "named": true
+          },
+          {
+            "type": "location_counter",
+            "named": true
+          },
+          {
+            "type": "macro_argument",
+            "named": true
+          },
+          {
+            "type": "macro_call",
+            "named": true
+          },
+          {
+            "type": "memory_operand",
+            "named": true
+          },
+          {
+            "type": "numeric_label",
+            "named": true
+          },
+          {
+            "type": "parenthesized_expression",
+            "named": true
+          },
+          {
+            "type": "register",
+            "named": true
+          },
+          {
+            "type": "relocation",
+            "named": true
+          },
+          {
+            "type": "segment_override",
+            "named": true
+          },
+          {
+            "type": "typed_operand",
+            "named": true
+          },
+          {
+            "type": "unary_expression",
+            "named": true
+          }
+        ]
+      },
       "alignment": {
         "multiple": false,
         "required": false,
         "types": [
           {
             "type": "alignment",
+            "named": true
+          }
+        ]
+      },
+      "base": {
+        "multiple": false,
+        "required": false,
+        "types": [
+          {
+            "type": "concatenation",
+            "named": true
+          },
+          {
+            "type": "register",
+            "named": true
+          }
+        ]
+      },
+      "displacement": {
+        "multiple": false,
+        "required": false,
+        "types": [
+          {
+            "type": "binary_expression",
+            "named": true
+          },
+          {
+            "type": "char",
+            "named": true
+          },
+          {
+            "type": "concatenation",
+            "named": true
+          },
+          {
+            "type": "float",
+            "named": true
+          },
+          {
+            "type": "identifier",
+            "named": true
+          },
+          {
+            "type": "integer",
+            "named": true
+          },
+          {
+            "type": "local_identifier",
+            "named": true
+          },
+          {
+            "type": "location_counter",
+            "named": true
+          },
+          {
+            "type": "macro_argument",
+            "named": true
+          },
+          {
+            "type": "macro_call",
+            "named": true
+          },
+          {
+            "type": "memory_operand",
+            "named": true
+          },
+          {
+            "type": "numeric_label",
+            "named": true
+          },
+          {
+            "type": "parenthesized_expression",
+            "named": true
+          },
+          {
+            "type": "register",
+            "named": true
+          },
+          {
+            "type": "relocation",
+            "named": true
+          },
+          {
+            "type": "segment_override",
+            "named": true
+          },
+          {
+            "type": "typed_operand",
+            "named": true
+          },
+          {
+            "type": "unary_expression",
+            "named": true
+          }
+        ]
+      },
+      "index": {
+        "multiple": false,
+        "required": false,
+        "types": [
+          {
+            "type": "concatenation",
+            "named": true
+          },
+          {
+            "type": "register",
             "named": true
           }
         ]
@@ -1476,6 +2097,10 @@
             "named": true
           },
           {
+            "type": "macro_call",
+            "named": true
+          },
+          {
             "type": "numeric_label",
             "named": true
           },
@@ -1504,8 +2129,89 @@
             "named": true
           }
         ]
+      },
+      "scale": {
+        "multiple": false,
+        "required": false,
+        "types": [
+          {
+            "type": "binary_expression",
+            "named": true
+          },
+          {
+            "type": "char",
+            "named": true
+          },
+          {
+            "type": "concatenation",
+            "named": true
+          },
+          {
+            "type": "float",
+            "named": true
+          },
+          {
+            "type": "identifier",
+            "named": true
+          },
+          {
+            "type": "integer",
+            "named": true
+          },
+          {
+            "type": "local_identifier",
+            "named": true
+          },
+          {
+            "type": "location_counter",
+            "named": true
+          },
+          {
+            "type": "macro_argument",
+            "named": true
+          },
+          {
+            "type": "macro_call",
+            "named": true
+          },
+          {
+            "type": "numeric_label",
+            "named": true
+          },
+          {
+            "type": "parenthesized_expression",
+            "named": true
+          },
+          {
+            "type": "relocation",
+            "named": true
+          },
+          {
+            "type": "unary_expression",
+            "named": true
+          }
+        ]
+      },
+      "segment": {
+        "multiple": false,
+        "required": false,
+        "types": [
+          {
+            "type": "concatenation",
+            "named": true
+          },
+          {
+            "type": "register",
+            "named": true
+          }
+        ]
       }
     }
+  },
+  {
+    "type": "operand_type",
+    "named": true,
+    "fields": {}
   },
   {
     "type": "parameter",
@@ -1553,6 +2259,10 @@
           },
           {
             "type": "macro_argument",
+            "named": true
+          },
+          {
+            "type": "macro_call",
             "named": true
           },
           {
@@ -1652,6 +2362,14 @@
           "named": true
         },
         {
+          "type": "macro_call",
+          "named": true
+        },
+        {
+          "type": "memory_operand",
+          "named": true
+        },
+        {
           "type": "numeric_label",
           "named": true
         },
@@ -1660,7 +2378,19 @@
           "named": true
         },
         {
+          "type": "register",
+          "named": true
+        },
+        {
           "type": "relocation",
+          "named": true
+        },
+        {
+          "type": "segment_override",
+          "named": true
+        },
+        {
+          "type": "typed_operand",
           "named": true
         },
         {
@@ -1948,6 +2678,10 @@
             "named": true
           },
           {
+            "type": "macro_call",
+            "named": true
+          },
+          {
             "type": "numeric_label",
             "named": true
           },
@@ -2086,6 +2820,10 @@
             "named": true
           },
           {
+            "type": "macro_call",
+            "named": true
+          },
+          {
             "type": "numeric_label",
             "named": true
           },
@@ -2164,6 +2902,10 @@
             "named": true
           },
           {
+            "type": "macro_call",
+            "named": true
+          },
+          {
             "type": "numeric_label",
             "named": true
           },
@@ -2236,6 +2978,10 @@
             "named": true
           },
           {
+            "type": "macro_call",
+            "named": true
+          },
+          {
             "type": "numeric_label",
             "named": true
           },
@@ -2257,6 +3003,172 @@
           },
           {
             "type": "symbol_type",
+            "named": true
+          },
+          {
+            "type": "unary_expression",
+            "named": true
+          }
+        ]
+      }
+    }
+  },
+  {
+    "type": "segment_override",
+    "named": true,
+    "fields": {
+      "operand": {
+        "multiple": false,
+        "required": false,
+        "types": [
+          {
+            "type": "binary_expression",
+            "named": true
+          },
+          {
+            "type": "char",
+            "named": true
+          },
+          {
+            "type": "concatenation",
+            "named": true
+          },
+          {
+            "type": "float",
+            "named": true
+          },
+          {
+            "type": "identifier",
+            "named": true
+          },
+          {
+            "type": "integer",
+            "named": true
+          },
+          {
+            "type": "local_identifier",
+            "named": true
+          },
+          {
+            "type": "location_counter",
+            "named": true
+          },
+          {
+            "type": "macro_argument",
+            "named": true
+          },
+          {
+            "type": "macro_call",
+            "named": true
+          },
+          {
+            "type": "memory_operand",
+            "named": true
+          },
+          {
+            "type": "numeric_label",
+            "named": true
+          },
+          {
+            "type": "parenthesized_expression",
+            "named": true
+          },
+          {
+            "type": "register",
+            "named": true
+          },
+          {
+            "type": "relocation",
+            "named": true
+          },
+          {
+            "type": "segment_override",
+            "named": true
+          },
+          {
+            "type": "typed_operand",
+            "named": true
+          },
+          {
+            "type": "unary_expression",
+            "named": true
+          }
+        ]
+      },
+      "segment": {
+        "multiple": false,
+        "required": false,
+        "types": [
+          {
+            "type": "binary_expression",
+            "named": true
+          },
+          {
+            "type": "char",
+            "named": true
+          },
+          {
+            "type": "concatenation",
+            "named": true
+          },
+          {
+            "type": "flat",
+            "named": false
+          },
+          {
+            "type": "float",
+            "named": true
+          },
+          {
+            "type": "identifier",
+            "named": true
+          },
+          {
+            "type": "integer",
+            "named": true
+          },
+          {
+            "type": "local_identifier",
+            "named": true
+          },
+          {
+            "type": "location_counter",
+            "named": true
+          },
+          {
+            "type": "macro_argument",
+            "named": true
+          },
+          {
+            "type": "macro_call",
+            "named": true
+          },
+          {
+            "type": "memory_operand",
+            "named": true
+          },
+          {
+            "type": "numeric_label",
+            "named": true
+          },
+          {
+            "type": "parenthesized_expression",
+            "named": true
+          },
+          {
+            "type": "register",
+            "named": true
+          },
+          {
+            "type": "relocation",
+            "named": true
+          },
+          {
+            "type": "segment_override",
+            "named": true
+          },
+          {
+            "type": "typed_operand",
             "named": true
           },
           {
@@ -2313,6 +3225,10 @@
           },
           {
             "type": "macro_argument",
+            "named": true
+          },
+          {
+            "type": "macro_call",
             "named": true
           },
           {
@@ -2466,6 +3382,100 @@
     }
   },
   {
+    "type": "typed_operand",
+    "named": true,
+    "fields": {
+      "operand": {
+        "multiple": false,
+        "required": false,
+        "types": [
+          {
+            "type": "binary_expression",
+            "named": true
+          },
+          {
+            "type": "char",
+            "named": true
+          },
+          {
+            "type": "concatenation",
+            "named": true
+          },
+          {
+            "type": "float",
+            "named": true
+          },
+          {
+            "type": "identifier",
+            "named": true
+          },
+          {
+            "type": "integer",
+            "named": true
+          },
+          {
+            "type": "local_identifier",
+            "named": true
+          },
+          {
+            "type": "location_counter",
+            "named": true
+          },
+          {
+            "type": "macro_argument",
+            "named": true
+          },
+          {
+            "type": "macro_call",
+            "named": true
+          },
+          {
+            "type": "memory_operand",
+            "named": true
+          },
+          {
+            "type": "numeric_label",
+            "named": true
+          },
+          {
+            "type": "parenthesized_expression",
+            "named": true
+          },
+          {
+            "type": "register",
+            "named": true
+          },
+          {
+            "type": "relocation",
+            "named": true
+          },
+          {
+            "type": "segment_override",
+            "named": true
+          },
+          {
+            "type": "typed_operand",
+            "named": true
+          },
+          {
+            "type": "unary_expression",
+            "named": true
+          }
+        ]
+      },
+      "type": {
+        "multiple": false,
+        "required": true,
+        "types": [
+          {
+            "type": "operand_type",
+            "named": true
+          }
+        ]
+      }
+    }
+  },
+  {
     "type": "unary_expression",
     "named": true,
     "fields": {
@@ -2510,6 +3520,14 @@
             "named": true
           },
           {
+            "type": "macro_call",
+            "named": true
+          },
+          {
+            "type": "memory_operand",
+            "named": true
+          },
+          {
             "type": "numeric_label",
             "named": true
           },
@@ -2518,7 +3536,19 @@
             "named": true
           },
           {
+            "type": "register",
+            "named": true
+          },
+          {
             "type": "relocation",
+            "named": true
+          },
+          {
+            "type": "segment_override",
+            "named": true
+          },
+          {
+            "type": "typed_operand",
             "named": true
           },
           {
@@ -2542,6 +3572,10 @@
           {
             "type": "-",
             "named": false
+          },
+          {
+            "type": "operator_word",
+            "named": true
           },
           {
             "type": "~",
@@ -2652,6 +3686,10 @@
   },
   {
     "type": "$",
+    "named": false
+  },
+  {
+    "type": "%",
     "named": false
   },
   {
@@ -2808,6 +3846,10 @@
     "named": true
   },
   {
+    "type": "decorator",
+    "named": true
+  },
+  {
     "type": "directive_name",
     "named": true
   },
@@ -2816,11 +3858,11 @@
     "named": true
   },
   {
-    "type": "float",
-    "named": true
+    "type": "flat",
+    "named": false
   },
   {
-    "type": "identifier",
+    "type": "float",
     "named": true
   },
   {
@@ -2850,6 +3892,14 @@
   },
   {
     "type": "numeric_label",
+    "named": true
+  },
+  {
+    "type": "operator_word",
+    "named": true
+  },
+  {
+    "type": "prefix",
     "named": true
   },
   {

@@ -77,7 +77,9 @@ Deno.test('modules contribute rules only to the languages that include them', ()
 Deno.test('choice points merge alternatives from every module without duplicates', () => {
   const rules = defineGrammar('asm_auto').rules;
   const members = (name: string) =>
-    ((rules[name]($) as RuleNode).members ?? []).map((member) => member.name);
+    ((rules[name]($) as RuleNode).members ?? []).map((member) =>
+      member.name ?? member.members?.find((inner) => inner.name)?.name
+    );
   const value = members('_value');
   assertEquals(value.filter((name) => name === 'immediate').length, 1);
   for (const name of ['_expression', 'string', 'symbol_type', 'register']) {

@@ -128,3 +128,34 @@ A .loc view may be reset with -0
     argument: (identifier)
     argument: (unary_expression
       argument: (integer))))
+
+================================================================================
+Mach-O section types that start with a digit are names
+================================================================================
+
+.section __TEXT,__literal4,4byte_literals
+.section __TEXT,__literal8,8byte_literals
+.section __TEXT,__literal16,16byte_literals
+.quad 4b
+
+--------------------------------------------------------------------------------
+
+(source_file
+  (directive
+    name: (directive_name)
+    argument: (identifier)
+    argument: (identifier)
+    argument: (identifier))
+  (directive
+    name: (directive_name)
+    argument: (identifier)
+    argument: (identifier)
+    argument: (identifier))
+  (directive
+    name: (directive_name)
+    argument: (identifier)
+    argument: (identifier)
+    argument: (identifier))
+  (directive
+    name: (directive_name)
+    argument: (numeric_label)))

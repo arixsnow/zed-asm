@@ -1,0 +1,251 @@
+================================================================================
+Bare register names are symbols in AT&T syntax
+================================================================================
+
+call rax
+push RBX
+
+--------------------------------------------------------------------------------
+
+(source_file
+  (instruction
+    mnemonic: (mnemonic)
+    operand: (identifier))
+  (instruction
+    mnemonic: (mnemonic)
+    operand: (identifier)))
+
+================================================================================
+Bare register names are registers after .intel_syntax noprefix
+================================================================================
+
+.intel_syntax noprefix
+call rax
+push RBX
+call raxx
+
+--------------------------------------------------------------------------------
+
+(source_file
+  (directive
+    name: (directive_name)
+    argument: (identifier))
+  (instruction
+    mnemonic: (mnemonic)
+    operand: (register))
+  (instruction
+    mnemonic: (mnemonic)
+    operand: (register))
+  (instruction
+    mnemonic: (mnemonic)
+    operand: (identifier)))
+
+================================================================================
+.intel_syntax without an argument reads bare register names
+================================================================================
+
+.intel_syntax
+call rax
+
+--------------------------------------------------------------------------------
+
+(source_file
+  (directive
+    name: (directive_name))
+  (instruction
+    mnemonic: (mnemonic)
+    operand: (register)))
+
+================================================================================
+.intel_syntax prefix keeps bare register names as symbols
+================================================================================
+
+.intel_syntax prefix
+call rax
+call %rax
+
+--------------------------------------------------------------------------------
+
+(source_file
+  (directive
+    name: (directive_name)
+    argument: (identifier))
+  (instruction
+    mnemonic: (mnemonic)
+    operand: (identifier))
+  (instruction
+    mnemonic: (mnemonic)
+    operand: (register)))
+
+================================================================================
+.att_syntax switches back to symbols
+================================================================================
+
+.intel_syntax noprefix
+call rax
+.att_syntax
+call rax
+.intel_syntax noprefix
+.att_syntax prefix
+call rax
+
+--------------------------------------------------------------------------------
+
+(source_file
+  (directive
+    name: (directive_name)
+    argument: (identifier))
+  (instruction
+    mnemonic: (mnemonic)
+    operand: (register))
+  (directive
+    name: (directive_name))
+  (instruction
+    mnemonic: (mnemonic)
+    operand: (identifier))
+  (directive
+    name: (directive_name)
+    argument: (identifier))
+  (directive
+    name: (directive_name)
+    argument: (identifier))
+  (instruction
+    mnemonic: (mnemonic)
+    operand: (identifier)))
+
+================================================================================
+.att_syntax noprefix reads bare register names
+================================================================================
+
+.att_syntax noprefix
+movq rbx, rax
+
+--------------------------------------------------------------------------------
+
+(source_file
+  (directive
+    name: (directive_name)
+    argument: (identifier))
+  (instruction
+    mnemonic: (mnemonic)
+    operand: (register)
+    operand: (register)))
+
+================================================================================
+The directive name takes any case, its argument lower case only
+================================================================================
+
+.INTEL_SYNTAX noprefix
+call rax
+.Att_Syntax
+call rax
+
+--------------------------------------------------------------------------------
+
+(source_file
+  (directive
+    name: (directive_name)
+    argument: (identifier))
+  (instruction
+    mnemonic: (mnemonic)
+    operand: (register))
+  (directive
+    name: (directive_name))
+  (instruction
+    mnemonic: (mnemonic)
+    operand: (identifier)))
+
+================================================================================
+The mode follows text order through blocks and preprocessor branches
+================================================================================
+
+#ifdef INTEL
+.intel_syntax noprefix
+#else
+.att_syntax
+#endif
+call rax
+.macro m
+.intel_syntax noprefix
+.endm
+call rax
+
+--------------------------------------------------------------------------------
+
+(source_file
+  (preproc_line
+    directive: (preproc_directive)
+    argument: (preproc_argument))
+  (directive
+    name: (directive_name)
+    argument: (identifier))
+  (preproc_line
+    directive: (preproc_directive))
+  (directive
+    name: (directive_name))
+  (preproc_line
+    directive: (preproc_directive))
+  (instruction
+    mnemonic: (mnemonic)
+    operand: (identifier))
+  (macro_definition
+    name: (identifier)
+    body: (body
+      (directive
+        name: (directive_name)
+        argument: (identifier))))
+  (instruction
+    mnemonic: (mnemonic)
+    operand: (register)))
+
+================================================================================
+Register names stay labels and mnemonics after .intel_syntax noprefix
+================================================================================
+
+.intel_syntax noprefix
+rax:
+  rax
+  jmp rax
+
+--------------------------------------------------------------------------------
+
+(source_file
+  (directive
+    name: (directive_name)
+    argument: (identifier))
+  (label_block
+    label: (label
+      name: (identifier))
+    (instruction
+      mnemonic: (mnemonic))
+    (instruction
+      mnemonic: (mnemonic)
+      operand: (register))))
+
+================================================================================
+Bare register names in directive arguments after .intel_syntax noprefix
+================================================================================
+
+.intel_syntax noprefix
+.cfi_offset rbp, -16
+.att_syntax
+.cfi_offset rbp, -16
+
+--------------------------------------------------------------------------------
+
+(source_file
+  (directive
+    name: (directive_name)
+    argument: (identifier))
+  (directive
+    name: (directive_name)
+    argument: (register)
+    argument: (unary_expression
+      argument: (integer)))
+  (directive
+    name: (directive_name))
+  (directive
+    name: (directive_name)
+    argument: (identifier)
+    argument: (unary_expression
+      argument: (integer))))

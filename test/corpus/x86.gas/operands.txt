@@ -65,7 +65,7 @@ nop
   (instruction
     mnemonic: (mnemonic)
     operand: (register)
-    operand: (register))
+    operand: (symbol_type))
   (instruction
     mnemonic: (mnemonic)))
 

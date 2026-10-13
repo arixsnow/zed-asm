@@ -140,22 +140,22 @@ repx; nop
 
 (source_file
   (instruction
-    mnemonic: (mnemonic))
+    prefix: (prefix))
   (instruction
     mnemonic: (mnemonic))
   (instruction
-    mnemonic: (mnemonic))
+    prefix: (prefix))
   (instruction
     mnemonic: (mnemonic)
     operand: (register))
   (instruction
-    mnemonic: (mnemonic))
+    prefix: (prefix))
   (instruction
     mnemonic: (mnemonic)
     operand: (register)
     operand: (register))
   (instruction
-    mnemonic: (mnemonic))
+    prefix: (prefix))
   (instruction
     mnemonic: (mnemonic))
   (line_comment)

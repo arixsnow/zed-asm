@@ -300,6 +300,12 @@ export const OUTLINE_CASES: OutlineCase[] = [
     outline: OUTLINE('LBB0_2'),
   },
   {
+    name: 'a label named by a C macro call is a local label of the block above',
+    grammars: ELF,
+    source: 'memmove:\n    nop\nL(loop):\n    nop\n',
+    outline: ['0 memmove', '1 L(loop)'],
+  },
+  {
     name: 'x86 (NASM): global labels with their dot labels',
     grammars: ['asm_x86_nasm'],
     source: 'start:\n.loop:\n    dec rcx\n    jnz .loop\nnext:\n    ret\n',

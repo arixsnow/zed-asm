@@ -7,6 +7,7 @@ import { parseFiles, treeText } from '../lib/parse.ts';
 
 const GNU = ['asm_auto', 'asm_arm', 'asm_arm_apple', 'asm_x86_gas'];
 const ALL = manifest.languages.map((language) => language.grammar);
+const X86_GAS = ['asm_auto', 'asm_x86_gas'];
 const ERROR_NODE = /\((?:ERROR|MISSING[^[]*) \[(\d+), \d+\] - \[(\d+), \d+\]/g;
 
 const REJECTED: [string, number[], string[]][] = [
@@ -25,8 +26,18 @@ const REJECTED: [string, number[], string[]][] = [
   ['.if 1\n.else\n.elseif 2\n.endif', [2], GNU],
   ['#define 1 2', [0], GNU],
   ['#define F(1) x', [0], GNU],
-  ['    .word sym(FOO)', [0], ['asm_auto', 'asm_arm']],
   ['    .save {r4, lr}', [0], ['asm_arm_apple']],
+  ['.intel_syntax NOPREFIX\ncall rax', [0], X86_GAS],
+  ['.intel_syntax , noprefix\ncall rax', [0], X86_GAS],
+  ['.att_syntax Prefix\ncall rax', [0], X86_GAS],
+  ['vaddps %zmm1, %zmm2, %zmm3{%k1}{Z}', [0], X86_GAS],
+  ['vaddps (%rax){1TO16}, %zmm2, %zmm3', [0], X86_GAS],
+  ['vaddps {RN-SAE}, %zmm1, %zmm2, %zmm3', [0], ['asm_x86_gas']],
+  ['vaddps (%rax){1to3}, %zmm2, %zmm3', [0], X86_GAS],
+  ['lock data16 {disp32} addl $1, 8(%rax)', [0], X86_GAS],
+  ['{disp32} lock {load} addl $1, 8(%rax)', [0], X86_GAS],
+  ['ccmpb {dfv=of,c} %r9b, %r8b', [0], X86_GAS],
+  ['ccmpb {dfv=sf,z} %r9b, %r8b', [0], X86_GAS],
 ];
 
 function errorRows(tree: string): number[] {

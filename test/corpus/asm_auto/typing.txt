@@ -1,5 +1,5 @@
 ================================================================================
-A percent word being typed reads as a register until it names a symbol type
+A percent word being typed that names no register reads as a symbol type
 ================================================================================
 
 .type f, %fu
@@ -11,7 +11,7 @@ A percent word being typed reads as a register until it names a symbol type
   (directive
     name: (directive_name)
     argument: (identifier)
-    argument: (register))
+    argument: (symbol_type))
   (directive
     name: (directive_name)
     argument: (identifier)

@@ -1,6 +1,12 @@
 // SPDX-License-Identifier: MIT
 
-import { assertEquals, assertMatch, assertNotMatch, assertThrows } from '@std/assert';
+import {
+  assertEquals,
+  assertMatch,
+  assertNotEquals,
+  assertNotMatch,
+  assertThrows,
+} from '@std/assert';
 import { join } from '@std/path';
 import { parse } from '@std/toml';
 
@@ -270,10 +276,30 @@ Deno.test("the indent pattern reads each dialect's ; # and @ rules and the close
   ]);
 });
 
-Deno.test('the scanner keeps its statement words sorted, as its binary search needs', () => {
-  const names = statementWords(SCANNER).map(({ name }) => name);
-  assertEquals(names, [...names].sort((left, right) => left < right ? -1 : left > right ? 1 : 0));
-  assertEquals(new Set(names).size, names.length);
+const BISECTED_TABLES = [
+  'ASM_STATEMENT_WORDS',
+  'ASM_SUFFIX_RELOCATION_NAMES',
+  'ASM_RELOCATION_NAMES',
+  'ASM_X86_REGISTER_NAMES',
+  'ASM_X86_INTEL_WORDS',
+  'ASM_X86_PSEUDO_PREFIXES',
+];
+
+function tableNames(scanner: string, table: string): string[] {
+  const body = new RegExp(`#define ${table}\\(X\\)((?:[^\\n]*\\\\\\n)+[^\\n]*)`).exec(scanner);
+  if (body === null) {
+    throw new Error(`scanner.h has no ${table} table`);
+  }
+  return [...body[1].matchAll(/X\("([^"]+)"/g)].map(([, name]) => name);
+}
+
+Deno.test('the scanner keeps every table it bisects sorted, as its binary search needs', () => {
+  for (const table of BISECTED_TABLES) {
+    const names = tableNames(SCANNER, table);
+    assertNotEquals(names, [], table);
+    assertEquals(names, [...names].sort((left, right) => left < right ? -1 : left > right ? 1 : 0));
+    assertEquals(new Set(names).size, names.length, table);
+  }
 });
 
 Deno.test('a block that names an unknown opener or closer fails with a clear message', () => {

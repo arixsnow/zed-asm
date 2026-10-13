@@ -233,11 +233,11 @@ export function blockOpenerPattern(source: BlockPatternSource): string {
 export function statementLexing(scanner: string): Record<string, Omit<StatementLexing, 'atTypes'>> {
   const lexing: Record<string, Omit<StatementLexing, 'atTypes'>> = {};
   const blocks = scanner.matchAll(
-    /(?:#ifdef |#elif defined\()ASM_DIALECT_([A-Z0-9_]+)\)?\n((?:#define [A-Z_]+ [A-Z0-9_]+\n)+)/g,
+    /(?:#ifdef |#elif defined\()ASM_DIALECT_([A-Z0-9_]+)\)?\n((?:#define [A-Z0-9_]+ [A-Z0-9_]+\n)+)/g,
   );
   for (const [, dialect, defines] of blocks) {
     const values = new Map(
-      [...defines.matchAll(/#define ([A-Z_]+) ([A-Z0-9_]+)/g)].map((
+      [...defines.matchAll(/#define ([A-Z0-9_]+) ([A-Z0-9_]+)/g)].map((
         [, key, value],
       ) => [key, value]),
     );

@@ -53,7 +53,7 @@
     },
     "test:unit": {
       "description": "Run the unit, highlight, parse-tree, typing, structure and performance tests",
-      "command": "deno test --parallel --ignore=test/performance --allow-read=. --allow-write=.build --allow-run=tree-sitter,gcc,clang,aarch64-linux-gnu-gcc,arm-none-eabi-gcc && deno test --allow-read=. --allow-write=.build --allow-run=tree-sitter test/performance"
+      "command": "deno test --parallel --ignore=test/performance,.build --allow-read=. --allow-write=.build --allow-run=tree-sitter,gcc,clang,aarch64-linux-gnu-gcc,arm-none-eabi-gcc && deno test --allow-read=. --allow-write=.build --allow-run=tree-sitter test/performance"
     },
     "corpus": {
       "description": "Compose each grammar's corpus tests from test/corpus",

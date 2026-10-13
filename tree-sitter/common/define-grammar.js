@@ -27,10 +27,22 @@ const EXTERNALS = [
   '_preproc_condition',
   '_preproc_params_open',
   '_missing_operand',
+  '_missing_label_operand',
+  '_missing_argument',
+  '_missing_register_argument',
+  '_missing_element',
   '_missing_expression',
+  '_missing_name',
+  '_missing_identifier',
+  '_missing_symbol',
+  '_missing_relocation',
   '_unclosed',
   '_unclosed_bracket',
+  '_unclosed_index',
   '_unclosed_brace',
+  '_unclosed_memory',
+  '_unclosed_address',
+  '_unclosed_arguments',
   '_global_label_name',
   '_local_label_name',
   '_numeric_label_name',
@@ -53,8 +65,36 @@ const EXTERNALS = [
   '_unwind_register_directive',
   '_linker_hint_directive',
   '_suffix_relocation_name',
+  '_relocation_specifier',
+  '_relocation_name',
+  '_relocation_colon',
   '_register_alias_word',
   '_neon_alias_word',
+  '_intel_syntax',
+  '_att_syntax',
+  '_syntax_prefix',
+  '_syntax_noprefix',
+  '_bare_register',
+  '_remainder',
+  '_intel_operands',
+  '_intel_type_word',
+  '_intel_ptr_word',
+  '_intel_unary_word',
+  '_intel_multiplicative_word',
+  '_intel_bitwise_word',
+  '_intel_comparison_word',
+  '_intel_flat_word',
+  '_call_arguments',
+  '_macro_label_name',
+  '_index_open',
+  '_memory_comma',
+  '_bracket_colon',
+  '_segment_colon',
+  '_range_dash',
+  '_relocation_suffix',
+  '_memory_address',
+  '_pseudo_prefix',
+  'decorator',
   '_macro_close',
   '_conditional_close',
   '_repeat_close',
@@ -70,6 +110,7 @@ const INLINED = [
   '_line_content',
   '_statement',
   '_instruction_operand',
+  '_operands',
   '_operand',
   '_value',
   '_symbol',
@@ -100,6 +141,7 @@ module.exports = function defineGrammar(grammarName, catalog = languages) {
   const rules = {};
   const choices = {};
   const extras = [];
+  const conflicts = [];
   let word;
 
   for (const moduleName of moduleNames) {
@@ -114,6 +156,7 @@ module.exports = function defineGrammar(grammarName, catalog = languages) {
       (choices[name] ??= []).push(...alternatives);
     }
     extras.push(...(fragment.extras ?? []));
+    conflicts.push(...(fragment.conflicts ?? []));
     if (fragment.word !== undefined) {
       if (word !== undefined) {
         throw new Error(`the word token is declared twice (again by module "${moduleName}")`);
@@ -133,6 +176,7 @@ module.exports = function defineGrammar(grammarName, catalog = languages) {
     name: grammarName,
     externals: ($) => EXTERNALS.map((name) => $[name]),
     extras: ($) => extras.map((extra) => extra($)),
+    conflicts: ($) => unique(conflicts.map((conflict) => conflict($))),
     ...(word === undefined ? {} : { word }),
     inline: ($) => INLINED.filter((name) => name in rules).map((name) => $[name]),
     rules,

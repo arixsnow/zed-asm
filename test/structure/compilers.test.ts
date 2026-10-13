@@ -12,7 +12,7 @@ import { queryMatchesFor } from '../lib/zed-syntax.ts';
 
 interface Target {
   name: string;
-  temporaryPrefix: string;
+  temporaryPrefix: string | null;
   grammars: string[];
   compilers: [string, string[]][];
   parsesCleanly: boolean;
@@ -31,7 +31,28 @@ const TARGETS: Target[] = [
     temporaryPrefix: '.L',
     grammars: ['asm_x86_gas', 'asm_auto'],
     compilers: [['gcc', []], ['clang', []]],
-    parsesCleanly: false,
+    parsesCleanly: true,
+  },
+  {
+    name: 'x86-64 Intel',
+    temporaryPrefix: '.L',
+    grammars: ['asm_x86_gas', 'asm_auto'],
+    compilers: [['gcc', ['-masm=intel']], ['clang', ['-masm=intel']]],
+    parsesCleanly: true,
+  },
+  {
+    name: 'i386',
+    temporaryPrefix: '.L',
+    grammars: ['asm_x86_gas', 'asm_auto'],
+    compilers: [['gcc', ['-m32']], ['clang', ['--target=i686-linux-gnu']]],
+    parsesCleanly: true,
+  },
+  {
+    name: 'Apple x86-64',
+    temporaryPrefix: null,
+    grammars: ['asm_x86_gas', 'asm_auto'],
+    compilers: [['clang', ['--target=x86_64-apple-macos11']]],
+    parsesCleanly: true,
   },
   {
     name: 'AArch64',
@@ -67,7 +88,7 @@ const TARGETS: Target[] = [
 ];
 
 const OPTIMIZATIONS = [['-O0'], ['-O2'], ['-O2', '-g']];
-const LABEL = /^([A-Za-z_.$][A-Za-z0-9_.$]*):/;
+const LABEL = /^("(?:[^"\\]|\\.)*"|[A-Za-z_.$][A-Za-z0-9_.$]*):/;
 const ASSIGNMENT_DIRECTIVE = /^\s*(\.(?:set|equ|equiv|eqv))\s+([A-Za-z_.$][A-Za-z0-9_.$]*)\s*,/i;
 const ASSIGNMENT = /^\s*([A-Za-z_.$][A-Za-z0-9_.$]*)\s*==?[^=]/;
 const RODATA = /^\s*\.section\s+\.rodata(?:\s*,.*)?$/;
@@ -103,13 +124,13 @@ function compileAll(): Compilation[] {
   return compilations;
 }
 
-function symbolOutline(assembly: string, temporaryPrefix: string): string[] {
+function symbolOutline(assembly: string, temporaryPrefix: string | null): string[] {
   const outline: string[] = [];
   let insideSymbol = false;
   for (const line of assembly.split('\n')) {
     const label = LABEL.exec(line);
     if (label !== null) {
-      const temporary = label[1].startsWith(temporaryPrefix);
+      const temporary = temporaryPrefix !== null && label[1].startsWith(temporaryPrefix);
       outline.push(`${temporary && insideSymbol ? 1 : 0} ${label[1]}`);
       insideSymbol ||= !temporary;
       continue;
@@ -172,7 +193,7 @@ Deno.test('the outline of compiler output lists every symbol with the temporary 
   assertEquals(failures, []);
 });
 
-Deno.test('compiler output for every ARM target and optimization level parses without errors', () => {
+Deno.test('compiler output for every target and optimization level parses without errors', () => {
   const failures: string[] = [];
   const clean = compileAll().filter(({ target }) => target.parsesCleanly);
   const grammars = [...new Set(clean.flatMap(({ target }) => target.grammars))];

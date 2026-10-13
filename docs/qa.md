@@ -14,9 +14,9 @@ scripts/zed             # run every check
 scripts/zed --refresh   # first update Zed to its latest release
 ```
 
-Checks 1 to 4, 19, 22 and 24 end with `LOOK`: open their screenshot and confirm it. The others pass
-or fail on their own. The exact languages are selected with a modeline such as `// vim: ft=arm`. Run
-the checks before each release and note the Zed version from the report.
+Checks 1 to 4, 19, 22, 24, 26 and 27 end with `LOOK`: open their screenshot and confirm it. The
+others pass or fail on their own. The exact languages are selected with a modeline such as
+`// vim: ft=arm`. Run the checks before each release and note the Zed version from the report.
 
 | #  | Do                                                                                             | Expect                                                |
 | -- | ---------------------------------------------------------------------------------------------- | ----------------------------------------------------- |
@@ -45,8 +45,11 @@ the checks before each release and note the Zed version from the report.
 | 23 | Below `.macro m` and `nop`, type `.` as the last line, with no newline after it                | The outline still lists `m`                           |
 | 24 | Open ARM code with registers, `[ ]`, `{ }`, a condition and `:lo12:`                           | Registers, conditions and relocations have own colors |
 | 25 | In ARM, put the cursor after `{` or `[` and run Move to Enclosing Bracket (Ctrl+M)             | The cursor jumps to the matching `}` or `]`           |
-| 26 | In vim mode, `vaf`, `vif` and `vac`, then `y`                                                  | Each copies the function, its body or the macro       |
-| 27 | Read the Zed log                                                                               | No errors about the asm grammars or queries           |
+| 26 | Open x86 code with AT&T memory, `*`, `lock`, `{vex}`, a decorator and `%`                      | Registers, prefixes and decorators have own colors    |
+| 27 | Open x86 code after `.intel_syntax noprefix` with `DWORD PTR [rbx+8]`, `shl`, `OFFSET FLAT:`   | Size words, operator words and registers have colors  |
+| 28 | In x86 Intel code, put the cursor after `[` and run Move to Enclosing Bracket (Ctrl+M)         | The cursor jumps to the matching `]`                  |
+| 29 | In vim mode, `vaf`, `vif` and `vac`, then `y`                                                  | Each copies the function, its body or the macro       |
+| 30 | Read the Zed log                                                                               | No errors about the asm grammars or queries           |
 
 A Zed limitation: when nothing follows the cursor, at the very end of a file, Zed ignores
 scope-based settings. There, Enter after `#define X 1` inserts `#` and a space in the GNU-syntax

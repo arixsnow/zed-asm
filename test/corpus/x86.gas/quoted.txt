@@ -1,0 +1,97 @@
+================================================================================
+Quoted names in AT&T operands
+================================================================================
+
+"foo":
+    call "foo"
+    call "foo bar"@PLT
+    movq "foo"(%rip), %rax
+    movq $"foo", %rax
+".Lfoo":
+    jmp ".Lfoo"
+
+--------------------------------------------------------------------------------
+
+(source_file
+  (label_block
+    label: (label
+      name: (identifier))
+    (instruction
+      mnemonic: (mnemonic)
+      operand: (string))
+    (instruction
+      mnemonic: (mnemonic)
+      operand: (relocation
+        symbol: (identifier)
+        specifier: (identifier)))
+    (instruction
+      mnemonic: (mnemonic)
+      operand: (memory_operand
+        displacement: (identifier)
+        base: (register))
+      operand: (register))
+    (instruction
+      mnemonic: (mnemonic)
+      operand: (immediate
+        value: (identifier))
+      operand: (register))
+    (label
+      name: (local_identifier))
+    (instruction
+      mnemonic: (mnemonic)
+      operand: (string))))
+
+================================================================================
+Quoted names in Intel operands, as gcc writes them
+================================================================================
+
+.intel_syntax noprefix
+    call "step"@PLT
+    mov eax, DWORD PTR "counter"[rip]
+    lea rax, [rip + "x"]
+    call [QWORD PTR [rax+"depth"@TLSCALL]]
+    mov rax, offset "x"
+
+--------------------------------------------------------------------------------
+
+(source_file
+  (directive
+    name: (directive_name)
+    argument: (identifier))
+  (instruction
+    mnemonic: (mnemonic)
+    operand: (relocation
+      symbol: (identifier)
+      specifier: (identifier)))
+  (instruction
+    mnemonic: (mnemonic)
+    operand: (register)
+    operand: (typed_operand
+      type: (operand_type)
+      operand: (memory_operand
+        displacement: (identifier)
+        address: (register))))
+  (instruction
+    mnemonic: (mnemonic)
+    operand: (register)
+    operand: (memory_operand
+      address: (binary_expression
+        left: (register)
+        right: (identifier))))
+  (instruction
+    mnemonic: (mnemonic)
+    operand: (memory_operand
+      address: (typed_operand
+        type: (operand_type)
+        operand: (memory_operand
+          address: (binary_expression
+            left: (register)
+            right: (relocation
+              symbol: (identifier)
+              specifier: (identifier)))))))
+  (instruction
+    mnemonic: (mnemonic)
+    operand: (register)
+    operand: (unary_expression
+      operator: (operator_word)
+      argument: (identifier))))

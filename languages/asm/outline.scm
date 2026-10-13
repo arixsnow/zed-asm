@@ -23,6 +23,9 @@
     "(" @context
     ")" @context)) @item
 
+(label
+  name: (macro_call) @name) @item
+
 (assignment
   name: [
     (identifier)

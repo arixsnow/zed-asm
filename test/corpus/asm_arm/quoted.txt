@@ -1,0 +1,36 @@
+================================================================================
+Quoted names in ARM operands
+================================================================================
+
+"foo bar":
+    bl "foo bar"
+    add x0, x0, :lo12:"foo bar"
+    ldr r0, ="foo bar"
+    .word "foo bar"(GOT)
+
+--------------------------------------------------------------------------------
+
+(source_file
+  (label_block
+    label: (label
+      name: (identifier))
+    (instruction
+      mnemonic: (mnemonic)
+      operand: (string))
+    (instruction
+      mnemonic: (mnemonic)
+      operand: (register)
+      operand: (register)
+      operand: (relocation
+        specifier: (identifier)
+        value: (identifier)))
+    (instruction
+      mnemonic: (mnemonic)
+      operand: (register)
+      operand: (literal_pool
+        value: (identifier)))
+    (directive
+      name: (directive_name)
+      argument: (relocation
+        value: (identifier)
+        specifier: (identifier)))))

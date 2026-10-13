@@ -1,0 +1,51 @@
+================================================================================
+A quoted name is a symbol where a symbol is needed and a string on its own
+================================================================================
+
+"foo bar":
+    .quad "foo bar" + 8
+    .quad "foo"
+    "x" = 5
+    .set "foo bar", 5
+
+--------------------------------------------------------------------------------
+
+(source_file
+  (label_block
+    label: (label
+      name: (identifier))
+    (directive
+      name: (directive_name)
+      argument: (binary_expression
+        left: (identifier)
+        right: (integer)))
+    (directive
+      name: (directive_name)
+      argument: (string))
+    (assignment
+      name: (identifier)
+      value: (integer))
+    (directive
+      name: (directive_name)
+      argument: (string)
+      argument: (integer))))
+
+================================================================================
+A quoted name may hold escaped quotes
+================================================================================
+
+"a\"b":
+    .quad "a\"b" - .
+
+--------------------------------------------------------------------------------
+
+(source_file
+  (label_block
+    label: (label
+      name: (identifier))
+    (directive
+      name: (directive_name)
+      argument: (binary_expression
+        left: (identifier
+          (escape_sequence))
+        right: (location_counter)))))

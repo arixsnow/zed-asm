@@ -194,15 +194,16 @@ Python's grammar relies on the same rule for the dedents it writes at the end of
 reads the state back. During recovery it writes nothing when the token before already closed the
 input, so recovery ends on its own instead of relying on tree-sitter to ignore the repeat.
 
-While a line is being typed its last construct is often still open, and the scanner closes it with
-a zero-width token so that error recovery never pulls in the next line. An operand missing after a
+While a line is being typed its last construct is often still open, and the scanner closes it with a
+zero-width token so that error recovery never pulls in the next line. An operand missing after a
 comma, an expression missing after an operator, `(`, `#` or `$`, and a parenthesis, a bracket, a
-register list or a GNU-syntax string left open all close at the end of the line, before a
-separator, or before any character that cannot continue them. `mov x0, , x1` keeps both operands,
-and `ldr x0, [x1` closes its bracket at the end of the line. NASM strings and GNU character
-constants end at the closing quote or at the end of the line. A relocation may still lack its
-specifier and a register its name after `%`. In ARM a register range may lack its end, a `:lo12:`
-relocation its name or its second colon, and a `sym(GOT)` suffix its name or its `)`.
+register list or a GNU-syntax string left open all close at the end of the line, before a separator,
+or before any character that cannot continue them. Each missing piece and each open construct has a
+closing token of its own (see The external scanner). `mov x0, , x1` keeps both operands, and
+`ldr x0, [x1` closes its bracket at the end of the line. NASM strings and GNU character constants
+end at the closing quote or at the end of the line. A relocation may still lack its specifier and a
+register its name after `%`. In ARM a register range may lack its end, a `:lo12:` relocation its
+name or its second colon, and a `sym(GOT)` suffix its name or its `)`.
 
 Three tests hold this. The first types every prefix of every line of the fixtures, with and without
 their final newline, and of all corpus examples, and requires every other line to parse exactly as
@@ -211,11 +212,13 @@ change how the other such lines of that block, and of the blocks around it, pars
 every printable character right after each kind of open construct, in every grammar, both before a
 next line and as the last line of a file with no newline after it. It does so inside a `.if` and a
 `.rept` (a label block in NASM) that the end of the file closes, and the lines before must parse as
-they did without it. The third reads each generated `grammar.json`, works out which input can start
-an operand or an expression and which can continue a parenthesized expression, a bracket or a
-register list, and checks that the scanner closes exactly where the grammar allows nothing else.
-Only an unclosed `/*` and a preprocessor line ending in a backslash reach further, since both really
-span lines.
+they did without it. The third, `test/grammar/closing.test.ts`, checks the scanner against the
+parse table in each generated `parser.c`. It parses a line that stops at an open construct, once
+for every grammar site that uses a closing token, and reads from tree-sitter's debug log the parse
+states the parser is in there before any error recovery. For every printable character followed by
+`a` or `=`, the scanner must close exactly when no token those states accept can start the text,
+and close with the token that site uses. Only an unclosed `/*` and a preprocessor line ending in a
+backslash reach further, since both really span lines.
 
 ## Query and test sources
 
@@ -231,8 +234,10 @@ the build concatenates fragments from general to specific and later patterns ove
 ## The external scanner
 
 `tree-sitter/common/scanner.h` makes every lexing decision that depends on the dialect or on what
-the parser expects next. Its only state marks the zero-width tokens it writes at the end of the
-input (see Grammar modules), so incremental reparsing can reuse any subtree before them. Each
+the parser expects next. Its state is one byte that holds two things: that it has written the
+zero-width tokens that end the input (see Grammar modules), and the x86 syntax mode (see x86
+operands). The byte stays empty until the first mode line and the end of the input, so incremental
+reparsing can reuse any subtree of AT&T code before them. Each
 grammar's generated `src/scanner.c` defines `ASM_GRAMMAR_NAME` and one `ASM_DIALECT_*` macro and
 includes it; defining none or two is a compile error.
 
@@ -266,6 +271,8 @@ What the scanner decides:
 | `$0` to `$9`, `$n`                      | -                                                                                                          | -            | positional macro argument | -           | -          |
 | `(` and a relocation name after a blank | the same operand                                                                                           | same         | -                         | -           | -          |
 | a name after `(` in a relocation suffix | relocation name                                                                                            | same         | -                         | -           | -          |
+| a name after `:` in a relocation        | relocation name                                                                                            | same         | -                         | -           | -          |
+| `{` where a decorator or prefix fits    | decorator or pseudo-prefix                                                                                 | -            | -                         | same        | -          |
 | `.req`, `.dn`, `.qn` after a first name | register alias word                                                                                        | same         | same                      | -           | -          |
 
 In Assembly a `;` is a separator when a directive follows it and a comment otherwise. The file does
@@ -327,22 +334,69 @@ dialect. In ARM (Apple) an `@` that is not a relocation is an error, as it is fo
 `;` alone and `nop;;nop` are empty statements in the dialects where `;` separates.
 
 Assembly has to guess between ARM and x86, which costs these cases: `mov rax, rdi #copy` reads
-`#copy` as an immediate, `nop @note` reads `@note` as a symbol type, and a `%word` being typed reads
-as a register until it names a symbol type such as `%function`. ARM register names are registers in
-x86 code too (`movl sp, %eax`, `call a1`), and Intel's `dword ptr [rbx+4]` parses as the symbol
-`ptr` and an ARM lane until the x86 milestone adds Intel operands. A bare `#` at the end of a line
-is a comment there, since no value follows it. The exact languages read all of these correctly. An
-ARM role slot also takes x86 operands, so `blcs %eax, %ebx` (AMD TBM) parses, though `blcs` is
-also ARM's `bl` with the condition `cs`.
+`#copy` as an immediate and `nop @note` reads `@note` as a symbol type. ARM register names are
+registers in x86 code too (`movl sp, %eax`, `call a1`). Assembly reads AT&T until a `.intel_syntax`
+line, so before one, Intel's `dword ptr [rbx+4]` parses as the symbols `dword` and `ptr` and an ARM
+lane; after one, it is a typed memory operand, as in x86 (GAS). A bare `#` at the end of a line is a
+comment there, since no value follows it. The exact languages read all of these correctly. An ARM
+role slot also takes x86 operands, so `blcs %eax, %ebx` (AMD TBM) parses, though `blcs` is also
+ARM's `bl` with the condition `cs`.
 
-To close an open construct the scanner knows which characters can start an operand or an expression
-in each syntax, and which continue a parenthesized expression, a bracket (operators, `,`, `]` and
-`:`) or a register list (`,`, `}`, `-` and `[`). In Assembly and ARM a `(` continues the first two
-as well, since it may start a relocation suffix. Comments are read first, so the decision is made
-on the next real character. `==` and `!=` need a second character, and so does a NASM `$`, which
-starts a name only before a letter, `_`, `?` or `.`. A word glued to the token before it never
-closes anything, since only a relocation specifier glues to an operand: M2 closed `(sym@` before
-`PLT`, so `.quad (sym@PLT)` was an error.
+The scanner sees only which of its own tokens the parser accepts. So each closing token stands for
+one kind of construct, and the scanner knows what may continue it. A missing piece closes before
+any character that cannot start it:
+
+| Token                        | The missing piece                                                                      | Starts with                                                    |
+| ---------------------------- | -------------------------------------------------------------------------------------- | -------------------------------------------------------------- |
+| `_missing_operand`           | an instruction operand or a condition                                                  | a value; in ARM also `[`, `{` and `=`; in x86 also `*`         |
+| `_missing_label_operand`     | an ARM branch target                                                                   | a value, `[` or `=`                                            |
+| `_missing_argument`          | a directive argument or an `.irp` value                                                | a value                                                        |
+| `_missing_register_argument` | an argument of `.cfi_offset`, `.save` and the other register directives                | a value; in ARM also `{`                                       |
+| `_missing_element`           | an element of an ARM bracket                                                           | an expression; in Assembly also `$`                            |
+| `_missing_expression`        | an expression                                                                          | an expression                                                  |
+| `_missing_name`              | a register list element, a range end, a `.req` register, the instruction after `{vex}` | a letter, `_`, `\`, or `.` before a letter                     |
+| `_missing_identifier`        | a macro name or parameter, an `.irp` parameter                                         | a letter or `_`                                                |
+| `_missing_symbol`            | an `.loh` argument                                                                     | a letter, `_`, or `.` before a letter                          |
+| `_missing_relocation`        | the name or second colon of `:lo12:`, the name in `sym(GOT)`                           | nothing the parser reads; the scanner reads the name and colon |
+
+An expression starts with a letter, a digit or one of `_ . ( - + ~ !`, in the GNU syntax also
+`' " \`, in Assembly and ARM `:` (a relocation), and in NASM `? $`. A value starts as an expression
+does, and in the GNU syntax also with `%` (an x86 register or a symbol type such as `%function`)
+and in x86 with `$`. In Intel operands an expression has no relocation `:` and also starts with `%`
+or `[`; an operand also starts with `$`. Wherever the parser takes an x86 register, `%` starts one.
+
+An open construct closes before any character that cannot continue it. Each one also continues
+with an operator where the parser takes one:
+
+| Token                 | The open construct                         | Continues with                                                  |
+| --------------------- | ------------------------------------------ | --------------------------------------------------------------- |
+| `_unclosed`           | a parenthesis, an AT&T scale               | `)`                                                             |
+| `_unclosed_bracket`   | an ARM memory operand or register index    | `]` and `,`                                                     |
+| `_unclosed_index`     | the lane after a register list, `{v0.s}[1` | `]`                                                             |
+| `_unclosed_brace`     | a register list                            | `}` and `,`                                                     |
+| `_unclosed_memory`    | an AT&T memory operand                     | `)`, a `,` after a register or index, `%` where a register fits |
+| `_unclosed_address`   | an Intel bracket                           | `]`                                                             |
+| `_unclosed_arguments` | the arguments of a macro call              | `)` and `,`                                                     |
+
+Where a character means different things, the scanner reads the token itself, and only where the
+parser expects it: the comma right after an AT&T `(` (`(,%rax,8)`), the colon of an ARM alignment
+or index range, the colon of an Intel segment (`fs:[0x28]`), the `[` after an Intel displacement
+(`sym[rip]`), the dash of a register range, a relocation name after `:` and the colon after it, a
+pseudo-prefix and a decorator. Before a `(` it writes a zero-width marker of what the parentheses
+open (see Expressions). At the start of an ARM bracket element a colon begins an alignment
+when a digit follows (`[r0, :64]`) and a relocation otherwise (`[x0, :lo12:sym]`). The first colon
+of `:lo12:` stays the parser's own token, since a label's colon is the same character
+(`\name\()_start:`). When a missing piece and an open construct could both close, the construct
+closes as it stands, so `F(` at the end of a line is an empty call.
+
+Comments are read first, so the decision is made on the next real character. `==` and `!=` need a
+second character (`!` alone is an operator in the GNU-syntax languages except ARM (Apple)), and so
+does a NASM `$`, which starts a name only before a letter, `_`, `?` or `.`, and a `.` where only a
+name fits. The only word that may be glued to a complete operand is a relocation
+specifier after `@`, and the scanner reads that itself, so any other glued word closes like any
+character that cannot continue: `[0x` (a hex number being typed) closes its bracket before the `x`
+and the error stays on its line. M2 left every glued word open instead, which let tree-sitter's
+recovery carry an Intel bracket over to the next line.
 
 The open tokens are valid only where the construct may end. After `[` or `{` an element is
 required, so a bracket never closes before its first element; a rule based only on the next
@@ -485,6 +539,54 @@ bare `.:` (yasm: "label or instruction expected"), and only yasm accepts `..x:` 
 is valid for one of the language's assemblers. A `$` starts a name only before a letter, `_`, `?`
 or `.`, so the scanner looks at the next character before it closes an open operand at a `$`.
 
+## Expressions
+
+GNU as and clang group operators by GNU's precedence, not C's, on every ELF target, x86 and ARM
+alike. clang uses a third order on Apple targets, and nasm and yasm use C's. Measured with fifteen
+`.if` probes per assembler (`2 + 3 << 1` is 8 with GNU's order, 10 with Apple's and nasm's), from
+the highest level to the lowest:
+
+| Level | GNU syntax on ELF | Apple (clang) | NASM and yasm |
+| ----- | ----------------- | ------------- | ------------- |
+| 1     | `* / % << >>`     | `* / %`       | `* /`         |
+| 2     | `\| & ^ !`        | `+ -`         | `+ -`         |
+| 3     | `+ -`             | `<< >>`       | `<< >>`       |
+| 4     | comparisons       | comparisons   | `&`           |
+| 5     | `&&`              | `\| & ^`      | `^`           |
+| 6     | `\|\|`            | `&& \|\|`     | `\|`          |
+| 7     |                   |               | comparisons   |
+| 8     |                   |               | `&&`          |
+| 9     |                   |               | `\|\|`        |
+
+Assembly, ARM and x86 (GAS) use the first column, ARM (Apple) the second and x86 (NASM) the third.
+Operators on one level group from the left. The binary `!` (or-not: `1 ! 2` is `1 | ~2`) reads
+wherever GNU as reads it; clang takes it for x86 and AArch64 ELF and rejects it for AArch32 and
+Apple. `%` is the remainder in every GNU-syntax language; in x86 code a `%` that starts a register
+name is a register instead (see x86 operands). In Intel syntax GNU as keeps its own order and reads
+`shl`, `shr` and `mod` at level 1, `and`, `or` and `xor` at level 2 and `eq`, `ne`, `lt`, `le`, `gt`
+and `ge` with the comparisons, while clang's Intel mode switches to C's order (`2 + 3 shl 1` is 8 in
+GNU as and 10 in clang). The grammar follows GNU as there. Precedence shapes the tree only, never a
+color.
+
+In `.S` files the C preprocessor runs first, so operands hold C macro calls: Linux's
+`PER_CPU_VAR(x)`, glibc's `L(loop)` and `VMM(1)`. In every GNU-syntax language a name followed by
+`(` is a `macro_call` (`function`, `arguments`), and as in C any argument may be empty (`F(,1)`).
+AT&T memory wins when the parentheses start with a register or a comma (`sym(%rip)`, `t(,%rax,8)`,
+and `8(rbx)` in noprefix mode). Where an instruction's operands may be separated by blanks, a blank
+before `(` keeps GNU's reading of two arguments (`m 1 (2)`); elsewhere a blank changes nothing
+(`.word F (1)`). A label written as a call (`L(loop):`) is a local label named by its call. A
+statement's first word stays its mnemonic, since GNU as cannot tell a macro from an instruction
+without the definitions, and a statement may take one argument list as its operand
+(`_ASM_EXTABLE(1b, 3b)`, `ENTRY_P2ALIGN (STRCHR, 5)`). Before a `(` the scanner writes a zero-width
+marker of what the parentheses open: call arguments, a relocation suffix or an AT&T memory address.
+It decides from the text after the `(` and from the markers the parser accepts there, so no parse
+conflict has to choose between the readings.
+
+A quoted name is a symbol where a symbol is needed: as a label (`"a b":`), in an operand, after `$`,
+with `@PLT` or `:lo12:`, and in memory operands. GNU as and clang accept all of these on every
+target, and gcc's Intel output quotes every symbol. A quoted operand on its own stays a string,
+since GNU macros take string arguments (`ALTERNATIVE "", "lfence", X86_FEATURE_LFENCE`).
+
 ## ARM operands
 
 Measured with GNU as 2.46.1 for AArch64 (`-march=armv9.6-a+sve2+sme2+cmpbr`) and 2.45 for AArch32
@@ -578,10 +680,10 @@ directives that take registers, below.
 | `relocation`       | `:lo12:sym`, `#:lower16:sym`, `sym(GOT)`, and as before `sym@PAGE`                                                                                                  | `specifier`, `value`, `symbol`  |
 | `register_alias`   | `name .req x0`, `name .dn d0`, `name .qn q0`                                                                                                                        | `name`, `directive`, `register` |
 
-After `[` or `{` an element is required. `[]`, `{}` and `d0[]` read it as a missing operand or a
-missing expression, the hidden tokens an empty `( )` uses, which is also how `d0[]`, a valid lane,
-parses. The scanner closes `[` and `{` at the end of a line, before a separator and before any
-character that cannot continue them (see The external scanner).
+After `[` or `{` an element is required. `[]` reads a missing element, `{}` a missing name and
+`d0[]` a missing expression, the hidden tokens that close constructs being typed, which is also how
+`d0[]`, a valid lane, parses. The scanner closes `[` and `{` at the end of a line, before a
+separator and before any character that cannot continue them (see The external scanner).
 
 ### Relocations
 
@@ -641,7 +743,7 @@ which also keeps a register name still being typed (`{d8-d`) from breaking the l
 
 ### Keywords
 
-A register, condition, shift word, relocation name or role mnemonic is a keyword: a token that
+A register, condition, shift word or role mnemonic is a keyword: a token that
 matches only a whole word. tree-sitter's lexer stops at a token of higher precedence instead of
 going on to a longer token of lower precedence, so with these words as ordinary tokens `bic` read as
 `b` and `ic`, `blx` as `bl` and `x`, and `cselx` as `csel` and `x`. M2 had the same flaw with its
@@ -657,11 +759,15 @@ the longest word: at different precedences it stopped at the condition `cs` insi
 `test/grammar/keywords.test.ts` checks that every case-insensitive token of every grammar ends up in
 the generated keyword lexer.
 
-Apple's `L` names and the `@` relocation specifier are not keywords: tree-sitter leaves them out
-because they match the same strings as each other. They have a higher precedence than `identifier`,
-so wherever one is valid it wins over an identifier of the same length, and the keyword check never
-runs. The `L` pattern therefore leaves out every `L` word that is a keyword (see Apple `L` names),
-and an `L` word at the start of a statement can be a mnemonic as well as an assigned name.
+Apple's `L` names are a keyword too, at the same precedence. A shared precedence matters here: at a
+lower one the keyword lexer stopped at the condition `lt` inside `Ltmp0`. The `L` pattern leaves out
+every `L` word that is another keyword (see Apple `L` names), so no two keywords match the same
+string, and an `L` word at the start of a statement can be a mnemonic as well as an assigned name.
+The relocation specifier after `@` is read by the scanner, which accepts it only right after the
+`@`. Until M4 it was a token of its own that matched the same strings as the `L` names, which kept
+both out of the keyword lexer. The relocation names of `:lo12:` and `sym(GOT)` are scanner words
+too, each set in one sorted table, because the scanner must know them to close `:lo` or `sym(G`
+while they are typed. Until M4 the `:lo12:` names were a keyword.
 
 Words that start with `.` cannot be keywords of an identifier, so the scanner reads them whole: the
 block openers, `.loc` and `.file`, the register directives above and the alias words `.req`, `.dn`
@@ -691,6 +797,136 @@ register, condition, shift and role lists and builds the `L` pattern without the
   register. A predicate takes a register only, because `pg/z` with a name is also a division.
 - The grammar reads operand shapes, not instructions: `zero {za0.s-za3.s}` parses, though the
   assemblers reject that list for `zero`.
+
+## x86 operands
+
+Measured with GNU as 2.46.1 (`--64` and `--32`) and clang 22.1 (`x86_64` and `i686` Linux,
+`x86_64` Apple). A construct reads when one assembler of the language accepts it, in 64-bit or
+32-bit code, since `.code16`, `.code32` and `.code64` switch between them inside a file.
+
+### Syntax mode
+
+GNU as and clang read AT&T syntax until a `.intel_syntax` line, and AT&T again after `.att_syntax`.
+The scanner keeps the mode, in text order, in two bits of its state: Intel or AT&T, and whether a
+bare register name is a register. Assembly follows the same lines.
+
+| Line                                | Mode                       | Assemblers |
+| ----------------------------------- | -------------------------- | ---------- |
+| `.intel_syntax noprefix`            | Intel, bare register names | both       |
+| `.intel_syntax`                     | Intel, bare register names | both       |
+| `.intel_syntax prefix`              | Intel, registers take `%`  | GNU as     |
+| `.att_syntax`, `.att_syntax prefix` | AT&T                       | both       |
+| `.att_syntax noprefix`              | AT&T, bare register names  | GNU as     |
+
+`.intel_syntax` alone follows clang, which reads bare names as registers there; GNU as on ELF wants
+`%` until `noprefix`, so the two differ only on code GNU as rejects. With bare register names, every
+register name is a register in every operand, even where a symbol of that name exists, as both
+assemblers read it; a quoted `"rbx"` is the symbol, and the same holds in directive arguments
+(`.cfi_offset rbp, -16`). In Intel mode the scanner reads the Intel keywords below, in operands and,
+as GNU as does, in directive expressions (`.long 1 shl 2`; clang rejects them there). Everywhere
+else they are symbols, so `movq byte, %rax` loads the symbol `byte`.
+
+tree-sitter reuses no subtree whose preceding scanner state differs. Changing or deleting a mode
+line therefore reads everything after it again, and every other edit costs what it did before. The
+state is one byte, and none at all in a file that never leaves AT&T.
+
+### Operand forms
+
+| Node                     | Form                                                                               | Fields                                              |
+| ------------------------ | ---------------------------------------------------------------------------------- | --------------------------------------------------- |
+| `register`               | `%rax`, `% st ( 1 )`, a bare name in noprefix mode                                 | -                                                   |
+| `memory_operand` (AT&T)  | `disp(base, index, scale)` with each part optional, `%fs:` before it               | `segment`, `displacement`, `base`, `index`, `scale` |
+| `memory_operand` (Intel) | `[expr]`, also after a displacement: `8[rbp]`, `sym[rip]`, `[rbx][rcx*4]`          | `displacement`, `address`                           |
+| `typed_operand`          | `dword ptr [rbx]`, `qword [rbx]`, `near ptr target`                                | `type`, `operand`                                   |
+| `operand_type`           | a size word with an optional `ptr` or `bcst`; `near`, `far`                        | -                                                   |
+| `segment_override`       | Intel `fs:[0x28]`, `fs:0x28`, `FLAT:sym`, `0x10:0x1000`                            | `segment`, `operand`                                |
+| `indirect`               | AT&T `*%rax`, `*(%rax)`, `*8(,%rax,8)`                                             | `operand`                                           |
+| `decorated_operand`      | an operand and its decorators, `%zmm3{%k1}{z}`                                     | `operand`, `decorator`                              |
+| `decorator`              | see Decorators                                                                     | -                                                   |
+| `immediate`              | AT&T `$expr`                                                                       | `value`                                             |
+| `prefix`                 | see Prefixes, as fields of `instruction`                                           | -                                                   |
+| `operator_word`          | Intel `shl`, `and`, `eq`, `not`, `offset`, `short` in a binary or unary expression | -                                                   |
+
+### Registers
+
+| Family     | Names                                                                                 | Notes                                        |
+| ---------- | ------------------------------------------------------------------------------------- | -------------------------------------------- |
+| general    | `rax`-`rsp`, `eax`-`esp`, `ax`-`sp`, `al`-`dh`, `sil`, `dil`, `bpl`, `spl`            |                                              |
+| numbered   | `r8`-`r31` with no suffix or `d`, `w` or `b`                                          | `r16`-`r31` are APX; `r8l` is rejected       |
+| segment    | `cs`, `ds`, `es`, `fs`, `gs`, `ss`                                                    |                                              |
+| control    | `cr0`-`cr15`, `dr0`-`dr15`, `db0`-`db15`                                              | `db` in GNU as only                          |
+| test       | `tr0`-`tr7`                                                                           | GNU as for i386 only                         |
+| x87        | `st`, `st(0)`-`st(7)`                                                                 | the index is a digit, blanks allowed in AT&T |
+| vector     | `mm0`-`mm7`, `xmm0`-`xmm31`, `ymm0`-`ymm31`, `zmm0`-`zmm31`, `k0`-`k7`, `tmm0`-`tmm7` |                                              |
+| addressing | `rip`, `eip`, `ip`, `riz`, `eiz`                                                      | `ip`, `riz` and `eiz` in clang only          |
+
+Both assemblers read every name in any case. Both reject `bnd0`-`bnd3` (MPX is gone), `st0`, `r32`
+and `xmm32`. In AT&T syntax a register is `%` and a name, with blanks allowed after `%`
+(`% rax`, `% st ( 1 )`).
+
+### Intel keywords
+
+| Words                                                                                         | Kind     | Assemblers                                     |
+| --------------------------------------------------------------------------------------------- | -------- | ---------------------------------------------- |
+| `byte`, `word`, `dword`, `fword`, `qword`, `mmword`, `tbyte`, `xmmword`, `ymmword`, `zmmword` | size     | both                                           |
+| `oword`                                                                                       | size     | GNU as                                         |
+| `ptr`, `bcst`                                                                                 | size     | both, only right after a size word             |
+| `offset`                                                                                      | operator | both                                           |
+| `short`, `near`, `far`, `flat`                                                                | operator | GNU as; clang reads `short` only before a name |
+| `and`, `or`, `xor`, `not`, `mod`, `shl`, `shr`                                                | operator | both                                           |
+| `eq`, `ne`, `lt`, `le`, `gt`, `ge`                                                            | operator | GNU as                                         |
+
+GNU as reads them in any case, clang in lower or upper case. `tword`, `type`, `size`, `length`,
+`seg`, `dup` and the other MASM words are ordinary symbols in both. `ptr` and `bcst` alone are
+symbols too (`call ptr`). A size word alone is a value in GNU as: `mov eax, byte` loads 1. Every
+one of these words can still name a label (`byte:`).
+
+### Prefixes
+
+| Prefix                                                                                        | Assemblers |
+| --------------------------------------------------------------------------------------------- | ---------- |
+| `rep`, `repe`, `repz`, `repne`, `repnz`, `lock`, `data16`, `data32`, `addr16`, `addr32`       | both       |
+| `cs`, `ds`, `es`, `fs`, `gs`, `ss`, `notrack`, `xacquire`, `xrelease`, `rex64`                | both       |
+| `wait`, `rex`, `rex.` with `w`, `r`, `x`, `b` in that order, `rexx`-`rexz`, `rex64x`-`rex64z` | GNU as     |
+| `{vex}`, `{vex2}`, `{vex3}`, `{evex}`, `{rex}`, `{rex2}`, `{nf}`, `{disp8}`, `{disp32}`       | both       |
+| `{load}`, `{store}`, `{disp16}`, `{nooptimize}`                                               | GNU as     |
+
+Prefixes take any case. A pseudo-prefix in braces takes blanks inside and needs none after it
+(`{vex}vpdpbusd`), and several may stand in a row (`{load} {disp32} movq`, GNU as). One prefix
+word may come before them and any number after them (`lock {disp32} addl`, GNU as), as GNU as
+measures; a pseudo-prefix after a second prefix word, or after a word that follows another
+pseudo-prefix, is an error in both. `bnd` is
+rejected by both. A prefix alone on a line applies to the next instruction, and `rep; movsb`
+separates the two with `;` (see The external scanner).
+
+### Decorators
+
+| Decorator                                               | Notes                                                  |
+| ------------------------------------------------------- | ------------------------------------------------------ |
+| `{%k1}`, `{k1}`                                         | a mask; `{k1}` in clang for AT&T and in both for Intel |
+| `{z}`                                                   | zeroing, after or before the mask                      |
+| `{1to2}`, `{1to4}`, `{1to8}`, `{1to16}`, `{1to32}`      | broadcast                                              |
+| `{rn-sae}`, `{rd-sae}`, `{ru-sae}`, `{rz-sae}`, `{sae}` | rounding, an operand of its own                        |
+| `{dfv=of,sf,zf,cf}`                                     | APX flags, any of the four, also none                  |
+
+Blanks are allowed inside braces and between them. `{z}`, `{1toN}` and the rounding forms are lower
+case only; `{dfv=...}` takes any case.
+
+The scanner reads a pseudo-prefix and a decorator whole, each from one definition, so a `{` that
+starts neither closes what is open. Until M4 both were also regular expressions in `x86.js`, and the
+scanner's copy of the decorator syntax could drift from the grammar's.
+
+### Limits
+
+- A file assembled with `-msyntax=intel` or `-masm=intel` and no mode line reads as AT&T, since the
+  text does not show the mode.
+- The mode follows the text: across `#if` branches the later line wins, and a macro body reads in
+  the mode where it is written.
+- A statement's first word is a mnemonic even when it names a C macro, as GNU as cannot tell without
+  the definitions.
+- Apple's x86-64 output parses, but its `L` temporaries are ordinary labels: the x86 languages
+  follow ELF's `.L`, and there is no Apple x86 language.
+- The grammar reads operand shapes, not instructions: `movq %al, %rbx` parses.
 
 ## Editor behavior
 
@@ -815,6 +1051,12 @@ silicon.
 | Symbol type                                         | `@type.builtin`                                               |
 | Relocation specifier (`@PLT`, `:lo12:`, `(GOT)`)    | `@attribute`                                                  |
 | Shift operator                                      | `@keyword.operator`                                           |
+| x86 prefix and pseudo-prefix (`lock`, `{vex}`)      | `@keyword`                                                    |
+| Intel size and type words (`dword ptr`, `near`)     | `@keyword`                                                    |
+| Intel `offset`, `short` and `flat`                  | `@keyword`                                                    |
+| Intel operator word (`shl`, `and`, `not`, `eq`)     | `@keyword.operator`                                           |
+| AVX-512 decorator (`{%k1}`, `{z}`, `{rn-sae}`)      | `@attribute`                                                  |
+| C macro call in an operand or a label (`L(loop)`)   | `@function.special`                                           |
 | Location counter `.`                                | `@constant.builtin`                                           |
 | Operators, brackets, delimiters; `!`, `^`, `-`      | `@operator`, `@punctuation.bracket`, `@punctuation.delimiter` |
 | Comments, including on `#` lines                    | `@comment`                                                    |
@@ -826,8 +1068,10 @@ silicon.
 | Section a `.section` or `.pushsection` switches to  | `@namespace` (Mach-O: segment and section)                    |
 
 `!` after a memory operand or a register, `^` after a register list and `-` in a range are
-operators. Planned: control-flow instructions as `@keyword.control`, branch targets as `@function`,
-Intel registers, data labels.
+operators, and so are `*` before an x86 indirect operand and `%` as a remainder. A label named by a
+macro call (`L(loop):`) looks like the call where it is used, since a use cannot be told from any
+other call. Planned: control-flow instructions as `@keyword.control`, branch targets as `@function`,
+data labels.
 
 ## Checks
 
@@ -984,34 +1228,37 @@ accepts everything that can start a statement, 42 entries against M1's 19, now t
 macro arguments and `#define` lines start one; tree-sitter finds an entry in such a state by a
 linear scan.
 
-The second table runs the M2 and M3 parsers on the same `basics` code in one session, median of
-nine runs; the M2 parsers were built from the M2 commit:
+The second table runs the M3 and M4 parsers on the same `basics` code in one session, median of
+seven runs; the M3 parsers were built from the M3 commit (`git archive` into `.build/`):
 
-| Grammar       | Parse (ms)   | One-character edit (ms) | States     | parser.c          |
-| ------------- | ------------ | ----------------------- | ---------- | ----------------- |
-| asm_auto      | 56.3 -> 61.6 | 2.3 -> 2.5              | 489 -> 973 | 573 KB -> 1123 KB |
-| asm_arm       | 50.2 -> 55.0 | 1.9 -> 2.1              | 470 -> 954 | 557 KB -> 1088 KB |
-| asm_arm_apple | 49.4 -> 55.4 | 2.9 -> 3.1              | 428 -> 871 | 480 KB -> 886 KB  |
-| asm_x86_gas   | 57.1 -> 57.6 | 2.3 -> 2.3              | 464 -> 466 | 529 KB -> 517 KB  |
-| asm_x86_nasm  | 45.2 -> 45.8 | 3.5 -> 3.3              | 72 -> 72   | 87 KB -> 90 KB    |
+| Grammar       | Parse (ms)   | One-character edit (ms) | States      | parser.c           |
+| ------------- | ------------ | ----------------------- | ----------- | ------------------ |
+| asm_auto      | 62.4 -> 55.0 | 2.6 -> 2.1              | 973 -> 2981 | 1123 KB -> 2801 KB |
+| asm_arm       | 55.1 -> 56.0 | 2.0 -> 1.8              | 954 -> 1292 | 1088 KB -> 1351 KB |
+| asm_arm_apple | 55.5 -> 57.5 | 3.2 -> 3.2              | 871 -> 1229 | 886 KB -> 1209 KB  |
+| asm_x86_gas   | 58.8 -> 64.8 | 2.5 -> 2.4              | 466 -> 1806 | 517 KB -> 1710 KB  |
+| asm_x86_nasm  | 46.6 -> 46.4 | 3.5 -> 3.4              | 72 -> 71    | 90 KB -> 106 KB    |
 
-The ARM languages parse 9 to 12% slower and edit as fast. The difference is the keyword check after
-every identifier and a larger lexer; the x86 grammars, which declare no word token, parse as before.
-Of the new states, the directives with register operands cost 81, ARM (Apple)'s `.loh` 52, the
-relocation suffix 29 and macro arguments in register positions 14; the rest are the operand forms
-and the role table.
+x86 (GAS) parses 10% slower and edits as fast; Assembly parses 12% faster. x86 (GAS) has four times
+the states of M3: AT&T and Intel operands, the mode words, prefixes, decorators and macro calls.
+Taking one change out of a scratch copy at a time, the Intel operator words in directive expressions
+cost x86 (GAS) 70 states, the marker before an AT&T memory `(` 51, empty macro arguments 45, the
+closing categories after a blank 31 and a scale without an index 4. The closing categories cost the
+ARM grammars about 50 states each, 2 to 4%. M3's ARM languages parse 9 to 12% slower than M2's,
+because of the keyword check after every identifier and a larger lexer.
 
-The third table is M3 on all fixtures of each grammar repeated, which holds blocks, macros,
-directives, preprocessor lines and, in the ARM grammars, the operand fixtures, with every query the
-language ships (`deno task bench`):
+The third table is M4 on all fixtures of each grammar repeated, which hold blocks, macros,
+directives, preprocessor lines and the operand fixtures, with every query the language ships
+(`deno task bench`). Each fixture is a file of its own, which both assemblers start in AT&T mode, so
+the bench ends every x86 fixture with `.att_syntax`:
 
 | Grammar       | Parse | Edit | brackets | highlights | indents | injections | outline | overrides | textobjects |
 | ------------- | ----- | ---- | -------- | ---------- | ------- | ---------- | ------- | --------- | ----------- |
-| asm_auto      | 88.1  | 1.6  | 34.3     | 47.7       | 32.7    | 33.2       | 37.7    | 34.3      | 36.8        |
-| asm_arm       | 89.5  | 1.6  | 35.9     | 48.6       | 34.0    | 34.0       | 37.9    | 35.4      | 37.5        |
-| asm_arm_apple | 82.9  | 1.6  | 33.1     | 45.6       | 32.0    | 31.4       | 36.0    | 32.8      | 35.3        |
-| asm_x86_gas   | 74.2  | 1.6  | 30.1     | 42.7       | 29.5    | 29.2       | 34.8    | 30.1      | 33.3        |
-| asm_x86_nasm  | 64.2  | 6.4  | 27.0     | 35.5       | -       | -          | 30.4    | 27.8      | 30.1        |
+| asm_auto      | 82.9  | 1.5  | 35.3     | 48.4       | 33.7    | 33.7       | 38.2    | 34.7      | 37.4        |
+| asm_arm       | 91.5  | 1.5  | 36.1     | 49.1       | 34.1    | 34.1       | 38.5    | 35.4      | 37.3        |
+| asm_arm_apple | 85.5  | 1.6  | 33.4     | 45.9       | 31.6    | 31.5       | 36.9    | 32.9      | 35.8        |
+| asm_x86_gas   | 86.4  | 1.6  | 33.8     | 44.9       | 32.2    | 32.1       | 36.9    | 33.2      | 35.2        |
+| asm_x86_nasm  | 64.7  | 6.4  | 27.0     | 35.3       | -       | -          | 29.9    | 27.4      | 29.8        |
 
 Times are in milliseconds for the whole file; Zed runs most queries on the visible rows only.
 

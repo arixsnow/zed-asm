@@ -1,0 +1,350 @@
+================================================================================
+AT&T memory operands with each part left out
+================================================================================
+
+movq (%rax), %rbx
+movq -8(%rbp), %rbx
+movq 8(%rsp,%rax,4), %rbx
+movq (,%rax,8), %rbx
+movq 16(,%rax,8), %rbx
+movq (%rax,%rbx), %rcx
+movq (%rax,%rbx,), %rcx
+movl (%esp,1), %eax
+movl 4(,1), %eax
+
+--------------------------------------------------------------------------------
+
+(source_file
+  (instruction
+    mnemonic: (mnemonic)
+    operand: (memory_operand
+      base: (register))
+    operand: (register))
+  (instruction
+    mnemonic: (mnemonic)
+    operand: (memory_operand
+      displacement: (unary_expression
+        argument: (integer))
+      base: (register))
+    operand: (register))
+  (instruction
+    mnemonic: (mnemonic)
+    operand: (memory_operand
+      displacement: (integer)
+      base: (register)
+      index: (register)
+      scale: (integer))
+    operand: (register))
+  (instruction
+    mnemonic: (mnemonic)
+    operand: (memory_operand
+      index: (register)
+      scale: (integer))
+    operand: (register))
+  (instruction
+    mnemonic: (mnemonic)
+    operand: (memory_operand
+      displacement: (integer)
+      index: (register)
+      scale: (integer))
+    operand: (register))
+  (instruction
+    mnemonic: (mnemonic)
+    operand: (memory_operand
+      base: (register)
+      index: (register))
+    operand: (register))
+  (instruction
+    mnemonic: (mnemonic)
+    operand: (memory_operand
+      base: (register)
+      index: (register))
+    operand: (register))
+  (instruction
+    mnemonic: (mnemonic)
+    operand: (memory_operand
+      base: (register)
+      scale: (integer))
+    operand: (register))
+  (instruction
+    mnemonic: (mnemonic)
+    operand: (memory_operand
+      displacement: (integer)
+      scale: (integer))
+    operand: (register)))
+
+================================================================================
+AT&T memory operands with blanks and expression parts
+================================================================================
+
+movq 8( %rsp , %rax , 4 ), %rbx
+movq 8 (%rsp), %rbx
+movq (8+4)*2(%rax), %rbx
+movq sym+8(%rax,%rbx,2*2), %rcx
+leal 0(%esi,%eiz,1), %esi
+
+--------------------------------------------------------------------------------
+
+(source_file
+  (instruction
+    mnemonic: (mnemonic)
+    operand: (memory_operand
+      displacement: (integer)
+      base: (register)
+      index: (register)
+      scale: (integer))
+    operand: (register))
+  (instruction
+    mnemonic: (mnemonic)
+    operand: (memory_operand
+      displacement: (integer)
+      base: (register))
+    operand: (register))
+  (instruction
+    mnemonic: (mnemonic)
+    operand: (memory_operand
+      displacement: (binary_expression
+        left: (parenthesized_expression
+          (binary_expression
+            left: (integer)
+            right: (integer)))
+        right: (integer))
+      base: (register))
+    operand: (register))
+  (instruction
+    mnemonic: (mnemonic)
+    operand: (memory_operand
+      displacement: (binary_expression
+        left: (identifier)
+        right: (integer))
+      base: (register)
+      index: (register)
+      scale: (binary_expression
+        left: (integer)
+        right: (integer)))
+    operand: (register))
+  (instruction
+    mnemonic: (mnemonic)
+    operand: (memory_operand
+      displacement: (integer)
+      base: (register)
+      index: (register)
+      scale: (integer))
+    operand: (register)))
+
+================================================================================
+RIP-relative and relocated displacements
+================================================================================
+
+movq sym(%rip), %rbx
+movq sym@GOTPCREL(%rip), %rbx
+movq (sym), %rbx
+
+--------------------------------------------------------------------------------
+
+(source_file
+  (instruction
+    mnemonic: (mnemonic)
+    operand: (memory_operand
+      displacement: (identifier)
+      base: (register))
+    operand: (register))
+  (instruction
+    mnemonic: (mnemonic)
+    operand: (memory_operand
+      displacement: (relocation
+        symbol: (identifier)
+        specifier: (identifier))
+      base: (register))
+    operand: (register))
+  (instruction
+    mnemonic: (mnemonic)
+    operand: (parenthesized_expression
+      (identifier))
+    operand: (register)))
+
+================================================================================
+Segment overrides
+================================================================================
+
+movq %fs:0x28, %rbx
+movsb %ds:(%rsi), %es:(%rdi)
+movq %fs: 0x28, %rbx
+movq %fs :0x28, %rbx
+addl $1, %fs:depth@tpoff
+movq %gs:8(%rax), %rbx
+
+--------------------------------------------------------------------------------
+
+(source_file
+  (instruction
+    mnemonic: (mnemonic)
+    operand: (memory_operand
+      segment: (register)
+      displacement: (integer))
+    operand: (register))
+  (instruction
+    mnemonic: (mnemonic)
+    operand: (memory_operand
+      segment: (register)
+      base: (register))
+    operand: (memory_operand
+      segment: (register)
+      base: (register)))
+  (instruction
+    mnemonic: (mnemonic)
+    operand: (memory_operand
+      segment: (register)
+      displacement: (integer))
+    operand: (register))
+  (instruction
+    mnemonic: (mnemonic)
+    operand: (memory_operand
+      segment: (register)
+      displacement: (integer))
+    operand: (register))
+  (instruction
+    mnemonic: (mnemonic)
+    operand: (immediate
+      value: (integer))
+    operand: (memory_operand
+      segment: (register)
+      displacement: (relocation
+        symbol: (identifier)
+        specifier: (identifier))))
+  (instruction
+    mnemonic: (mnemonic)
+    operand: (memory_operand
+      segment: (register)
+      displacement: (integer)
+      base: (register))
+    operand: (register)))
+
+================================================================================
+Indirect jumps and calls
+================================================================================
+
+call *%rax
+jmp *(%rax)
+jmp *8(,%rax,8)
+call *sym@GOTPCREL(%rip)
+call * %rax
+lcall *(%rax)
+jmp *.L4(,%rax,8)
+jmp *sym
+
+--------------------------------------------------------------------------------
+
+(source_file
+  (instruction
+    mnemonic: (mnemonic)
+    operand: (indirect
+      operand: (register)))
+  (instruction
+    mnemonic: (mnemonic)
+    operand: (indirect
+      operand: (memory_operand
+        base: (register))))
+  (instruction
+    mnemonic: (mnemonic)
+    operand: (indirect
+      operand: (memory_operand
+        displacement: (integer)
+        index: (register)
+        scale: (integer))))
+  (instruction
+    mnemonic: (mnemonic)
+    operand: (indirect
+      operand: (memory_operand
+        displacement: (relocation
+          symbol: (identifier)
+          specifier: (identifier))
+        base: (register))))
+  (instruction
+    mnemonic: (mnemonic)
+    operand: (indirect
+      operand: (register)))
+  (instruction
+    mnemonic: (mnemonic)
+    operand: (indirect
+      operand: (memory_operand
+        base: (register))))
+  (instruction
+    mnemonic: (mnemonic)
+    operand: (indirect
+      operand: (memory_operand
+        displacement: (local_identifier)
+        index: (register)
+        scale: (integer))))
+  (instruction
+    mnemonic: (mnemonic)
+    operand: (indirect
+      operand: (identifier))))
+
+================================================================================
+Bare registers in memory operands after .att_syntax noprefix
+================================================================================
+
+.att_syntax noprefix
+movq 8(rbx,rcx,4), rax
+movq fs:8, rax
+
+--------------------------------------------------------------------------------
+
+(source_file
+  (directive
+    name: (directive_name)
+    argument: (identifier))
+  (instruction
+    mnemonic: (mnemonic)
+    operand: (memory_operand
+      displacement: (integer)
+      base: (register)
+      index: (register)
+      scale: (integer))
+    operand: (register))
+  (instruction
+    mnemonic: (mnemonic)
+    operand: (memory_operand
+      segment: (register)
+      displacement: (integer))
+    operand: (register)))
+
+================================================================================
+Registers glued to macro arguments in memory operands
+================================================================================
+
+.macro m base, off
+movq \off(%\base), %rax
+movq 8(%rsp,%r\base\()d,4), %rax
+.endm
+
+--------------------------------------------------------------------------------
+
+(source_file
+  (macro_definition
+    name: (identifier)
+    parameter: (parameter
+      name: (identifier))
+    parameter: (parameter
+      name: (identifier))
+    body: (body
+      (instruction
+        mnemonic: (mnemonic)
+        operand: (memory_operand
+          displacement: (macro_argument)
+          base: (concatenation
+            (register)
+            (macro_argument)))
+        operand: (register))
+      (instruction
+        mnemonic: (mnemonic)
+        operand: (memory_operand
+          displacement: (integer)
+          base: (register)
+          index: (concatenation
+            (register)
+            (macro_argument)
+            (identifier))
+          scale: (integer))
+        operand: (register)))))

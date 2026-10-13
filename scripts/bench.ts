@@ -4,7 +4,7 @@ import { ensureDirSync } from '@std/fs';
 import { join } from '@std/path';
 
 import { filesUnder, ROOT } from './lib/files.ts';
-import { manifest } from './lib/manifest.ts';
+import { type Language, manifest } from './lib/manifest.ts';
 import { parseTiming, queryTime } from './lib/measure.ts';
 import { usage } from './lib/report.ts';
 import { fixtures } from './verify-fixtures.ts';
@@ -23,10 +23,11 @@ function column(text: string | number, width: number): string {
   return String(text).padStart(width);
 }
 
-function inputs(grammar: string): [string, string][] {
+function inputs({ grammar, syntax, archs }: Language): [string, string][] {
+  const fileEnd = syntax === 'gas' && archs.includes('x86') ? '    .att_syntax\n' : '';
   const all = fixtures()
     .filter((fixture) => fixture.grammars.includes(grammar))
-    .map((fixture) => Deno.readTextFileSync(join(ROOT, fixture.file)))
+    .map((fixture) => `${Deno.readTextFileSync(join(ROOT, fixture.file))}${fileEnd}`)
     .join('');
   return [
     ['basics', Deno.readTextFileSync(join(ROOT, 'test', 'fixtures', BASICS[grammar]))],
@@ -55,11 +56,12 @@ function main(args: string[]): number {
       `${column('edit', 6)}${kinds.map((kind) => column(kind, kind.length + 2)).join('')}` +
       `${column('states', 8)}${column('parser.c', 10)}`,
   );
-  for (const { dir, grammar } of manifest.languages) {
+  for (const language of manifest.languages) {
+    const { dir, grammar } = language;
     const parser = Deno.readTextFileSync(join(ROOT, 'tree-sitter', grammar, 'src', 'parser.c'));
     const states = /#define STATE_COUNT (\d+)/.exec(parser)?.[1] ?? '?';
     const queries = filesUnder(join(ROOT, 'languages', dir));
-    for (const [name, text] of inputs(grammar)) {
+    for (const [name, text] of inputs(language)) {
       const copies = Math.ceil(TARGET_BYTES / text.length);
       const input = join(directory, `${grammar}-${name}.s`);
       Deno.writeTextFileSync(input, text.repeat(copies));

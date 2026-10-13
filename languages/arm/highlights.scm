@@ -18,6 +18,7 @@
   "-"
   "*"
   "/"
+  "%"
   "<<"
   ">>"
   "&"
@@ -119,6 +120,14 @@
 
 (macro_argument) @variable.parameter
 
+(macro_call
+  function: (identifier) @function.special)
+
+[
+  "["
+  "]"
+] @punctuation.bracket
+
 (concatenation
   "\\()" @punctuation.special)
 
@@ -154,8 +163,6 @@
   qualifier: (identifier) @variable.special)
 
 [
-  "["
-  "]"
   "{"
   "}"
 ] @punctuation.bracket

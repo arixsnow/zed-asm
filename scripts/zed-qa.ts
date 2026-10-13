@@ -477,10 +477,58 @@ export const CHECKS: Check[] = [
     expect: (text) => text === '// vim: ft=arm\nld1 {v0.16b}, [x0X]\n',
   },
   {
-    id: '26a',
+    id: '26',
     row: 26,
+    title: 'Opening x86 (GAS) AT&T operands',
+    file: 'c26.s',
+    text: [
+      '// vim: ft=x86',
+      '    movq 8(%rax,%rbx,4), %rcx',
+      '    call *%rax',
+      '    lock incl (%rdi)',
+      '    {vex} vpdpbusd %xmm1, %xmm2, %xmm3',
+      '    vaddps %zmm1, %zmm2, %zmm3{%k1}{z}',
+      '    movl $7%3, %eax',
+      '',
+    ].join('\n'),
+    steps: [],
+    look:
+      'registers have the register color, lock and {vex} the keyword color, {%k1} and {z} the attribute color, * and % the operator color',
+  },
+  {
+    id: '27',
+    row: 27,
+    title: 'Opening x86 (GAS) Intel operands',
+    file: 'c27.s',
+    text: [
+      '// vim: ft=x86',
+      '    .intel_syntax noprefix',
+      '    mov eax, DWORD PTR [rbx+8]',
+      '    mov eax, 4 shl 2',
+      '    mov eax, OFFSET FLAT:sym',
+      '',
+    ].join('\n'),
+    steps: [],
+    look:
+      'DWORD PTR, OFFSET and FLAT have the keyword color, shl the operator color, eax and rbx the register color',
+  },
+  {
+    id: '28',
+    row: 28,
+    title: 'Jumping from [ to its ] in x86 Intel code',
+    file: 'c28.s',
+    text: '// vim: ft=x86\n.intel_syntax noprefix\nmov eax, [rbx]\n',
+    steps: [{ keys: ['ctrl+Home', 'Down', 'Down', 'Home', ...Array(10).fill('Right'), 'ctrl+m'] }, {
+      type: 'X',
+    }],
+    wants: 'the cursor jumps to the matching ]',
+    expect: (text) => text === '// vim: ft=x86\n.intel_syntax noprefix\nmov eax, [rbxX]\n',
+  },
+  {
+    id: '29a',
+    row: 29,
     title: 'Yanking vaf in vim mode',
-    file: 'c26a.s',
+    file: 'c29a.s',
     text: FUNCTIONS,
     steps: [{ keys: ['ctrl+Home', 'Down', 'Down', 'Down'] }, { type: 'vafy' }],
     clipboard: true,
@@ -489,10 +537,10 @@ export const CHECKS: Check[] = [
     expect: (text) => text === FUNCTIONS.split('helper:')[0],
   },
   {
-    id: '26b',
-    row: 26,
+    id: '29b',
+    row: 29,
     title: 'Yanking vif in vim mode',
-    file: 'c26b.s',
+    file: 'c29b.s',
     text: FUNCTIONS,
     steps: [{ keys: ['ctrl+Home', 'Down', 'Down', 'Down'] }, { type: 'vify' }],
     clipboard: true,
@@ -501,10 +549,10 @@ export const CHECKS: Check[] = [
     expect: (text) => text === 'mov x0, x1\n.Lloop:\n    subs x0, x0, #1\n    b.ne .Lloop\n    ret',
   },
   {
-    id: '26c',
-    row: 26,
+    id: '29c',
+    row: 29,
     title: 'Yanking vac in vim mode',
-    file: 'c26c.s',
+    file: 'c29c.s',
     text: MACRO,
     steps: [{ keys: ['ctrl+Home', 'Down'] }, { type: 'vacy' }],
     clipboard: true,
@@ -514,7 +562,7 @@ export const CHECKS: Check[] = [
   },
 ];
 
-export const LOG_ROW = 27;
+export const LOG_ROW = 30;
 export const LOG_PATTERN = /\basm\b|asm_(?:auto|arm|x86)|Assembly|grammar|quer(?:y|ies)/i;
 
 export interface Result {

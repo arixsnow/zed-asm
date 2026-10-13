@@ -1,0 +1,77 @@
+================================================================================
+A name glued to parentheses is a C macro call
+================================================================================
+
+X(loop):
+    jb X(tail)
+    .quad PER_CPU_VAR(x + 8)
+    .quad FOO()
+    .quad (BAR (y, z))
+
+--------------------------------------------------------------------------------
+
+(source_file
+  (label
+    name: (macro_call
+      function: (identifier)
+      arguments: (argument_list
+        argument: (identifier))))
+  (instruction
+    mnemonic: (mnemonic)
+    operand: (macro_call
+      function: (identifier)
+      arguments: (argument_list
+        argument: (identifier))))
+  (directive
+    name: (directive_name)
+    argument: (macro_call
+      function: (identifier)
+      arguments: (argument_list
+        argument: (binary_expression
+          left: (identifier)
+          right: (integer)))))
+  (directive
+    name: (directive_name)
+    argument: (macro_call
+      function: (identifier)
+      arguments: (argument_list)))
+  (directive
+    name: (directive_name)
+    argument: (parenthesized_expression
+      (macro_call
+        function: (identifier)
+        arguments: (argument_list
+          argument: (identifier)
+          argument: (identifier))))))
+
+================================================================================
+A statement's first word stays a mnemonic, with an argument list or a blank
+================================================================================
+
+_ASM_EXTABLE(1b, 3b)
+ENTRY_P2ALIGN (STRCHR, 5)
+ENTRY (memcpy)
+call HIDDEN_JUMPTARGET (f)
+
+--------------------------------------------------------------------------------
+
+(source_file
+  (instruction
+    mnemonic: (mnemonic)
+    operand: (argument_list
+      argument: (numeric_label)
+      argument: (numeric_label)))
+  (instruction
+    mnemonic: (mnemonic)
+    operand: (argument_list
+      argument: (identifier)
+      argument: (integer)))
+  (instruction
+    mnemonic: (mnemonic)
+    operand: (parenthesized_expression
+      (identifier)))
+  (instruction
+    mnemonic: (mnemonic)
+    operand: (identifier)
+    operand: (parenthesized_expression
+      (identifier))))

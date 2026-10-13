@@ -18,6 +18,7 @@
   "-"
   "*"
   "/"
+  "%"
   "<<"
   ">>"
   "&"
@@ -119,6 +120,14 @@
 
 (macro_argument) @variable.parameter
 
+(macro_call
+  function: (identifier) @function.special)
+
+[
+  "["
+  "]"
+] @punctuation.bracket
+
 (concatenation
   "\\()" @punctuation.special)
 
@@ -154,8 +163,6 @@
   qualifier: (identifier) @variable.special)
 
 [
-  "["
-  "]"
   "{"
   "}"
 ] @punctuation.bracket
@@ -168,3 +175,18 @@
 
 (symbol_type
   "@" @punctuation.special)
+
+(prefix) @keyword
+
+(operand_type) @keyword
+
+(operator_word) @keyword.operator
+
+(unary_expression
+  operator: (operator_word) @keyword
+  (#match? @keyword "^(?i:offset|short)$"))
+
+(segment_override
+  "flat" @keyword)
+
+(decorator) @attribute

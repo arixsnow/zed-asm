@@ -16,8 +16,6 @@
   qualifier: (identifier) @variable.special)
 
 [
-  "["
-  "]"
   "{"
   "}"
 ] @punctuation.bracket

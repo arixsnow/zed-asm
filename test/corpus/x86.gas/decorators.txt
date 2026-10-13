@@ -1,0 +1,116 @@
+================================================================================
+Masks, zeroing and broadcasts follow their operand, blanks allowed
+================================================================================
+
+vaddps %zmm1, %zmm2, %zmm3{%k1}{z}
+vaddps %zmm1, %zmm2, %zmm3 {%K1} { z }
+vaddps (%rax){1to16}, %zmm2, %zmm3
+vaddps %zmm1, %zmm2, %zmm3{z}{%k1}
+
+--------------------------------------------------------------------------------
+
+(source_file
+  (instruction
+    mnemonic: (mnemonic)
+    operand: (register)
+    operand: (register)
+    operand: (decorated_operand
+      operand: (register)
+      decorator: (decorator)
+      decorator: (decorator)))
+  (instruction
+    mnemonic: (mnemonic)
+    operand: (register)
+    operand: (register)
+    operand: (decorated_operand
+      operand: (register)
+      decorator: (decorator)
+      decorator: (decorator)))
+  (instruction
+    mnemonic: (mnemonic)
+    operand: (decorated_operand
+      operand: (memory_operand
+        base: (register))
+      decorator: (decorator))
+    operand: (register)
+    operand: (register))
+  (instruction
+    mnemonic: (mnemonic)
+    operand: (register)
+    operand: (register)
+    operand: (decorated_operand
+      operand: (register)
+      decorator: (decorator)
+      decorator: (decorator))))
+
+================================================================================
+Rounding, SAE and APX flags are operands of their own
+================================================================================
+
+vaddps {rn-sae}, %zmm1, %zmm2, %zmm3
+vaddps { rz-sae }, %zmm1, %zmm2, %zmm3
+vcmpps $0, {sae}, %zmm1, %zmm2, %k1
+ccmpeq {dfv=of,cf} %rax, %rbx
+ccmpeq {DFV = OF , SF} %rax, %rbx
+ccmpeq {dfv=} %rax, %rbx
+
+--------------------------------------------------------------------------------
+
+(source_file
+  (instruction
+    mnemonic: (mnemonic)
+    operand: (decorator)
+    operand: (register)
+    operand: (register)
+    operand: (register))
+  (instruction
+    mnemonic: (mnemonic)
+    operand: (decorator)
+    operand: (register)
+    operand: (register)
+    operand: (register))
+  (instruction
+    mnemonic: (mnemonic)
+    operand: (immediate
+      value: (integer))
+    operand: (decorator)
+    operand: (register)
+    operand: (register)
+    operand: (register))
+  (instruction
+    mnemonic: (mnemonic)
+    operand: (decorator)
+    operand: (register)
+    operand: (register))
+  (instruction
+    mnemonic: (mnemonic)
+    operand: (decorator)
+    operand: (register)
+    operand: (register))
+  (instruction
+    mnemonic: (mnemonic)
+    operand: (decorator)
+    operand: (register)
+    operand: (register)))
+
+================================================================================
+APX default flags before an immediate
+================================================================================
+
+ccmpb {dfv=of} $123, %r8b
+ccmpb {dfv=} %r9b, %r8b
+
+--------------------------------------------------------------------------------
+
+(source_file
+  (instruction
+    mnemonic: (mnemonic)
+    operand: (decorator)
+    operand: (immediate
+      value: (integer))
+    operand: (register))
+  (instruction
+    mnemonic: (mnemonic)
+    operand: (decorator)
+    operand: (register)
+    operand: (register)))

@@ -1,0 +1,466 @@
+================================================================================
+Intel registers, immediates and expressions
+================================================================================
+
+.intel_syntax noprefix
+mov rax, rbx
+mov eax, 1
+add rax, -8
+lea rax, [rax + rax*2]
+
+--------------------------------------------------------------------------------
+
+(source_file
+  (directive
+    name: (directive_name)
+    argument: (identifier))
+  (instruction
+    mnemonic: (mnemonic)
+    operand: (register)
+    operand: (register))
+  (instruction
+    mnemonic: (mnemonic)
+    operand: (register)
+    operand: (integer))
+  (instruction
+    mnemonic: (mnemonic)
+    operand: (register)
+    operand: (unary_expression
+      argument: (integer)))
+  (instruction
+    mnemonic: (mnemonic)
+    operand: (register)
+    operand: (memory_operand
+      address: (binary_expression
+        left: (register)
+        right: (binary_expression
+          left: (register)
+          right: (integer))))))
+
+================================================================================
+Intel brackets, alone and after a displacement
+================================================================================
+
+.intel_syntax noprefix
+mov rax, [rbx+rcx*4+8]
+mov rax, [ rbp - 8 ]
+mov rax, 8[rbp]
+mov eax, [rbx][rcx*4]
+lea rax, sym[rip]
+lea rax, [rip + sym]
+
+--------------------------------------------------------------------------------
+
+(source_file
+  (directive
+    name: (directive_name)
+    argument: (identifier))
+  (instruction
+    mnemonic: (mnemonic)
+    operand: (register)
+    operand: (memory_operand
+      address: (binary_expression
+        left: (binary_expression
+          left: (register)
+          right: (binary_expression
+            left: (register)
+            right: (integer)))
+        right: (integer))))
+  (instruction
+    mnemonic: (mnemonic)
+    operand: (register)
+    operand: (memory_operand
+      address: (binary_expression
+        left: (register)
+        right: (integer))))
+  (instruction
+    mnemonic: (mnemonic)
+    operand: (register)
+    operand: (memory_operand
+      displacement: (integer)
+      address: (register)))
+  (instruction
+    mnemonic: (mnemonic)
+    operand: (register)
+    operand: (memory_operand
+      displacement: (memory_operand
+        address: (register))
+      address: (binary_expression
+        left: (register)
+        right: (integer))))
+  (instruction
+    mnemonic: (mnemonic)
+    operand: (register)
+    operand: (memory_operand
+      displacement: (identifier)
+      address: (register)))
+  (instruction
+    mnemonic: (mnemonic)
+    operand: (register)
+    operand: (memory_operand
+      address: (binary_expression
+        left: (register)
+        right: (identifier)))))
+
+================================================================================
+Intel operand types
+================================================================================
+
+.intel_syntax noprefix
+mov rax, qword ptr [rbx]
+movzx eax, BYTE PTR [rbx]
+mov rax, qword [rbx]
+mov eax, DWORD PTR -4[rbp]
+vaddps zmm3, zmm2, dword bcst [rax]
+jmp near ptr target
+call far ptr [eax]
+mov eax, ptr
+
+--------------------------------------------------------------------------------
+
+(source_file
+  (directive
+    name: (directive_name)
+    argument: (identifier))
+  (instruction
+    mnemonic: (mnemonic)
+    operand: (register)
+    operand: (typed_operand
+      type: (operand_type)
+      operand: (memory_operand
+        address: (register))))
+  (instruction
+    mnemonic: (mnemonic)
+    operand: (register)
+    operand: (typed_operand
+      type: (operand_type)
+      operand: (memory_operand
+        address: (register))))
+  (instruction
+    mnemonic: (mnemonic)
+    operand: (register)
+    operand: (typed_operand
+      type: (operand_type)
+      operand: (memory_operand
+        address: (register))))
+  (instruction
+    mnemonic: (mnemonic)
+    operand: (register)
+    operand: (typed_operand
+      type: (operand_type)
+      operand: (memory_operand
+        displacement: (unary_expression
+          argument: (integer))
+        address: (register))))
+  (instruction
+    mnemonic: (mnemonic)
+    operand: (register)
+    operand: (register)
+    operand: (typed_operand
+      type: (operand_type)
+      operand: (memory_operand
+        address: (register))))
+  (instruction
+    mnemonic: (mnemonic)
+    operand: (typed_operand
+      type: (operand_type)
+      operand: (identifier)))
+  (instruction
+    mnemonic: (mnemonic)
+    operand: (typed_operand
+      type: (operand_type)
+      operand: (memory_operand
+        address: (register))))
+  (instruction
+    mnemonic: (mnemonic)
+    operand: (register)
+    operand: (identifier)))
+
+================================================================================
+Intel segment overrides and far pointers
+================================================================================
+
+.intel_syntax noprefix
+mov rax, fs:[0x28]
+mov rax, qword ptr fs:[0x28]
+mov rax, fs:0x28
+mov rax, [fs:0x28]
+jmp 0x10:0x1000
+
+--------------------------------------------------------------------------------
+
+(source_file
+  (directive
+    name: (directive_name)
+    argument: (identifier))
+  (instruction
+    mnemonic: (mnemonic)
+    operand: (register)
+    operand: (segment_override
+      segment: (register)
+      operand: (memory_operand
+        address: (integer))))
+  (instruction
+    mnemonic: (mnemonic)
+    operand: (register)
+    operand: (typed_operand
+      type: (operand_type)
+      operand: (segment_override
+        segment: (register)
+        operand: (memory_operand
+          address: (integer)))))
+  (instruction
+    mnemonic: (mnemonic)
+    operand: (register)
+    operand: (segment_override
+      segment: (register)
+      operand: (integer)))
+  (instruction
+    mnemonic: (mnemonic)
+    operand: (register)
+    operand: (memory_operand
+      address: (segment_override
+        segment: (register)
+        operand: (integer))))
+  (instruction
+    mnemonic: (mnemonic)
+    operand: (segment_override
+      segment: (integer)
+      operand: (integer))))
+
+================================================================================
+Intel operator words
+================================================================================
+
+.intel_syntax noprefix
+mov eax, 4 shl 2
+mov eax, 6 AND 3
+mov eax, not 0
+mov eax, 1 eq 1
+mov rax, offset sym
+mov eax, OFFSET FLAT:sym
+jmp short target
+
+--------------------------------------------------------------------------------
+
+(source_file
+  (directive
+    name: (directive_name)
+    argument: (identifier))
+  (instruction
+    mnemonic: (mnemonic)
+    operand: (register)
+    operand: (binary_expression
+      left: (integer)
+      operator: (operator_word)
+      right: (integer)))
+  (instruction
+    mnemonic: (mnemonic)
+    operand: (register)
+    operand: (binary_expression
+      left: (integer)
+      operator: (operator_word)
+      right: (integer)))
+  (instruction
+    mnemonic: (mnemonic)
+    operand: (register)
+    operand: (unary_expression
+      operator: (operator_word)
+      argument: (integer)))
+  (instruction
+    mnemonic: (mnemonic)
+    operand: (register)
+    operand: (binary_expression
+      left: (integer)
+      operator: (operator_word)
+      right: (integer)))
+  (instruction
+    mnemonic: (mnemonic)
+    operand: (register)
+    operand: (unary_expression
+      operator: (operator_word)
+      argument: (identifier)))
+  (instruction
+    mnemonic: (mnemonic)
+    operand: (register)
+    operand: (unary_expression
+      operator: (operator_word)
+      argument: (segment_override
+        operand: (identifier))))
+  (instruction
+    mnemonic: (mnemonic)
+    operand: (unary_expression
+      operator: (operator_word)
+      argument: (identifier))))
+
+================================================================================
+Intel decorators
+================================================================================
+
+.intel_syntax noprefix
+vaddps zmm3{k1}{z}, zmm2, zmm1
+vaddps zmm3 {k1} {z}, zmm2, zmm1
+vaddps zmm3, zmm2, dword ptr [rax]{1to16}
+vaddps zmm3, zmm2, zmm1, {rn-sae}
+
+--------------------------------------------------------------------------------
+
+(source_file
+  (directive
+    name: (directive_name)
+    argument: (identifier))
+  (instruction
+    mnemonic: (mnemonic)
+    operand: (decorated_operand
+      operand: (register)
+      decorator: (decorator)
+      decorator: (decorator))
+    operand: (register)
+    operand: (register))
+  (instruction
+    mnemonic: (mnemonic)
+    operand: (decorated_operand
+      operand: (register)
+      decorator: (decorator)
+      decorator: (decorator))
+    operand: (register)
+    operand: (register))
+  (instruction
+    mnemonic: (mnemonic)
+    operand: (register)
+    operand: (register)
+    operand: (decorated_operand
+      operand: (typed_operand
+        type: (operand_type)
+        operand: (memory_operand
+          address: (register)))
+      decorator: (decorator)))
+  (instruction
+    mnemonic: (mnemonic)
+    operand: (register)
+    operand: (register)
+    operand: (register)
+    operand: (decorator)))
+
+================================================================================
+Intel compiler output forms
+================================================================================
+
+.intel_syntax noprefix
+mov QWORD PTR -8[rbp], rax
+call printf@PLT
+lea rax, .LC0[rip]
+mov eax, DWORD PTR counter[rip]
+rep stos byte ptr [rdi], al
+
+--------------------------------------------------------------------------------
+
+(source_file
+  (directive
+    name: (directive_name)
+    argument: (identifier))
+  (instruction
+    mnemonic: (mnemonic)
+    operand: (typed_operand
+      type: (operand_type)
+      operand: (memory_operand
+        displacement: (unary_expression
+          argument: (integer))
+        address: (register)))
+    operand: (register))
+  (instruction
+    mnemonic: (mnemonic)
+    operand: (relocation
+      symbol: (identifier)
+      specifier: (identifier)))
+  (instruction
+    mnemonic: (mnemonic)
+    operand: (register)
+    operand: (memory_operand
+      displacement: (local_identifier)
+      address: (register)))
+  (instruction
+    mnemonic: (mnemonic)
+    operand: (register)
+    operand: (typed_operand
+      type: (operand_type)
+      operand: (memory_operand
+        displacement: (identifier)
+        address: (register))))
+  (instruction
+    prefix: (prefix)
+    mnemonic: (mnemonic)
+    operand: (typed_operand
+      type: (operand_type)
+      operand: (memory_operand
+        address: (register)))
+    operand: (register)))
+
+================================================================================
+Intel operands with % registers after .intel_syntax prefix
+================================================================================
+
+.intel_syntax prefix
+mov %rax, [%rbx+8]
+mov eax, dword ptr rbx
+
+--------------------------------------------------------------------------------
+
+(source_file
+  (directive
+    name: (directive_name)
+    argument: (identifier))
+  (instruction
+    mnemonic: (mnemonic)
+    operand: (register)
+    operand: (memory_operand
+      address: (binary_expression
+        left: (register)
+        right: (integer))))
+  (instruction
+    mnemonic: (mnemonic)
+    operand: (identifier)
+    operand: (typed_operand
+      type: (operand_type)
+      operand: (identifier))))
+
+================================================================================
+Intel operator words in directive expressions
+================================================================================
+
+.intel_syntax noprefix
+.long 1 shl 2
+.quad offset sym
+.set x, 6 and 3
+.att_syntax
+.long shl
+
+--------------------------------------------------------------------------------
+
+(source_file
+  (directive
+    name: (directive_name)
+    argument: (identifier))
+  (directive
+    name: (directive_name)
+    argument: (binary_expression
+      left: (integer)
+      operator: (operator_word)
+      right: (integer)))
+  (directive
+    name: (directive_name)
+    argument: (unary_expression
+      operator: (operator_word)
+      argument: (identifier)))
+  (directive
+    name: (directive_name)
+    argument: (identifier)
+    argument: (binary_expression
+      left: (integer)
+      operator: (operator_word)
+      right: (integer)))
+  (directive
+    name: (directive_name))
+  (directive
+    name: (directive_name)
+    argument: (identifier)))

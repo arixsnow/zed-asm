@@ -62,34 +62,6 @@ const REGISTERS = {
   ],
 };
 
-const RELOCATIONS = {
-  aarch64: [
-    'lo12',
-    'abs_g[0-3]',
-    'abs_g[0-2]_(s|nc)',
-    'prel_g[0-3]',
-    'prel_g[0-2]_nc',
-    'got',
-    'pg_hi21(_nc)?',
-    'got_lo12',
-    'gotpage_lo15',
-    'gotoff_lo15',
-    'gotoff_g0_nc',
-    'gotoff_g1',
-    'tlsgd(_lo12|_g0_nc|_g1)?',
-    'tlsdesc(_lo12)?',
-    'tlsdesc_off_(g0_nc|g1)',
-    'tlsldm(_lo12_nc)?',
-    'dtprel_(g[0-2]|g[01]_nc|hi12|lo12(_nc)?)',
-    'gottprel(_lo12|_g1|_g0_nc)?',
-    'tprel_(g[0-2]|g[01]_nc|hi12|lo12(_nc)?)',
-    'secrel_(lo12|hi12)',
-    'got_auth(_lo12)?',
-    'tlsdesc_auth(_lo12)?',
-  ],
-  aarch32: ['(lower|upper)16', '(lower|upper)(0_7|8_15)'],
-};
-
 const SHIFT_WORD = /lsl|lsr|asr|ror|asl|msl|mul/i;
 const EXTEND_WORD = /[us]xt[bhwx]/i;
 const A32_EXTEND_WORD = /rrx/i;
@@ -152,8 +124,8 @@ function pattern(alternatives) {
   return new RegExp(alternatives.join('|'), 'i');
 }
 
-function separated($, step) {
-  return choice(seq(',', choice(step, $._missing_operand)), seq($._blank, step));
+function separated($, step, missing) {
+  return seq(choice(',', $._blank), choice(step, missing));
 }
 
 function roleSlot(role, index, $) {
@@ -168,6 +140,13 @@ function roleSlot(role, index, $) {
 
 function roleLast(role) {
   return Math.max(...(role.labels ?? []), ...(role.conditions ?? []));
+}
+
+function roleMissing(role, index, $) {
+  if (role.labels?.includes(index) || index === role.optional) {
+    return $._missing_label_operand;
+  }
+  return $._missing_operand;
 }
 
 function roleRest(role, index, $) {
@@ -201,7 +180,8 @@ function roleRules(role, words, conditionWords) {
     rules[`_${role.name}_condition_word`] = () => keyword(pattern(conditionWords));
   }
   for (let index = 1; index < roleLast(role); index++) {
-    rules[`_${role.name}_after_${index}`] = ($) => separated($, roleStep(role, index + 1, $));
+    rules[`_${role.name}_after_${index}`] = ($) =>
+      separated($, roleStep(role, index + 1, $), roleMissing(role, index + 1, $));
   }
   return rules;
 }
@@ -252,7 +232,6 @@ module.exports = (ctx) => {
     ...(aarch32 ? REGISTERS.aarch32 : []),
     ...(aarch32 && gnu ? REGISTERS.gnuAarch32 : []),
   ];
-  const relocations = gnu ? [...RELOCATIONS.aarch64, ...(aarch32 ? RELOCATIONS.aarch32 : [])] : [];
   const roles = ROLES.map((role) => {
     const words = [...(role.words ?? []), ...(aarch32 ? role.aarch32Words ?? [] : [])];
     const conditionWords = aarch32 ? role.aarch32ConditionWords ?? [] : [];
@@ -310,9 +289,9 @@ module.exports = (ctx) => {
       _register_name: ($) =>
         choice(
           alias($._arm_register, $.register),
-          $.identifier,
-          $.macro_argument,
-          $.concatenation,
+          prec(1, $.identifier),
+          prec(1, $.macro_argument),
+          prec(1, $.concatenation),
           ...(positionalArguments ? [alias($._darwin_argument, $.macro_argument)] : []),
         ),
       writeback: ($) => prec(1, seq(field('register', $._register_name), '!')),
@@ -321,20 +300,25 @@ module.exports = (ctx) => {
           1,
           seq(
             field('register', $._register_name),
-            '[',
+            alias($._index_open, '['),
             field('index', $._index),
             repeat(seq(',', field('index', $._index))),
             choice(']', $._unclosed_bracket),
           ),
         ),
       _index: ($) => choice(alias($._arm_register, $.register), $.index_range, $._expression),
-      index_range: ($) => seq(field('start', $._expression), ':', field('end', $._expression)),
+      index_range: ($) =>
+        seq(
+          field('start', $._expression),
+          alias($._bracket_colon, ':'),
+          field('end', $._expression),
+        ),
       memory_operand: ($) =>
         prec.right(seq(
           '[',
-          choice(field('operand', $._memory_element), $._missing_operand),
+          choice(field('operand', $._memory_element), $._missing_element),
           optional(field('alignment', $.alignment)),
-          repeat(seq(',', choice(field('operand', $._memory_element), $._missing_operand))),
+          repeat(seq(',', choice(field('operand', $._memory_element), $._missing_element))),
           choice(']', $._unclosed_bracket),
           optional('!'),
         )),
@@ -348,22 +332,22 @@ module.exports = (ctx) => {
           $.alignment,
           $._expression,
         ),
-      alignment: ($) => seq(':', field('value', $.integer)),
+      alignment: ($) => seq(alias($._bracket_colon, ':'), field('value', $.integer)),
       register_list: ($) =>
         prec.right(seq(
           '{',
-          choice(field('element', $._list_element), $._missing_operand),
-          repeat(seq(',', choice(field('element', $._list_element), $._missing_operand))),
+          choice(field('element', $._list_element), $._missing_name),
+          repeat(seq(',', choice(field('element', $._list_element), $._missing_name))),
           choice('}', $._unclosed_brace),
-          optional(seq('[', field('index', $._expression), choice(']', $._unclosed_bracket))),
+          optional(seq('[', field('index', $._expression), choice(']', $._unclosed_index))),
           optional('^'),
         )),
       _list_element: ($) => choice($._register_name, $.indexed_register, $.register_range),
       register_range: ($) =>
         seq(
           field('start', $._register_name),
-          '-',
-          choice(field('end', $._register_name), $._missing_operand),
+          alias($._range_dash, '-'),
+          choice(field('end', $._register_name), $._missing_name),
         ),
       register_alias: ($) =>
         seq(
@@ -377,7 +361,7 @@ module.exports = (ctx) => {
           ),
           choice(
             field('register', choice($._register_name, $.indexed_register)),
-            $._missing_operand,
+            $._missing_name,
           ),
         ),
       literal_pool: ($) => seq('=', field('value', $._expression)),
@@ -403,7 +387,10 @@ module.exports = (ctx) => {
             seq(
               field('argument', $._register_argument),
               repeat(
-                seq(',', choice(field('argument', $._register_argument), $._missing_operand)),
+                seq(
+                  ',',
+                  choice(field('argument', $._register_argument), $._missing_register_argument),
+                ),
               ),
             ),
           ),
@@ -421,7 +408,7 @@ module.exports = (ctx) => {
                   optional(
                     seq(
                       field('argument', $._symbol),
-                      repeat(seq(',', choice(field('argument', $._symbol), $._missing_operand))),
+                      repeat(seq(',', choice(field('argument', $._symbol), $._missing_symbol))),
                     ),
                   ),
                 ),
@@ -436,17 +423,20 @@ module.exports = (ctx) => {
               -1,
               seq(
                 field('value', $._expression),
+                $._relocation_suffix,
                 '(',
                 choice(
-                  field('specifier', alias($._suffix_relocation_name, $.identifier)),
-                  $._missing_expression,
+                  seq(
+                    field('specifier', alias($._suffix_relocation_name, $.identifier)),
+                    choice(')', $._unclosed),
+                  ),
+                  seq($._missing_relocation, $._unclosed),
                 ),
-                choice(')', $._unclosed),
               ),
             ),
         }
         : {}),
-      ...(relocations.length > 0
+      ...(gnu
         ? {
           _relocation_operator: ($) =>
             prec.right(
@@ -455,16 +445,18 @@ module.exports = (ctx) => {
                 choice(
                   seq(
                     field('specifier', alias($._relocation_name, $.identifier)),
-                    choice(seq(':', field('value', $._expression)), $._missing_expression),
+                    choice(
+                      seq(alias($._relocation_colon, ':'), field('value', $._expression)),
+                      $._missing_relocation,
+                    ),
                   ),
-                  $._missing_expression,
+                  $._missing_relocation,
                 ),
               ),
             ),
-          _relocation_name: () => keyword(pattern(relocations)),
         }
         : {}),
-      ...(appleLocals ? { _apple_local: () => token(prec(1, appleLocal(keywords))) } : {}),
+      ...(appleLocals ? { _apple_local: () => keyword(appleLocal(keywords)) } : {}),
       _role_operand: ($) => $._instruction_operand,
       ...(roles.some(({ role }) => role.optional !== undefined)
         ? {
@@ -481,8 +473,10 @@ module.exports = (ctx) => {
       _role_trailing: ($) =>
         repeat1(
           choice(
-            seq(',', choice(field('operand', $._role_operand), $._missing_operand)),
-            seq($._blank, field('operand', $._role_operand)),
+            seq(
+              choice(',', $._blank),
+              choice(field('operand', $._role_operand), $._missing_operand),
+            ),
           ),
         ),
       ...Object.assign(
@@ -520,7 +514,7 @@ module.exports = (ctx) => {
         : {}),
       _expression: [
         ($) => alias($._shift_word, $.identifier),
-        ...(relocations.length > 0 ? [($) => alias($._relocation_operator, $.relocation)] : []),
+        ...(gnu ? [($) => alias($._relocation_operator, $.relocation)] : []),
         ...(suffixRelocations ? [($) => alias($._suffix_relocation, $.relocation)] : []),
         ...(dollarLabels ? [($) => alias($._dollar_label, $.numeric_label)] : []),
         ...(positionalArguments ? [($) => alias($._darwin_argument, $.macro_argument)] : []),

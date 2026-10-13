@@ -1,0 +1,164 @@
+================================================================================
+A % register is an exact name in any case, blanks allowed after %
+================================================================================
+
+movq %RAX, % rbx
+vaddps %zmm31, %xmm16, %ymm0
+kmovw %k7, %R8D
+
+--------------------------------------------------------------------------------
+
+(source_file
+  (instruction
+    mnemonic: (mnemonic)
+    operand: (register)
+    operand: (register))
+  (instruction
+    mnemonic: (mnemonic)
+    operand: (register)
+    operand: (register)
+    operand: (register))
+  (instruction
+    mnemonic: (mnemonic)
+    operand: (register)
+    operand: (register)))
+
+================================================================================
+x87 stack registers take an index, blanks allowed
+================================================================================
+
+fadd %st(1), %st
+fld % st ( 7 )
+
+--------------------------------------------------------------------------------
+
+(source_file
+  (instruction
+    mnemonic: (mnemonic)
+    operand: (register)
+    operand: (register))
+  (instruction
+    mnemonic: (mnemonic)
+    operand: (register)))
+
+================================================================================
+x87 stack registers in noprefix mode
+================================================================================
+
+.intel_syntax noprefix
+fadd st, st(1)
+fld ST (7)
+
+--------------------------------------------------------------------------------
+
+(source_file
+  (directive
+    name: (directive_name)
+    argument: (identifier))
+  (instruction
+    mnemonic: (mnemonic)
+    operand: (register)
+    operand: (register))
+  (instruction
+    mnemonic: (mnemonic)
+    operand: (register)))
+
+================================================================================
+A % after a value is the remainder
+================================================================================
+
+movl $7%3, %eax
+movl $7 % y, %eax
+movl $7 % rax, %eax
+
+--------------------------------------------------------------------------------
+
+(source_file
+  (instruction
+    mnemonic: (mnemonic)
+    operand: (immediate
+      value: (binary_expression
+        left: (integer)
+        right: (integer)))
+    operand: (register))
+  (instruction
+    mnemonic: (mnemonic)
+    operand: (immediate
+      value: (binary_expression
+        left: (integer)
+        right: (identifier)))
+    operand: (register))
+  (instruction
+    mnemonic: (mnemonic)
+    operand: (immediate
+      value: (binary_expression
+        left: (integer)
+        right: (identifier)))
+    operand: (register)))
+
+================================================================================
+A register glued to a macro argument is one concatenation
+================================================================================
+
+.irp i,0,1
+movdqa %xmm\i, %xmm7
+.endr
+.macro m reg, n
+pushq %\reg
+movl %r\n\()d, %eax
+.endm
+
+--------------------------------------------------------------------------------
+
+(source_file
+  (repeat_block
+    parameter: (identifier)
+    value: (integer)
+    value: (integer)
+    body: (body
+      (instruction
+        mnemonic: (mnemonic)
+        operand: (concatenation
+          (register)
+          (macro_argument))
+        operand: (register))))
+  (macro_definition
+    name: (identifier)
+    parameter: (parameter
+      name: (identifier))
+    parameter: (parameter
+      name: (identifier))
+    body: (body
+      (instruction
+        mnemonic: (mnemonic)
+        operand: (concatenation
+          (register)
+          (macro_argument)))
+      (instruction
+        mnemonic: (mnemonic)
+        operand: (concatenation
+          (register)
+          (macro_argument)
+          (identifier))
+        operand: (register)))))
+
+================================================================================
+A % after a register starts the next blank-separated operand
+================================================================================
+
+m %rax %rbx
+m $7 %rax
+
+--------------------------------------------------------------------------------
+
+(source_file
+  (instruction
+    mnemonic: (mnemonic)
+    operand: (register)
+    operand: (register))
+  (instruction
+    mnemonic: (mnemonic)
+    operand: (immediate
+      value: (binary_expression
+        left: (integer)
+        right: (identifier)))))

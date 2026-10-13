@@ -1,0 +1,177 @@
+================================================================================
+Prefixes before an instruction, in any case
+================================================================================
+
+rep movsb
+lock incl (%rax)
+LOCK ADDL $1, (%rax)
+xacquire lock incl (%rax)
+notrack jmp *%rax
+rex.W movl %eax, %ebx
+fs movl (%rax), %ebx
+data16 nop
+
+--------------------------------------------------------------------------------
+
+(source_file
+  (instruction
+    prefix: (prefix)
+    mnemonic: (mnemonic))
+  (instruction
+    prefix: (prefix)
+    mnemonic: (mnemonic)
+    operand: (memory_operand
+      base: (register)))
+  (instruction
+    prefix: (prefix)
+    mnemonic: (mnemonic)
+    operand: (immediate
+      value: (integer))
+    operand: (memory_operand
+      base: (register)))
+  (instruction
+    prefix: (prefix)
+    prefix: (prefix)
+    mnemonic: (mnemonic)
+    operand: (memory_operand
+      base: (register)))
+  (instruction
+    prefix: (prefix)
+    mnemonic: (mnemonic)
+    operand: (indirect
+      operand: (register)))
+  (instruction
+    prefix: (prefix)
+    mnemonic: (mnemonic)
+    operand: (register)
+    operand: (register))
+  (instruction
+    prefix: (prefix)
+    mnemonic: (mnemonic)
+    operand: (memory_operand
+      base: (register))
+    operand: (register))
+  (instruction
+    prefix: (prefix)
+    mnemonic: (mnemonic)))
+
+================================================================================
+A prefix alone on a line applies to the next instruction
+================================================================================
+
+rep
+movsb
+lock # next
+incl (%rax)
+rep; movsb
+
+--------------------------------------------------------------------------------
+
+(source_file
+  (instruction
+    prefix: (prefix))
+  (instruction
+    mnemonic: (mnemonic))
+  (instruction
+    prefix: (prefix))
+  (line_comment)
+  (instruction
+    mnemonic: (mnemonic)
+    operand: (memory_operand
+      base: (register)))
+  (instruction
+    prefix: (prefix))
+  (instruction
+    mnemonic: (mnemonic)))
+
+================================================================================
+Pseudo-prefixes in braces
+================================================================================
+
+{vex} vpdpbusd %xmm1, %xmm2, %xmm3
+{ EVEX } vaddps %xmm1, %xmm2, %xmm3
+{disp32} rep movsb
+{nf}addq %rax, %rbx
+{load} {disp32} movq %rax, 8(%rbx)
+lock {disp32} addl $1, 8(%rax)
+data16 {disp32} {load} lock ds addl $1, 8(%rax)
+
+--------------------------------------------------------------------------------
+
+(source_file
+  (instruction
+    prefix: (prefix)
+    mnemonic: (mnemonic)
+    operand: (register)
+    operand: (register)
+    operand: (register))
+  (instruction
+    prefix: (prefix)
+    mnemonic: (mnemonic)
+    operand: (register)
+    operand: (register)
+    operand: (register))
+  (instruction
+    prefix: (prefix)
+    prefix: (prefix)
+    mnemonic: (mnemonic))
+  (instruction
+    prefix: (prefix)
+    mnemonic: (mnemonic)
+    operand: (register)
+    operand: (register))
+  (instruction
+    prefix: (prefix)
+    prefix: (prefix)
+    mnemonic: (mnemonic)
+    operand: (register)
+    operand: (memory_operand
+      displacement: (integer)
+      base: (register)))
+  (instruction
+    prefix: (prefix)
+    prefix: (prefix)
+    mnemonic: (mnemonic)
+    operand: (immediate
+      value: (integer))
+    operand: (memory_operand
+      displacement: (integer)
+      base: (register)))
+  (instruction
+    prefix: (prefix)
+    prefix: (prefix)
+    prefix: (prefix)
+    prefix: (prefix)
+    prefix: (prefix)
+    mnemonic: (mnemonic)
+    operand: (immediate
+      value: (integer))
+    operand: (memory_operand
+      displacement: (integer)
+      base: (register))))
+
+================================================================================
+Prefix words stay labels, assignments and operands
+================================================================================
+
+lock:
+  rep = 3
+  movq rep, %rax
+  rep %eax
+
+--------------------------------------------------------------------------------
+
+(source_file
+  (label_block
+    label: (label
+      name: (identifier))
+    (assignment
+      name: (identifier)
+      value: (integer))
+    (instruction
+      mnemonic: (mnemonic)
+      operand: (identifier)
+      operand: (register))
+    (instruction
+      mnemonic: (mnemonic)
+      operand: (register))))
