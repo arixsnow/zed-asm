@@ -8,25 +8,25 @@ repository = "https://github.com/arixsnow/zed-asm"
 
 [grammars.asm_auto]
 repository = "https://github.com/arixsnow/zed-asm"
-rev = "ab58a95c33c3570c7794773f7cec871b260db819"
+rev = "ede7101f9c705e8c4c9ec05d50c151978dedaabd"
 path = "tree-sitter/asm_auto"
 
 [grammars.asm_arm]
 repository = "https://github.com/arixsnow/zed-asm"
-rev = "ab58a95c33c3570c7794773f7cec871b260db819"
+rev = "ede7101f9c705e8c4c9ec05d50c151978dedaabd"
 path = "tree-sitter/asm_arm"
 
 [grammars.asm_arm_apple]
 repository = "https://github.com/arixsnow/zed-asm"
-rev = "ab58a95c33c3570c7794773f7cec871b260db819"
+rev = "ede7101f9c705e8c4c9ec05d50c151978dedaabd"
 path = "tree-sitter/asm_arm_apple"
 
 [grammars.asm_x86_gas]
 repository = "https://github.com/arixsnow/zed-asm"
-rev = "ab58a95c33c3570c7794773f7cec871b260db819"
+rev = "ede7101f9c705e8c4c9ec05d50c151978dedaabd"
 path = "tree-sitter/asm_x86_gas"
 
 [grammars.asm_x86_nasm]
 repository = "https://github.com/arixsnow/zed-asm"
-rev = "ab58a95c33c3570c7794773f7cec871b260db819"
+rev = "ede7101f9c705e8c4c9ec05d50c151978dedaabd"
 path = "tree-sitter/asm_x86_nasm"
