@@ -1,6 +1,7 @@
 ARG BUN_VERSION=1.4.3
+ARG BUN_DIGEST=sha256:1aaa515018b0b37d95dbdebd55d1b7f37ad258a6289ba63e4bc3b9c9e3038697
 
-FROM docker.io/oven/bun:${BUN_VERSION}-distroless AS bun
+FROM docker.io/oven/bun:${BUN_VERSION}-distroless@${BUN_DIGEST} AS bun
 
 FROM registry.fedoraproject.org/fedora:44 AS tree-sitter
 
