@@ -1,8 +1,9 @@
 // SPDX-License-Identifier: MIT
 
-import { assert, assertEquals } from '@std/assert';
-import { ensureDirSync } from '@std/fs';
-import { join } from '@std/path';
+import { test } from 'bun:test';
+import assert from 'node:assert/strict';
+import { mkdirSync, readFileSync } from 'node:fs';
+import { join } from 'node:path';
 
 import { ROOT } from '../../scripts/lib/files.ts';
 import { languageArgs, run } from '../../scripts/lib/grammars.ts';
@@ -102,7 +103,7 @@ function compileAll(): Compilation[] {
     return compilations;
   }
   const directory = join(ROOT, '.build', 'compilers');
-  ensureDirSync(directory);
+  mkdirSync(directory, { recursive: true });
   compilations = TARGETS.flatMap((target) =>
     target.compilers.flatMap(([compiler, flags]) =>
       OPTIMIZATIONS.map((optimization) => {
@@ -116,8 +117,8 @@ function compileAll(): Compilation[] {
           file,
           join(ROOT, 'test', 'structure', 'sample.c'),
         ]);
-        assert(compiled.ok, `${variant}: ${compiled.output}`);
-        return { target, variant, file, assembly: Deno.readTextFileSync(file) };
+        assert.ok(compiled.ok, `${variant}: ${compiled.output}`);
+        return { target, variant, file, assembly: readFileSync(file, 'utf8') };
       })
     )
   );
@@ -161,7 +162,7 @@ function jumpTables(assembly: string): string[] {
   return tables;
 }
 
-Deno.test('the outline of compiler output lists every symbol with the temporary labels it owns, jump tables included', () => {
+test('the outline of compiler output lists every symbol with the temporary labels it owns, jump tables included', () => {
   const failures: string[] = [];
   let jumpTablesSeen = 0;
   for (const { target, variant, assembly } of compileAll()) {
@@ -169,11 +170,11 @@ Deno.test('the outline of compiler output lists every symbol with the temporary 
     const tables = jumpTables(assembly);
     jumpTablesSeen += tables.length;
     for (const table of tables) {
-      assert(expected.includes(`1 ${table}`), `${variant}: jump table ${table} is not nested`);
+      assert.ok(expected.includes(`1 ${table}`), `${variant}: jump table ${table} is not nested`);
     }
     for (const grammar of target.grammars) {
       const language = manifest.languages.find((entry) => entry.grammar === grammar);
-      assert(language !== undefined, grammar);
+      assert.ok(language !== undefined, grammar);
       const outline = outlineItems(
         assembly,
         queryMatchesFor(language, 'outline', assembly, 'compilers'),
@@ -189,11 +190,11 @@ Deno.test('the outline of compiler output lists every symbol with the temporary 
       }
     }
   }
-  assert(jumpTablesSeen > 0, 'no compiler emitted a jump table for the sample');
-  assertEquals(failures, []);
+  assert.ok(jumpTablesSeen > 0, 'no compiler emitted a jump table for the sample');
+  assert.deepStrictEqual(failures, []);
 });
 
-Deno.test('compiler output for every target and optimization level parses without errors', () => {
+test('compiler output for every target and optimization level parses without errors', () => {
   const failures: string[] = [];
   const clean = compileAll().filter(({ target }) => target.parsesCleanly);
   const grammars = [...new Set(clean.flatMap(({ target }) => target.grammars))];
@@ -206,5 +207,5 @@ Deno.test('compiler output for every target and optimization level parses withou
       }
     }
   }
-  assertEquals(failures, []);
+  assert.deepStrictEqual(failures, []);
 });

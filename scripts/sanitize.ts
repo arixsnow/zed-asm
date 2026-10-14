@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 
-import { ensureDirSync } from '@std/fs';
-import { join } from '@std/path';
+import { mkdirSync, readdirSync } from 'node:fs';
+import { join } from 'node:path';
 
 import { ROOT } from './lib/files.ts';
 import { languageArgs, run } from './lib/grammars.ts';
@@ -14,8 +14,7 @@ const FUZZ_EDITS = '8';
 const SANITIZER_REPORT = /ERROR: AddressSanitizer|runtime error:/;
 
 function runtime(name: string): string {
-  const file = [...Deno.readDirSync(LIBRARY_DIR)]
-    .map((entry) => entry.name)
+  const file = readdirSync(LIBRARY_DIR)
     .filter((entry) => entry.startsWith(`${name}.so.`))
     .sort()[0];
   if (file === undefined) {
@@ -34,7 +33,7 @@ function main(args: string[]): number {
     ASAN_OPTIONS: 'detect_leaks=0:abort_on_error=1',
     UBSAN_OPTIONS: 'halt_on_error=1:print_stacktrace=1',
   };
-  ensureDirSync(join(ROOT, '.build'));
+  mkdirSync(join(ROOT, '.build'), { recursive: true });
   const report = new Report();
   for (const { grammar } of manifest.languages) {
     const source = join('tree-sitter', grammar, 'src');
@@ -85,5 +84,5 @@ function main(args: string[]): number {
 }
 
 if (import.meta.main) {
-  Deno.exitCode = main(Deno.args);
+  process.exitCode = main(process.argv.slice(2));
 }

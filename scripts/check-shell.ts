@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: MIT
 
-import { join } from '@std/path';
+import { closeSync, openSync, readSync } from 'node:fs';
+import { join } from 'node:path';
 
 import { ROOT } from './lib/files.ts';
 import { run } from './lib/grammars.ts';
@@ -11,18 +12,22 @@ const SHELL_SHEBANG = /^#!(\/bin\/|\/usr\/bin\/env )(sh|bash|dash)\b/;
 const CHUNK_BYTES = 512;
 
 function firstLine(path: string): string {
-  using file = Deno.openSync(path);
-  const decoder = new TextDecoder();
-  const chunk = new Uint8Array(CHUNK_BYTES);
-  let line = '';
-  for (let read = file.readSync(chunk); read !== null; read = file.readSync(chunk)) {
-    line += decoder.decode(chunk.subarray(0, read), { stream: true });
-    const end = line.indexOf('\n');
-    if (end !== -1) {
-      return line.slice(0, end);
+  const file = openSync(path, 'r');
+  try {
+    const decoder = new TextDecoder();
+    const chunk = new Uint8Array(CHUNK_BYTES);
+    let line = '';
+    for (let read = readSync(file, chunk); read > 0; read = readSync(file, chunk)) {
+      line += decoder.decode(chunk.subarray(0, read), { stream: true });
+      const end = line.indexOf('\n');
+      if (end !== -1) {
+        return line.slice(0, end);
+      }
     }
+    return line + decoder.decode();
+  } finally {
+    closeSync(file);
   }
-  return line + decoder.decode();
 }
 
 export function shellScripts(root: string): string[] {
@@ -43,5 +48,5 @@ function main(args: string[]): number {
 }
 
 if (import.meta.main) {
-  Deno.exitCode = main(Deno.args);
+  process.exitCode = main(process.argv.slice(2));
 }

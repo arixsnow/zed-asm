@@ -1,9 +1,9 @@
 // SPDX-License-Identifier: MIT
 
-import { emptyDirSync, ensureDirSync } from '@std/fs';
-import { dirname, join } from '@std/path';
+import { mkdirSync, readdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { dirname, join } from 'node:path';
 
-import { filesUnder, ifExists, readTextIfExists, ROOT } from './lib/files.ts';
+import { emptyDir, filesUnder, ifExists, readTextIfExists, ROOT } from './lib/files.ts';
 import { increaseIndentPattern } from './lib/indent.ts';
 import { type Language, type Manifest, manifest, parseAuthor } from './lib/manifest.ts';
 
@@ -205,7 +205,7 @@ export function renderAll(manifest: Manifest, readFragment: ReadFragment): Map<s
   for (const language of manifest.languages) {
     outputs.set(
       `tree-sitter/${language.grammar}/grammar.js`,
-      `module.exports = require('../common/define-grammar')('${language.grammar}');\n`,
+      `module.exports = require('../common/define-grammar.js')('${language.grammar}');\n`,
     );
     outputs.set(
       `tree-sitter/${language.grammar}/src/scanner.c`,
@@ -228,12 +228,12 @@ function readQueryFragment(source: string, kind: string): string | undefined {
 
 function readCorpus(source: string): [string, string][] {
   const directory = join(ROOT, 'test', 'corpus', source);
-  const entries = ifExists(() => [...Deno.readDirSync(directory)]) ?? [];
+  const entries = ifExists(() => readdirSync(directory, { withFileTypes: true })) ?? [];
   return entries
-    .filter((entry) => entry.isFile && entry.name.endsWith('.txt'))
+    .filter((entry) => entry.isFile() && entry.name.endsWith('.txt'))
     .map((entry) => entry.name)
     .sort()
-    .map((name) => [name, Deno.readTextFileSync(join(directory, name))]);
+    .map((name) => [name, readFileSync(join(directory, name), 'utf8')]);
 }
 
 function syncGenerated(manifest: Manifest, write: boolean): string[] {
@@ -246,8 +246,8 @@ function syncGenerated(manifest: Manifest, write: boolean): string[] {
     }
     stale.push(path);
     if (write) {
-      ensureDirSync(dirname(file));
-      Deno.writeTextFileSync(file, text);
+      mkdirSync(dirname(file), { recursive: true });
+      writeFileSync(file, text);
     }
   }
   for (const path of filesUnder(join(ROOT, 'languages')).map((file) => `languages/${file}`)) {
@@ -256,7 +256,7 @@ function syncGenerated(manifest: Manifest, write: boolean): string[] {
     }
     stale.push(path);
     if (write) {
-      Deno.removeSync(join(ROOT, path));
+      rmSync(join(ROOT, path));
     }
   }
   return stale;
@@ -265,21 +265,21 @@ function syncGenerated(manifest: Manifest, write: boolean): string[] {
 function writeCorpus(manifest: Manifest): void {
   for (const language of manifest.languages) {
     const directory = join(ROOT, 'tree-sitter', language.grammar, 'test', 'corpus');
-    emptyDirSync(directory);
+    emptyDir(directory);
     for (const [name, text] of renderCorpus(language, readCorpus)) {
-      Deno.writeTextFileSync(join(directory, name), text);
+      writeFileSync(join(directory, name), text);
     }
   }
 }
 
 function setGrammarRev(manifest: Manifest, rev: string): Manifest {
   const path = join(ROOT, MANIFEST_FILE);
-  const text = Deno.readTextFileSync(path);
+  const text = readFileSync(path, 'utf8');
   const pattern = /grammarRev: '[0-9a-f]{40}'/;
   if (!pattern.test(text)) {
     throw new Error(`grammarRev not found in ${MANIFEST_FILE}`);
   }
-  Deno.writeTextFileSync(path, text.replace(pattern, `grammarRev: '${rev}'`));
+  writeFileSync(path, text.replace(pattern, `grammarRev: '${rev}'`));
   return { ...manifest, extension: { ...manifest.extension, grammarRev: rev } };
 }
 
@@ -309,7 +309,7 @@ function main([command, argument, ...rest]: string[]): number {
         console.error(
           `Generated files are out of date:\n  ${
             stale.join('\n  ')
-          }\nRun: scripts/dev deno task build`,
+          }\nRun: scripts/dev bun run build`,
         );
         return 1;
       }
@@ -328,5 +328,5 @@ function main([command, argument, ...rest]: string[]): number {
 }
 
 if (import.meta.main) {
-  Deno.exitCode = main(Deno.args);
+  process.exitCode = main(process.argv.slice(2));
 }

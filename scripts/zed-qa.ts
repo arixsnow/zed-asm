@@ -1,9 +1,11 @@
 // SPDX-License-Identifier: MIT
 
-import { copySync, emptyDirSync, ensureDirSync } from '@std/fs';
-import { join } from '@std/path';
+import { type ChildProcess, spawn, spawnSync } from 'node:child_process';
+import { once } from 'node:events';
+import { copyFileSync, cpSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { join } from 'node:path';
 
-import { ROOT } from './lib/files.ts';
+import { emptyDir, ROOT } from './lib/files.ts';
 import { run, runOrThrow } from './lib/grammars.ts';
 import { manifest } from './lib/manifest.ts';
 
@@ -625,38 +627,51 @@ async function waitFor<T>(what: string, probe: () => T | undefined): Promise<T> 
   throw new Error(`timed out waiting for ${what}`);
 }
 
-function background(command: string, args: string[]): Deno.ChildProcess {
-  return new Deno.Command(command, { args, stdin: 'null', stdout: 'null', stderr: 'null' })
-    .spawn();
+async function background(command: string, args: string[]): Promise<ChildProcess> {
+  const child = spawn(command, args, { stdio: 'ignore' });
+  await once(child, 'spawn');
+  return child;
+}
+
+async function stop(child: ChildProcess): Promise<void> {
+  if (child.exitCode !== null || child.signalCode !== null) {
+    return;
+  }
+  const exited = once(child, 'exit');
+  child.kill('SIGTERM');
+  await exited;
 }
 
 function installExtension() {
-  ensureDirSync(join(EXTENSION, 'grammars'));
+  mkdirSync(join(EXTENSION, 'grammars'), { recursive: true });
   for (const { grammar } of manifest.languages) {
     runOrThrow('clang', wasmArgs(grammar, join(EXTENSION, 'grammars', `${grammar}.wasm`)));
   }
-  copySync(join(ROOT, 'extension.toml'), join(EXTENSION, 'extension.toml'), { overwrite: true });
-  copySync(join(ROOT, 'languages'), join(EXTENSION, 'languages'), { overwrite: true });
+  copyFileSync(join(ROOT, 'extension.toml'), join(EXTENSION, 'extension.toml'));
+  cpSync(join(ROOT, 'languages'), join(EXTENSION, 'languages'), { recursive: true });
 }
 
-async function savePng(name: string): Promise<string> {
+function convert(command: string, args: string[], input?: Buffer): Buffer {
+  const result = spawnSync(command, args, {
+    input,
+    stdio: [input === undefined ? 'ignore' : 'pipe', 'pipe', 'ignore'],
+    maxBuffer: Infinity,
+  });
+  if (result.error !== undefined) {
+    throw result.error;
+  }
+  if (result.status !== 0) {
+    throw new Error(`${command} ${args.join(' ')} failed`);
+  }
+  return result.stdout;
+}
+
+function savePng(name: string): string {
   const raw = join(OUT, `${name}.xwd`);
   runOrThrow('xwd', ['-root', '-display', DISPLAY, '-out', raw]);
-  const pnm = new Deno.Command('xwdtopnm', { args: [raw], stderr: 'null' }).outputSync();
-  if (!pnm.success) {
-    throw new Error(`xwdtopnm failed for ${raw}`);
-  }
-  const child = new Deno.Command('pnmtopng', { stdin: 'piped', stdout: 'piped', stderr: 'null' })
-    .spawn();
-  const writer = child.stdin.getWriter();
-  await writer.write(pnm.stdout);
-  await writer.close();
-  const { success, stdout } = await child.output();
-  if (!success) {
-    throw new Error(`pnmtopng failed for ${raw}`);
-  }
-  Deno.removeSync(raw);
-  Deno.writeFileSync(join(OUT, `${name}.png`), stdout);
+  const png = convert('pnmtopng', [], convert('xwdtopnm', [raw]));
+  rmSync(raw);
+  writeFileSync(join(OUT, `${name}.png`), png);
   return `${name}.png`;
 }
 
@@ -693,7 +708,7 @@ async function changedClipboard(before: string | undefined): Promise<string | un
 }
 
 function writeSettings(settings: Record<string, unknown>) {
-  Deno.writeTextFileSync(
+  writeFileSync(
     join(HOME, '.config', 'zed', 'settings.json'),
     `${JSON.stringify(settings, null, 2)}\n`,
   );
@@ -701,7 +716,7 @@ function writeSettings(settings: Record<string, unknown>) {
 
 async function runCheck(check: Check): Promise<Result> {
   const file = join(WORK, check.file);
-  Deno.writeTextFileSync(file, check.text);
+  writeFileSync(file, check.text);
   runOrThrow('zed', [file]);
   await sleep(OPEN_DELAY);
   focusZed();
@@ -716,11 +731,11 @@ async function runCheck(check: Check): Promise<Result> {
   } else if (check.expect !== undefined) {
     perform({ keys: ['ctrl+s'] });
     result = await waitFor(`${check.file} to be saved`, () => {
-      const text = Deno.readTextFileSync(file);
+      const text = readFileSync(file, 'utf8');
       return text === check.text ? undefined : text;
     });
   }
-  const shot = await savePng(check.id.padStart(3, '0'));
+  const shot = savePng(check.id.padStart(3, '0'));
   if (check.expect !== undefined && result === undefined) {
     return { id: check.id, title: check.title, status: 'FAIL', detail: `no result (${shot})` };
   }
@@ -737,16 +752,16 @@ async function runCheck(check: Check): Promise<Result> {
 }
 
 async function main() {
-  emptyDirSync(OUT);
-  ensureDirSync(WORK);
-  ensureDirSync(join(HOME, '.config', 'zed'));
+  emptyDir(OUT);
+  mkdirSync(WORK, { recursive: true });
+  mkdirSync(join(HOME, '.config', 'zed'), { recursive: true });
   writeSettings(SETTINGS);
   installExtension();
   const version = runOrThrow('zed', ['--version']).split(/\s+/).slice(0, 2).join(' ');
 
-  const display = background('Xvfb', [DISPLAY, '-screen', '0', SCREEN, '-nolisten', 'tcp']);
+  const display = await background('Xvfb', [DISPLAY, '-screen', '0', SCREEN, '-nolisten', 'tcp']);
   await waitFor('the display', () => run('xdotool', ['getdisplaygeometry']).ok || undefined);
-  const zed = background('dbus-run-session', ['--', 'zed', '--foreground', WORK]);
+  const zed = await background('dbus-run-session', ['--', 'zed', '--foreground', WORK]);
   const results: Result[] = [];
   try {
     await waitFor(
@@ -763,7 +778,7 @@ async function main() {
       }
       results.push(await runCheck(check));
     }
-    const errors = logErrors(Deno.readTextFileSync(LOG));
+    const errors = logErrors(readFileSync(LOG, 'utf8'));
     results.push({
       id: String(LOG_ROW),
       title: 'Reading the Zed log',
@@ -772,19 +787,17 @@ async function main() {
         ? 'no errors about the asm grammars or queries'
         : errors.join(' | '),
     });
-    copySync(LOG, join(OUT, 'Zed.log'), { overwrite: true });
+    copyFileSync(LOG, join(OUT, 'Zed.log'));
   } finally {
-    zed.kill('SIGTERM');
-    await zed.status;
-    display.kill('SIGTERM');
-    await display.status;
+    await stop(zed);
+    await stop(display);
   }
 
   const report = formatReport(version, results);
-  Deno.writeTextFileSync(join(OUT, 'report.txt'), report);
+  writeFileSync(join(OUT, 'report.txt'), report);
   console.log(report);
   if (results.some(({ status }) => status === 'FAIL')) {
-    Deno.exit(1);
+    process.exitCode = 1;
   }
 }
 

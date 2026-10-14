@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: MIT
 
-import { assertEquals } from '@std/assert';
+import { test } from 'bun:test';
+import assert from 'node:assert/strict';
 import { createRequire } from 'node:module';
 
 import { type Language, manifest } from '../../scripts/lib/manifest.ts';
@@ -54,7 +55,7 @@ function parsedName(tree: string, name: string): string | null {
   return match !== null && Number(match[2]) === name.length ? match[1] : null;
 }
 
-Deno.test('the scanner reads a label exactly where the grammar reads a name, and local as the assembler does', () => {
+test('the scanner reads a label exactly where the grammar reads a name, and local as the assembler does', () => {
   const names = candidateNames();
   const failures: string[] = [];
   for (const language of manifest.languages) {
@@ -64,7 +65,7 @@ Deno.test('the scanner reads a label exactly where the grammar reads a name, and
     )
       .split(/^(?=\(source_file )/m)
       .filter((tree) => tree.startsWith('(source_file '));
-    assertEquals(trees.length, names.length, `${grammar}: one tree per name`);
+    assert.deepStrictEqual(trees.length, names.length, `${grammar}: one tree per name`);
     for (const [index, name] of names.entries()) {
       const expected = expectedName(language, name);
       const parsed = parsedName(trees[index], name);
@@ -75,19 +76,23 @@ Deno.test('the scanner reads a label exactly where the grammar reads a name, and
       }
     }
   }
-  assertEquals(failures, []);
+  assert.deepStrictEqual(failures, []);
 });
 
-Deno.test('a .L name is local in operands, assignments and glued names where the assembler keeps it out of the symbol table', () => {
+test('a .L name is local in operands, assignments and glued names where the assembler keeps it out of the symbol table', () => {
   const source = '.macro m\n.Lx\\@:\n.endm\n    b .Lx\n.Ly = 1\n';
   for (const language of manifest.languages.filter(({ syntax }) => syntax === 'gas')) {
     const tree = treeText(parseFiles(language.grammar, 'labels-local', [source]).output);
     const expected = DARWIN.includes(language.dialect) ? 0 : 3;
-    assertEquals(
+    assert.deepStrictEqual(
       tree.includes('ERROR') || tree.includes('MISSING'),
       false,
       `${language.grammar}: ${tree}`,
     );
-    assertEquals((tree.match(/\(local_identifier /g) ?? []).length, expected, language.grammar);
+    assert.deepStrictEqual(
+      (tree.match(/\(local_identifier /g) ?? []).length,
+      expected,
+      language.grammar,
+    );
   }
 });

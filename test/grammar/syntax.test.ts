@@ -1,8 +1,9 @@
 // SPDX-License-Identifier: MIT
 
-import { assertEquals } from '@std/assert';
-import { ensureDirSync } from '@std/fs';
-import { join } from '@std/path';
+import { test } from 'bun:test';
+import assert from 'node:assert/strict';
+import { mkdirSync, writeFileSync } from 'node:fs';
+import { join } from 'node:path';
 
 import { ROOT } from '../../scripts/lib/files.ts';
 import { languageArgs, run } from '../../scripts/lib/grammars.ts';
@@ -29,14 +30,14 @@ function applyEdit(
   return text.slice(0, offset) + inserted + text.slice(offset + deleted);
 }
 
-Deno.test('editing a syntax directive reads every later line as a fresh parse does', () => {
+test('editing a syntax directive reads every later line as a fresh parse does', () => {
   const failures: string[] = [];
   const directory = join(ROOT, '.build', 'syntax-edits');
-  ensureDirSync(directory);
+  mkdirSync(directory, { recursive: true });
   for (const grammar of X86_GAS) {
     for (const [index, [text, edit]] of EDITS.entries()) {
       const file = join(directory, `${grammar}-${index}.s`);
-      Deno.writeTextFileSync(file, text);
+      writeFileSync(file, text);
       const [row, column, deleted, inserted] = edit;
       const incremental = run('tree-sitter', [
         'parse',
@@ -51,5 +52,5 @@ Deno.test('editing a syntax directive reads every later line as a fresh parse do
       }
     }
   }
-  assertEquals(failures, []);
+  assert.deepStrictEqual(failures, []);
 });

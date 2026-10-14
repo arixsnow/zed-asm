@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: MIT
 
-import { join } from '@std/path';
+import { readFileSync } from 'node:fs';
+import { join } from 'node:path';
 
 import { ROOT } from '../../scripts/lib/files.ts';
 import type { Grammar, Rule, TokenSet } from './grammar-sets.ts';
@@ -43,7 +44,7 @@ export class ParseTable {
   readonly #tokenCount: number;
 
   constructor(readonly grammarName: string, readonly grammar: Grammar) {
-    const parser = Deno.readTextFileSync(join(ROOT, 'tree-sitter', grammarName, 'src', 'parser.c'));
+    const parser = readFileSync(join(ROOT, 'tree-sitter', grammarName, 'src', 'parser.c'), 'utf8');
     this.#tokenCount = count(parser, 'TOKEN_COUNT');
     const largeCount = count(parser, 'LARGE_STATE_COUNT');
     for (const [, id, value] of section(parser, ENUM, 'symbol enum').matchAll(/(\w+) = (\d+)/g)) {

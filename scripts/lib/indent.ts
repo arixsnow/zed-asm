@@ -1,7 +1,8 @@
 // SPDX-License-Identifier: MIT
 
+import { readFileSync } from 'node:fs';
 import { createRequire } from 'node:module';
-import { join } from '@std/path';
+import { join } from 'node:path';
 
 import { ROOT } from './files.ts';
 import type { Language, Syntax } from './manifest.ts';
@@ -288,7 +289,7 @@ export function blockIndentPattern(language: Language, syntax: Syntax): string |
   if (syntax.blocks.length === 0) {
     return null;
   }
-  const scanner = Deno.readTextFileSync(join(ROOT, 'tree-sitter', 'common', 'scanner.h'));
+  const scanner = readFileSync(join(ROOT, 'tree-sitter', 'common', 'scanner.h'), 'utf8');
   const lexing = statementLexing(scanner)[language.dialect];
   if (lexing === undefined) {
     throw new Error(`scanner.h has no settings for ASM_DIALECT_${language.dialect}`);

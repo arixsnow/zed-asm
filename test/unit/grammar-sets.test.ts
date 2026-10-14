@@ -1,7 +1,9 @@
 // SPDX-License-Identifier: MIT
 
-import { assert, assertEquals, assertThrows } from '@std/assert';
+import { test } from 'bun:test';
+import assert from 'node:assert/strict';
 
+import { assertThrowsIncluding } from '../lib/assert.ts';
 import { type Grammar, GrammarSets, lexes, type Rule, tokenPattern } from '../lib/grammar-sets.ts';
 
 const string = (value: string): Rule => ({ type: 'STRING', value });
@@ -10,9 +12,9 @@ const symbol = (name: string): Rule => ({ type: 'SYMBOL', name });
 const seq = (...members: Rule[]): Rule => ({ type: 'SEQ', members });
 const choice = (...members: Rule[]): Rule => ({ type: 'CHOICE', members });
 
-Deno.test('token patterns escape strings and compose sequences, choices and repeats', () => {
-  assertEquals(tokenPattern(string('a.+(')), 'a\\.\\+\\(');
-  assertEquals(
+test('token patterns escape strings and compose sequences, choices and repeats', () => {
+  assert.deepStrictEqual(tokenPattern(string('a.+(')), 'a\\.\\+\\(');
+  assert.deepStrictEqual(
     tokenPattern({
       type: 'TOKEN',
       content: {
@@ -23,8 +25,8 @@ Deno.test('token patterns escape strings and compose sequences, choices and repe
     }),
     '%(?:(?:[a-z]+)|)',
   );
-  assertEquals(tokenPattern({ type: 'REPEAT1', content: string('x') }), '(?:x)+');
-  assertThrows(() => tokenPattern(symbol('word')), Error, 'a token cannot contain SYMBOL');
+  assert.deepStrictEqual(tokenPattern({ type: 'REPEAT1', content: string('x') }), '(?:x)+');
+  assertThrowsIncluding(() => tokenPattern(symbol('word')), 'a token cannot contain SYMBOL');
 });
 
 const TOY: Grammar = {
@@ -45,22 +47,22 @@ const TOY: Grammar = {
   },
 };
 
-Deno.test('first sets see through left recursion and keep external tokens apart', () => {
+test('first sets see through left recursion and keep external tokens apart', () => {
   const operand = new GrammarSets(TOY).first.get('operand');
-  assertEquals(operand?.terminals.size, 2);
-  assertEquals([...(operand?.externals ?? [])], ['_hash']);
-  assertEquals(operand?.nullable, false);
-  assert(lexes(operand!, 'ab'));
-  assert(lexes(operand!, '(x'));
-  assert(!lexes(operand!, 'x'));
+  assert.deepStrictEqual(operand?.terminals.size, 2);
+  assert.deepStrictEqual([...(operand?.externals ?? [])], ['_hash']);
+  assert.deepStrictEqual(operand?.nullable, false);
+  assert.ok(lexes(operand!, 'ab'));
+  assert.ok(lexes(operand!, '(x'));
+  assert.ok(!lexes(operand!, 'x'));
 });
 
-Deno.test('continuations are the tokens that can extend a complete construct', () => {
+test('continuations are the tokens that can extend a complete construct', () => {
   const next = new GrammarSets(TOY).continuations('expression');
-  assertEquals([...next.externals], []);
-  assert(lexes(next, '==a'));
-  assert(lexes(next, ')'));
-  assert(lexes(next, '!'));
-  assert(!lexes(next, '=a'));
-  assert(!lexes(next, 'a'));
+  assert.deepStrictEqual([...next.externals], []);
+  assert.ok(lexes(next, '==a'));
+  assert.ok(lexes(next, ')'));
+  assert.ok(lexes(next, '!'));
+  assert.ok(!lexes(next, '=a'));
+  assert.ok(!lexes(next, 'a'));
 });

@@ -1,9 +1,9 @@
 // SPDX-License-Identifier: MIT
 
-import { emptyDirSync } from '@std/fs';
-import { join } from '@std/path';
+import { writeFileSync } from 'node:fs';
+import { join } from 'node:path';
 
-import { ROOT } from '../../scripts/lib/files.ts';
+import { emptyDir, ROOT } from '../../scripts/lib/files.ts';
 import { languageArgs, run, type RunResult } from '../../scripts/lib/grammars.ts';
 
 export const PRINTABLE = Array.from({ length: 95 }, (_, index) => String.fromCharCode(32 + index));
@@ -15,10 +15,10 @@ export function parseFiles(
   args: string[] = [],
 ): RunResult {
   const directory = join(ROOT, '.build', scratch, grammar);
-  emptyDirSync(directory);
+  emptyDir(directory);
   const files = sources.map((source, index) => {
     const file = join(directory, `${index}.s`);
-    Deno.writeTextFileSync(file, source);
+    writeFileSync(file, source);
     return file;
   });
   return run('tree-sitter', ['parse', ...args, ...languageArgs(grammar), ...files]);

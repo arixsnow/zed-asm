@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: MIT
 
-import { join } from '@std/path';
+import { readFileSync } from 'node:fs';
+import { join } from 'node:path';
 
 import { ROOT } from '../../scripts/lib/files.ts';
 
@@ -89,7 +90,7 @@ export function lexes(set: TokenSet, input: string): boolean {
 
 export function readGrammar(grammar: string): Grammar {
   return JSON.parse(
-    Deno.readTextFileSync(join(ROOT, 'tree-sitter', grammar, 'src', 'grammar.json')),
+    readFileSync(join(ROOT, 'tree-sitter', grammar, 'src', 'grammar.json'), 'utf8'),
   );
 }
 

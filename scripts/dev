@@ -26,6 +26,7 @@ fi
 
 exec podman run --rm --interactive --tty="${tty}" \
     --userns=keep-id \
+    --network=none \
     --volume "${root}:/work:Z" \
     --volume zed-asm-cache:/cache:U \
     --env HOME=/cache \

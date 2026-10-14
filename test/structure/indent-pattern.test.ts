@@ -1,11 +1,12 @@
 // SPDX-License-Identifier: MIT
 
-import { assert, assertEquals } from '@std/assert';
-import { emptyDirSync } from '@std/fs';
-import { join, relative } from '@std/path';
+import { test } from 'bun:test';
+import assert from 'node:assert/strict';
+import { writeFileSync } from 'node:fs';
+import { join, relative } from 'node:path';
 
 import { languageConfig } from '../../scripts/build.ts';
-import { ROOT } from '../../scripts/lib/files.ts';
+import { emptyDir, ROOT } from '../../scripts/lib/files.ts';
 import { languageArgs, run } from '../../scripts/lib/grammars.ts';
 import { blockIndentPattern } from '../../scripts/lib/indent.ts';
 import { manifest } from '../../scripts/lib/manifest.ts';
@@ -119,7 +120,7 @@ function openAtEnd(tree: string, row: number): boolean {
   });
 }
 
-Deno.test('the block part of the increase pattern matches a line exactly when the parser leaves a block opened on it open', () => {
+test('the block part of the increase pattern matches a line exactly when the parser leaves a block opened on it open', () => {
   for (const language of manifest.languages) {
     const source = blockIndentPattern(language, manifest.syntaxes[language.syntax]);
     if (source === null) {
@@ -132,8 +133,8 @@ Deno.test('the block part of the increase pattern matches a line exactly when th
       .split(/^new_parse$/m).slice(1);
     const trees = treeText(parseFiles(language.grammar, 'indent-pattern', sources).output)
       .split(/^(?=\(source_file )/m).filter((tree) => tree.startsWith('(source_file '));
-    assertEquals(logs.length, cases.length, `${language.grammar}: one log per case`);
-    assertEquals(trees.length, cases.length, `${language.grammar}: one tree per case`);
+    assert.deepStrictEqual(logs.length, cases.length, `${language.grammar}: one log per case`);
+    assert.deepStrictEqual(trees.length, cases.length, `${language.grammar}: one tree per case`);
     const mismatches: string[] = [];
     let compared = 0;
     for (const [index, { kind, line }] of cases.entries()) {
@@ -146,16 +147,16 @@ Deno.test('the block part of the increase pattern matches a line exactly when th
         mismatches.push(`${open ? 'open' : 'closed'}: ${JSON.stringify(line)}`);
       }
     }
-    assertEquals(
+    assert.deepStrictEqual(
       cases.length - compared,
       ERROR_CASES[language.grammar],
       `${language.grammar}: cases that parse with an error and are not compared`,
     );
-    assertEquals(mismatches, [], language.grammar);
+    assert.deepStrictEqual(mismatches, [], language.grammar);
   }
 });
 
-Deno.test('Rust, whose regex engine Zed uses, compiles every indent pattern and reads every line like the tests do', () => {
+test('Rust, whose regex engine Zed uses, compiles every indent pattern and reads every line like the tests do', () => {
   const directory = join(ROOT, '.build', 'indent-rust');
   for (const language of manifest.languages) {
     const config = languageConfig(language, manifest);
@@ -170,11 +171,11 @@ Deno.test('Rust, whose regex engine Zed uses, compiles every indent pattern and 
       ...kind.headers.map((header) => header),
       ...LEADS.filter((lead) => !/^\s/.test(lead)).map((lead) => `${lead}${kind.headers[0]}`),
     ]);
-    emptyDirSync(directory);
-    Deno.writeTextFileSync(join(directory, 'query.scm'), query);
+    emptyDir(directory);
+    writeFileSync(join(directory, 'query.scm'), query);
     const files = lines.map((line, index) => {
       const file = join(directory, `${index}.s`);
-      Deno.writeTextFileSync(file, line);
+      writeFileSync(file, line);
       return file;
     });
     const { ok, output } = run('tree-sitter', [
@@ -183,7 +184,7 @@ Deno.test('Rust, whose regex engine Zed uses, compiles every indent pattern and 
       join(directory, 'query.scm'),
       ...files,
     ]);
-    assert(ok, `${language.grammar}: ${output}`);
+    assert.ok(ok, `${language.grammar}: ${output}`);
     const matched = new Map<string, Set<number>>();
     let current = '';
     for (const text of output.split('\n')) {
@@ -202,13 +203,13 @@ Deno.test('Rust, whose regex engine Zed uses, compiles every indent pattern and 
     const differences: string[] = [];
     for (const [index, line] of lines.entries()) {
       const rust = matched.get(files[index]) ?? matched.get(relative(ROOT, files[index]));
-      assert(rust !== undefined, `${language.grammar}: no result for ${files[index]}`);
+      assert.ok(rust !== undefined, `${language.grammar}: no result for ${files[index]}`);
       for (const [patternIndex, pattern] of compiled.entries()) {
         if (pattern.test(line) !== rust.has(patternIndex)) {
           differences.push(`pattern ${patternIndex}: ${JSON.stringify(line)}`);
         }
       }
     }
-    assertEquals(differences, [], language.grammar);
+    assert.deepStrictEqual(differences, [], language.grammar);
   }
 });

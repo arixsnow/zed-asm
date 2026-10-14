@@ -1,0 +1,37 @@
+{
+  "lineWidth": 100,
+  "typescript": {
+    "quoteStyle": "preferSingle",
+    "useBraces": "always",
+    "bracePosition": "sameLine",
+    "arrowFunction.useParentheses": "force",
+    "binaryExpression.operatorPosition": "sameLine",
+    "commentLine.forceSpaceAfterSlashes": false,
+    "conditionalExpression.preferSingleLine": true,
+    "constructSignature.spaceAfterNewKeyword": true,
+    "constructorType.spaceAfterNewKeyword": true,
+    "functionExpression.spaceAfterFunctionKeyword": true,
+    "module.sortImportDeclarations": "maintain",
+    "module.sortExportDeclarations": "maintain"
+  },
+  "json": {
+    "commentLine.forceSpaceAfterSlashes": false,
+    "trailingCommas": "never"
+  },
+  "yaml": {
+    "quotes": "preferSingle"
+  },
+  "excludes": [
+    ".build",
+    "grammars",
+    "tree-sitter/tree-sitter.json",
+    "tree-sitter/*/grammar.js",
+    "tree-sitter/*/src"
+  ],
+  "plugins": [
+    "/opt/dprint/typescript.wasm",
+    "/opt/dprint/json.wasm",
+    "/opt/dprint/markdown.wasm",
+    "/opt/dprint/pretty_yaml.wasm"
+  ]
+}

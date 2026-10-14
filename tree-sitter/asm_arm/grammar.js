@@ -1,1 +1,1 @@
-module.exports = require('../common/define-grammar')('asm_arm');
+module.exports = require('../common/define-grammar.js')('asm_arm');

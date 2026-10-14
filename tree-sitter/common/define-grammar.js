@@ -1,14 +1,14 @@
 // SPDX-License-Identifier: MIT
 
 const { languages } = require('../../languages.config.cjs');
-const lexical = require('./lexical');
+const lexical = require('./lexical.js');
 
 const MODULES = {
-  core: require('./core'),
-  gas: require('./syntax/gas'),
-  nasm: require('./syntax/nasm'),
-  arm: require('./arch/arm'),
-  x86: require('./arch/x86'),
+  core: require('./core.js'),
+  gas: require('./syntax/gas.js'),
+  nasm: require('./syntax/nasm.js'),
+  arm: require('./arch/arm.js'),
+  x86: require('./arch/x86.js'),
 };
 
 const EXTERNALS = [

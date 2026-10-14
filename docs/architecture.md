@@ -60,7 +60,7 @@ the field. `scripts/build.ts` turns it into:
 
 `scripts/tree-sitter.ts generate` then runs `tree-sitter generate` with its built-in JavaScript
 engine to write each grammar's `src/parser.c`. Generated files are committed because Zed reads them
-from the repository. `deno task check:generated` regenerates everything into `.build/` and fails if
+from the repository. `bun run check:generated` regenerates everything into `.build/` and fails if
 any committed file differs by one byte.
 
 ## Grammar modules
@@ -1075,22 +1075,44 @@ data labels.
 
 ## Checks
 
-The tooling is TypeScript on Deno, and every task in `deno.json` passes explicit `--allow-*` flags.
-The build may write generated files but never `tree-sitter/common` or the manifest. The checks
-write only `.build/`, the `corpus` task writes `tree-sitter/<grammar>/test/`, and the Zed checks
-also write their container's home. No command may start `deno` itself, and only the sanitizer run
-may start arbitrary programs. `test/unit/permissions.test.ts` enforces all of this.
+The tooling is TypeScript that Bun runs, and the scripts in `package.json` are its commands. Every
+command runs in a container that `scripts/dev` and `scripts/zed` start with `--network=none`, so no
+check, test or script can reach the network; only the image build downloads anything. The image
+pins Bun, its npm tools and dprint with its plugins, and `bunfig.toml` turns off Bun's automatic
+package installs, so importing a package the image lacks fails at once. `test/unit/commands.test.ts`
+requires a row in the table below for every script and `--network=none` as the only network option
+of both launchers.
 
-| Command                    | What it checks                                                                                                                                                            |
-| -------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `deno task test`           | formatting, lint, types, generated files and parsers up to date, unit, highlight, tree, typing and performance tests, C checks, corpus tests, query compilation, fixtures |
-| `deno task check:c`        | clang-format, GCC and clang with strict warnings as errors, both static analyzers, clang-tidy, and that `scanner.h` rejects zero or two dialect macros                    |
-| `deno task check:shell`    | shellcheck, with every optional check, on every script with a shell shebang                                                                                               |
-| `deno task test:corpus`    | the corpus tests of all five grammars                                                                                                                                     |
-| `deno task sanitize`       | corpus and fuzzing against parsers built with AddressSanitizer and UndefinedBehaviorSanitizer                                                                             |
-| `deno task check:fixtures` | every fixture, and a CRLF and a no-final-newline copy of it, assembles with the real toolchains; every fixture parses without errors                                      |
-| `deno task bench`          | not a check: prints parse, edit and query times, states and parser size for every grammar                                                                                 |
-| `scripts/zed`              | the `docs/qa.md` checks in the real Zed app, in Podman on a virtual display                                                                                               |
+dprint formats TypeScript, JavaScript, JSON, Markdown and YAML to 100 columns, with single quotes
+and braces on every block. oxlint fails on every correctness rule of its eslint, typescript,
+unicorn, oxc and import plugins and on the further rules in `.oxlintrc.json`, among them `curly`
+for every block, `eqeqeq`, and `import/extensions`, which wants the file extension in every
+relative `import` and `require`. A disable comment that hides nothing is an error too. `tsc` from
+TypeScript 7 checks every TypeScript file in `scripts/` and `test/` with `strict` and the
+unused-name, switch-fallthrough and `override` checks, and with `skipLibCheck` off it checks the
+type packages as well.
+
+| Command                   | What it does                                                                                                                                                                            |
+| ------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `bun run test`            | every check except the sanitizers: formatting, lint, types, generated files and parsers up to date, unit and performance tests, C checks, shell checks, corpus tests, queries, fixtures |
+| `bun run build`           | writes the files generated from `languages.config.cjs` and `queries/`                                                                                                                   |
+| `bun run generate`        | runs `build`, then regenerates all five parsers                                                                                                                                         |
+| `bun run set-grammar-rev` | pins the commit Zed fetches the grammars from (`bun run set-grammar-rev <sha>`) and runs `build`                                                                                        |
+| `bun run fmt`             | formats with dprint, and the C scanner with clang-format                                                                                                                                |
+| `bun run lint`            | oxlint                                                                                                                                                                                  |
+| `bun run check:types`     | `tsc` on every TypeScript file                                                                                                                                                          |
+| `bun run check:generated` | fails if a generated file or parser differs from what the build and `tree-sitter generate` write                                                                                        |
+| `bun run check:c`         | clang-format, GCC and clang with strict warnings as errors, both static analyzers, clang-tidy, and that `scanner.h` rejects zero or two dialect macros                                  |
+| `bun run check:shell`     | shellcheck, with every optional check, on every script with a shell shebang                                                                                                             |
+| `bun run check:queries`   | compiles every generated query against its grammar                                                                                                                                      |
+| `bun run check:fixtures`  | every fixture, and a CRLF and a no-final-newline copy of it, assembles with the real toolchains; every fixture parses without errors                                                    |
+| `bun run test:unit`       | the unit, highlight, tree, typing and structure tests in parallel, then the performance tests alone                                                                                     |
+| `bun run corpus`          | composes each grammar's corpus tests from `test/corpus/`                                                                                                                                |
+| `bun run test:corpus`     | runs `corpus`, then the corpus tests of all five grammars                                                                                                                               |
+| `bun run sanitize`        | corpus and fuzzing against parsers built with AddressSanitizer and UndefinedBehaviorSanitizer                                                                                           |
+| `bun run bench`           | not a check: prints parse, edit and query times, states and parser size for every grammar                                                                                               |
+| `bun run zed:qa`          | the `docs/qa.md` checks; `scripts/zed` runs it in the container that holds Zed and a display                                                                                            |
+| `scripts/zed`             | the `docs/qa.md` checks in the real Zed app, in Podman on a virtual display                                                                                                             |
 
 `scripts/zed` builds the `zed` stage of the Containerfile: Xvfb, xdotool, Mesa's software Vulkan,
 and Zed from its official install script, always the latest release. It compiles each grammar to
@@ -1176,13 +1198,13 @@ file holds twice as many functions, at the top level and inside a block.
 The unit tests also enforce the repository rules: ASCII only, LF line endings, a final newline and
 an SPDX license line in every hand-written source file.
 
-CI runs `deno task test` and `deno task sanitize` in the same container for every push and for pull
-requests from forks. Building the 2.8 GB image takes about four minutes, so CI saves it in the
-Actions cache under the image tag and the ISO week (`scripts/dev --image` prints the tag, a hash
-of the Containerfile) and loads it instead of building, until the Containerfile changes or the
-week ends; Fedora's package updates still reach CI within a week. The unit tests run their files
-in parallel, except the performance tests, which run alone afterwards because they compare
-timings. Compiled parsers are cached in `.build/lib` under a hash of their sources and the
+CI runs `bun run test` and `bun run sanitize` in the same container for every push and for pull
+requests from forks. Building the 2.9 GB image compiles tree-sitter and dprint from source, so CI
+saves it in the Actions cache under the image tag and the ISO week (`scripts/dev --image` prints
+the tag, a hash of the Containerfile) and loads it instead of building, until the Containerfile
+changes or the week ends; Fedora's package updates still reach CI within a week. The unit tests run
+their files in parallel, except the performance tests, which run alone afterwards because they
+compare timings. Compiled parsers are cached in `.build/lib` under a hash of their sources and the
 tree-sitter version, so the test, query and fixture checks build each grammar once.
 
 ## Performance
@@ -1249,7 +1271,7 @@ because of the keyword check after every identifier and a larger lexer.
 
 The third table is M4 on all fixtures of each grammar repeated, which hold blocks, macros,
 directives, preprocessor lines and the operand fixtures, with every query the language ships
-(`deno task bench`). Each fixture is a file of its own, which both assemblers start in AT&T mode, so
+(`bun run bench`). Each fixture is a file of its own, which both assemblers start in AT&T mode, so
 the bench ends every x86 fixture with `.att_syntax`:
 
 | Grammar       | Parse | Edit | brackets | highlights | indents | injections | outline | overrides | textobjects |
@@ -1335,9 +1357,6 @@ they now take under 2 ms.
 3. Add a language to `languages.config.cjs`. If its comment rules differ, add an `ASM_DIALECT_*`
    block to `scanner.h`, include it in the count above the blocks, and add the name to `DIALECTS` in
    `scripts/lib/manifest.ts`.
-4. Add `tree-sitter/<grammar>` to the write paths of the `build` and `set-grammar-rev` tasks and
-   `tree-sitter/<grammar>/test` to those of the `corpus` task. The permissions test fails until they
-   match the manifest.
-5. Add `queries/<arch>/`, `test/corpus/<arch>/`, highlight cases in `test/highlight/cases.ts` and a
+4. Add `queries/<arch>/`, `test/corpus/<arch>/`, highlight cases in `test/highlight/cases.ts` and a
    fixture directory with its assemblers in `FIXTURE_DIALECTS` in `scripts/verify-fixtures.ts`.
-6. Run `scripts/dev deno task generate`, `scripts/dev deno task test` and `scripts/zed`.
+5. Run `scripts/dev bun run generate`, `scripts/dev bun run test` and `scripts/zed`.

@@ -1,0 +1,25 @@
+{
+  "name": "zed-asm",
+  "private": true,
+  "license": "MIT",
+  "scripts": {
+    "build": "bun scripts/build.ts write",
+    "generate": "bun run build && bun scripts/tree-sitter.ts generate",
+    "set-grammar-rev": "bun scripts/build.ts set-grammar-rev",
+    "fmt": "dprint fmt && clang-format -i tree-sitter/common/scanner.h",
+    "lint": "oxlint",
+    "check:types": "tsc",
+    "check:generated": "bun scripts/build.ts check && bun scripts/tree-sitter.ts check",
+    "check:c": "bun scripts/check-c.ts",
+    "check:shell": "bun scripts/check-shell.ts",
+    "check:queries": "bun scripts/check-queries.ts",
+    "check:fixtures": "bun scripts/verify-fixtures.ts",
+    "test:unit": "bun test --parallel --timeout 0 --path-ignore-patterns 'test/performance/**' && bun test --timeout 0 test/performance",
+    "corpus": "bun scripts/build.ts corpus",
+    "test:corpus": "bun run corpus && bun scripts/tree-sitter.ts test",
+    "sanitize": "bun run corpus && bun scripts/sanitize.ts",
+    "bench": "bun scripts/bench.ts",
+    "zed:qa": "bun scripts/zed-qa.ts",
+    "test": "dprint check && bun run lint && bun run check:types && bun run check:generated && bun run test:unit && bun run check:c && bun run check:shell && bun run test:corpus && bun run check:queries && bun run check:fixtures"
+  }
+}

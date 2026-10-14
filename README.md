@@ -53,30 +53,31 @@ file keeps its colors and its outline. The roadmap lists what comes next.
 ## Development
 
 Everything runs in a Podman container built from `Containerfile`, so your machine only needs
-`podman` and `git`. The container pins tree-sitter 0.27.0 and Deno 2.9.7 exactly. The C toolchain,
-the assemblers and ShellCheck come from Fedora 44's repositories as they are when the image is
-built. CI builds it fresh whenever the Containerfile changes and in the first run of each week,
-and reuses that image for the rest of the week; `scripts/dev` rebuilds it locally whenever the
-Containerfile changes.
+`podman` and `git`. The container pins tree-sitter 0.27.0, Bun 1.4.3, TypeScript 7.0.2, oxlint
+1.88.0, dprint 0.63.0 and its four plugins exactly. The C toolchain, the assemblers and ShellCheck
+come from Fedora 44's repositories as they are when the image is built. CI builds it fresh whenever
+the Containerfile changes and in the first run of each week, and reuses that image for the rest of
+the week; `scripts/dev` rebuilds it locally whenever the Containerfile changes. Only the build
+downloads anything: the container itself runs without a network.
 
 ```sh
-scripts/dev deno task test       # every check except the sanitizers
-scripts/dev deno task sanitize   # corpus tests and fuzzing under ASan and UBSan
-scripts/dev deno task generate   # rebuild languages/, extension.toml and the parsers
-scripts/dev deno task bench      # parse, edit and query timings for every grammar
-scripts/dev deno task fmt        # deno fmt and clang-format
-scripts/dev deno task            # list every task
-scripts/dev                      # a shell inside the toolchain
-scripts/zed                      # the docs/qa.md checks in Zed, inside Podman
+scripts/dev bun run test       # every check except the sanitizers
+scripts/dev bun run sanitize   # corpus tests and fuzzing under ASan and UBSan
+scripts/dev bun run generate   # rebuild languages/, extension.toml and the parsers
+scripts/dev bun run bench      # parse, edit and query timings for every grammar
+scripts/dev bun run fmt        # dprint and clang-format
+scripts/dev bun run            # list every script
+scripts/dev                    # a shell inside the toolchain
+scripts/zed                    # the docs/qa.md checks in Zed, inside Podman
 ```
 
 The hand-written sources are `languages.config.cjs`, `queries/`, `tree-sitter/common/`, `scripts/`
 and `test/`. `extension.toml`, `languages/`, `tree-sitter/tree-sitter.json` and each grammar's
-`grammar.js` and `src/` are generated, and `deno task test` fails when any of them is out of date.
+`grammar.js` and `src/` are generated, and `bun run test` fails when any of them is out of date.
 
 `scripts/zed` runs the editor checks from [docs/qa.md](docs/qa.md) in Zed inside Podman, on your
 uncommitted tree. To install a change in your own Zed, push it, run
-`scripts/dev deno task set-grammar-rev <pushed commit>`, push again, then use **Extensions > Install
+`scripts/dev bun run set-grammar-rev <pushed commit>`, push again, then use **Extensions > Install
 Dev Extension** on a local clone.
 
 See [docs/architecture.md](docs/architecture.md) for how the grammars fit together.

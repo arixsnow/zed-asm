@@ -1,1 +1,1 @@
-module.exports = require('../common/define-grammar')('asm_x86_nasm');
+module.exports = require('../common/define-grammar.js')('asm_x86_nasm');

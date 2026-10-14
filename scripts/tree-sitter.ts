@@ -1,9 +1,9 @@
 // SPDX-License-Identifier: MIT
 
-import { emptyDirSync } from '@std/fs';
-import { join } from '@std/path';
+import { readFileSync } from 'node:fs';
+import { join } from 'node:path';
 
-import { filesUnder, ifExists, ROOT } from './lib/files.ts';
+import { emptyDir, filesUnder, ifExists, ROOT } from './lib/files.ts';
 import { run } from './lib/grammars.ts';
 import { manifest } from './lib/manifest.ts';
 
@@ -34,7 +34,7 @@ function sameBytes(left: Uint8Array, right: Uint8Array | undefined): boolean {
 
 function staleParserFiles(grammar: string): string[] | undefined {
   const fresh = join('.build', 'generated', grammar);
-  emptyDirSync(join(ROOT, fresh));
+  emptyDir(join(ROOT, fresh));
   if (!generate(grammar, fresh)) {
     return undefined;
   }
@@ -42,8 +42,8 @@ function staleParserFiles(grammar: string): string[] | undefined {
   const produced = filesUnder(join(ROOT, fresh));
   const differing = produced.filter((path) =>
     !sameBytes(
-      Deno.readFileSync(join(ROOT, fresh, path)),
-      ifExists(() => Deno.readFileSync(join(ROOT, source, path))),
+      readFileSync(join(ROOT, fresh, path)),
+      ifExists(() => readFileSync(join(ROOT, source, path))),
     )
   );
   const leftover = filesUnder(join(ROOT, source)).filter((path) =>
@@ -78,7 +78,7 @@ function check(): number {
     console.error(
       `Generated parsers are out of date:\n  ${
         stale.join('\n  ')
-      }\nRun: scripts/dev deno task generate`,
+      }\nRun: scripts/dev bun run generate`,
     );
     return 1;
   }
@@ -104,5 +104,5 @@ function main(args: string[]): number {
 }
 
 if (import.meta.main) {
-  Deno.exitCode = main(Deno.args);
+  process.exitCode = main(process.argv.slice(2));
 }

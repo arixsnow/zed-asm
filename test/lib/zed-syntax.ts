@@ -1,8 +1,7 @@
 // SPDX-License-Identifier: MIT
 
-import { ensureDirSync } from '@std/fs';
-import { join } from '@std/path';
-import { parse } from '@std/toml';
+import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
+import { join } from 'node:path';
 
 import { readTextIfExists, ROOT } from '../../scripts/lib/files.ts';
 import { languageArgs, run } from '../../scripts/lib/grammars.ts';
@@ -60,8 +59,8 @@ function queryText(language: Language, kind: string): string {
 }
 
 export function zedLanguage(language: Language): ZedLanguage {
-  const config = parse(
-    Deno.readTextFileSync(join(ROOT, 'languages', language.dir, 'config.toml')),
+  const config = Bun.TOML.parse(
+    readFileSync(join(ROOT, 'languages', language.dir, 'config.toml'), 'utf8'),
   ) as LanguageConfig;
   return new ZedLanguage(config, {
     overrides: queryText(language, 'overrides'),
@@ -72,7 +71,7 @@ export function zedLanguage(language: Language): ZedLanguage {
 
 export function cliSyntax(language: Language, scratch: string): SyntaxProvider {
   const directory = join(ROOT, '.build', scratch, language.grammar);
-  ensureDirSync(directory);
+  mkdirSync(directory, { recursive: true });
   const args = languageArgs(language.grammar);
   const queryFile = (kind: string) =>
     queryText(language, kind) === '' ? null : join(ROOT, 'languages', language.dir, `${kind}.scm`);
@@ -86,7 +85,7 @@ export function cliSyntax(language: Language, scratch: string): SyntaxProvider {
       return cached;
     }
     const file = join(directory, `${cache.size}.s`);
-    Deno.writeTextFileSync(file, text);
+    writeFileSync(file, text);
     const starts = [0];
     for (const [index, byte] of encoder.encode(text).entries()) {
       if (byte === 0x0a) {
@@ -160,8 +159,8 @@ export function queryMatchesFor(
     return [];
   }
   const directory = join(ROOT, '.build', scratch, language.grammar);
-  ensureDirSync(directory);
+  mkdirSync(directory, { recursive: true });
   const file = join(directory, `${kind}.s`);
-  Deno.writeTextFileSync(file, text);
+  writeFileSync(file, text);
   return queryMatches(query([...languageArgs(language.grammar), path, file]));
 }

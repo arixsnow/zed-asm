@@ -53,7 +53,7 @@ jobs:
           key: toolchain-${{ steps.image.outputs.key }}
 
       - name: Test
-        run: scripts/dev deno task test
+        run: scripts/dev bun run test
 
       - name: Sanitizers
-        run: scripts/dev deno task sanitize
+        run: scripts/dev bun run sanitize

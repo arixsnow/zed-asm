@@ -1,0 +1,37 @@
+{
+  "plugins": ["eslint", "typescript", "unicorn", "oxc", "import"],
+  "categories": {
+    "correctness": "error"
+  },
+  "options": {
+    "reportUnusedDisableDirectives": "error"
+  },
+  "rules": {
+    "eslint/curly": ["error", "all"],
+    "eslint/eqeqeq": ["error", "always"],
+    "eslint/no-array-constructor": "error",
+    "eslint/no-case-declarations": "error",
+    "eslint/no-empty": "error",
+    "eslint/no-fallthrough": "error",
+    "eslint/no-inner-declarations": "error",
+    "eslint/no-prototype-builtins": "error",
+    "eslint/no-redeclare": "error",
+    "eslint/no-regex-spaces": "error",
+    "eslint/no-var": "error",
+    "eslint/prefer-const": "error",
+    "eslint/require-await": "error",
+    "import/extensions": ["error", "always", { "ignorePackages": true }],
+    "typescript/ban-ts-comment": "error",
+    "typescript/ban-types": "error",
+    "typescript/no-empty-object-type": "error",
+    "typescript/no-explicit-any": "error",
+    "typescript/no-namespace": "error"
+  },
+  "ignorePatterns": [
+    ".build",
+    "grammars",
+    "tree-sitter/tree-sitter.json",
+    "tree-sitter/*/grammar.js",
+    "tree-sitter/*/src"
+  ]
+}

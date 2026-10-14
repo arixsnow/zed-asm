@@ -1,8 +1,9 @@
 // SPDX-License-Identifier: MIT
 
-import { assert } from '@std/assert';
-import { ensureDirSync } from '@std/fs';
-import { join } from '@std/path';
+import { test } from 'bun:test';
+import assert from 'node:assert/strict';
+import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
+import { join } from 'node:path';
 
 import { filesUnder, ROOT } from '../../scripts/lib/files.ts';
 import { languageArgs, run } from '../../scripts/lib/grammars.ts';
@@ -22,7 +23,7 @@ const SWEEP_FLOOR_MS = 0.5;
 const BLOCK_LINES = 5_000;
 const RELEX_COPIES = 200;
 
-const VALID = Deno.readTextFileSync(join(ROOT, 'test', 'fixtures', 'x86-att', 'basics.s'));
+const VALID = readFileSync(join(ROOT, 'test', 'fixtures', 'x86-att', 'basics.s'), 'utf8');
 
 function generator(seed: number): () => number {
   let state = seed;
@@ -105,17 +106,17 @@ const HOSTILE: Record<string, (size: number) => string | Uint8Array> = {
 };
 
 function write(name: string, content: string | Uint8Array): string {
-  ensureDirSync(SCRATCH);
+  mkdirSync(SCRATCH, { recursive: true });
   const file = join(SCRATCH, name);
   if (typeof content === 'string') {
-    Deno.writeTextFileSync(file, content);
+    writeFileSync(file, content);
   } else {
-    Deno.writeFileSync(file, content);
+    writeFileSync(file, content);
   }
   return file;
 }
 
-Deno.test('hostile input costs time in proportion to its size', () => {
+test('hostile input costs time in proportion to its size', () => {
   const failures: string[] = [];
   for (const [kind, make] of Object.entries(HOSTILE)) {
     const small = write(`${kind.replaceAll(' ', '-')}-1.s`, make(BASE_SIZE));
@@ -131,10 +132,10 @@ Deno.test('hostile input costs time in proportion to its size', () => {
       }
     }
   }
-  assert(failures.length === 0, failures.join('\n'));
+  assert.ok(failures.length === 0, failures.join('\n'));
 });
 
-Deno.test('a one-character edit reuses the tree instead of reparsing the file', () => {
+test('a one-character edit reuses the tree instead of reparsing the file', () => {
   const failures: string[] = [];
   const fixtures: Record<string, string> = {
     asm_auto: 'x86-att/basics.s',
@@ -144,7 +145,7 @@ Deno.test('a one-character edit reuses the tree instead of reparsing the file', 
     asm_x86_nasm: 'x86-nasm/basics.asm',
   };
   for (const { grammar } of manifest.languages) {
-    const text = Deno.readTextFileSync(join(ROOT, 'test', 'fixtures', fixtures[grammar]));
+    const text = readFileSync(join(ROOT, 'test', 'fixtures', fixtures[grammar]), 'utf8');
     const copies = Math.ceil((6 * BASE_SIZE) / text.length);
     const file = write(`edit-${grammar}.s`, text.repeat(copies));
     const middle = Math.floor((copies * text.split('\n').length) / 2);
@@ -157,10 +158,10 @@ Deno.test('a one-character edit reuses the tree instead of reparsing the file', 
       failures.push(`${grammar}: an edit took ${edit} ms against ${parse} ms for a full parse`);
     }
   }
-  assert(failures.length === 0, failures.join('\n'));
+  assert.ok(failures.length === 0, failures.join('\n'));
 });
 
-Deno.test('an edit inside a block, or typed at the end of a file inside an open block, reuses the tree', () => {
+test('an edit inside a block, or typed at the end of a file inside an open block, reuses the tree', () => {
   const failures: string[] = [];
   const fixtures: Record<string, string> = {
     asm_auto: 'x86-att/basics.s',
@@ -169,7 +170,7 @@ Deno.test('an edit inside a block, or typed at the end of a file inside an open 
     asm_x86_gas: 'x86-att/basics.s',
   };
   for (const [grammar, fixture] of Object.entries(fixtures)) {
-    const text = Deno.readTextFileSync(join(ROOT, 'test', 'fixtures', fixture));
+    const text = readFileSync(join(ROOT, 'test', 'fixtures', fixture), 'utf8');
     const copies = Math.ceil((6 * BASE_SIZE) / text.length);
     const rows = copies * (text.split('\n').length - 1);
     const cases: [string, string, string][] = [
@@ -194,7 +195,7 @@ Deno.test('an edit inside a block, or typed at the end of a file inside an open 
       }
     }
   }
-  assert(failures.length === 0, failures.join('\n'));
+  assert.ok(failures.length === 0, failures.join('\n'));
 });
 
 function editedTokens(grammar: string, name: string, source: string, edit: string): number {
@@ -211,7 +212,7 @@ function editedTokens(grammar: string, name: string, source: string, edit: strin
   return reparse.match(/^lexed_lookahead /gm)?.length ?? 0;
 }
 
-Deno.test('an edit lexes the same few tokens however many functions the file holds', () => {
+test('an edit lexes the same few tokens however many functions the file holds', () => {
   const failures: string[] = [];
   const fixtures: Record<string, string> = {
     asm_auto: 'x86-att/basics.s',
@@ -221,7 +222,7 @@ Deno.test('an edit lexes the same few tokens however many functions the file hol
     asm_x86_nasm: 'x86-nasm/basics.asm',
   };
   for (const { grammar, syntax } of manifest.languages) {
-    const text = Deno.readTextFileSync(join(ROOT, 'test', 'fixtures', fixtures[grammar]));
+    const text = readFileSync(join(ROOT, 'test', 'fixtures', fixtures[grammar]), 'utf8');
     const rows = text.split('\n').length - 1;
     const shapes: [string, (copies: number) => string, number][] = [
       ['top-level', (copies) => text.repeat(copies), 0],
@@ -240,7 +241,7 @@ Deno.test('an edit lexes the same few tokens however many functions the file hol
       }
     }
   }
-  assert(failures.length === 0, failures.join('\n'));
+  assert.ok(failures.length === 0, failures.join('\n'));
 });
 
 function sweepLine(unit: string, length: number): string {
@@ -265,7 +266,7 @@ function sweepGrowth(small: number, large: number): number {
   return large / Math.max(small, SWEEP_FLOOR_MS);
 }
 
-Deno.test('a line of any printable character, repeated, costs time in proportion to its length', () => {
+test('a line of any printable character, repeated, costs time in proportion to its length', () => {
   const units = [...new Set(PRINTABLE.flatMap((char) => [char, `${char} `, `${char}a`]))];
   const failures: string[] = [];
   for (const { grammar } of manifest.languages) {
@@ -297,7 +298,7 @@ Deno.test('a line of any printable character, repeated, costs time in proportion
       }
     }
   }
-  assert(failures.length === 0, failures.join('\n'));
+  assert.ok(failures.length === 0, failures.join('\n'));
 });
 
 const BLOCK_SHAPES: [string, string, (lines: number) => string][] = [
@@ -307,7 +308,7 @@ const BLOCK_SHAPES: [string, string, (lines: number) => string][] = [
   ['one .rept body', 'gas', (lines) => `.rept 2\n${'    nop\n'.repeat(lines)}.endr\n`],
 ];
 
-Deno.test('every query costs time in proportion to the size of the block it runs over', () => {
+test('every query costs time in proportion to the size of the block it runs over', () => {
   const failures: string[] = [];
   for (const { dir, grammar, syntax } of manifest.languages) {
     const queries = filesUnder(join(ROOT, 'languages', dir)).filter((name) =>
@@ -336,5 +337,5 @@ Deno.test('every query costs time in proportion to the size of the block it runs
       }
     }
   }
-  assert(failures.length === 0, failures.join('\n'));
+  assert.ok(failures.length === 0, failures.join('\n'));
 });

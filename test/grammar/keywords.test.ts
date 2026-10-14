@@ -1,7 +1,9 @@
 // SPDX-License-Identifier: MIT
 
-import { assertEquals } from '@std/assert';
-import { join } from '@std/path';
+import { test } from 'bun:test';
+import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
+import { join } from 'node:path';
 
 import { ROOT } from '../../scripts/lib/files.ts';
 import { manifest } from '../../scripts/lib/manifest.ts';
@@ -24,13 +26,13 @@ function caseInsensitiveWord(rule: Rule): boolean {
   return inner.type === 'PATTERN' && (inner.flags ?? '').includes('i');
 }
 
-Deno.test('every case-insensitive word is a keyword of the identifier token, so it never splits a longer word', () => {
+test('every case-insensitive word is a keyword of the identifier token, so it never splits a longer word', () => {
   const missing: string[] = [];
   for (const { grammar } of manifest.languages) {
     const words = Object.entries(readGrammar(grammar).rules as Record<string, Rule>)
       .filter(([, rule]) => caseInsensitiveWord(rule))
       .map(([name]) => name);
-    const parser = Deno.readTextFileSync(join(ROOT, 'tree-sitter', grammar, 'src', 'parser.c'));
+    const parser = readFileSync(join(ROOT, 'tree-sitter', grammar, 'src', 'parser.c'), 'utf8');
     const keywords = KEYWORD_LEXER.exec(parser)?.[1] ?? '';
     for (const name of words) {
       if (!new RegExp(`\\bsym_${name}\\b`).test(keywords)) {
@@ -38,5 +40,5 @@ Deno.test('every case-insensitive word is a keyword of the identifier token, so 
       }
     }
   }
-  assertEquals(missing, []);
+  assert.deepStrictEqual(missing, []);
 });

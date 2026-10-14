@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: MIT
 
-import { assertEquals } from '@std/assert';
+import { test } from 'bun:test';
+import assert from 'node:assert/strict';
 
 import { manifest } from '../../scripts/lib/manifest.ts';
 import { breadcrumbs, outlineItems, placeCursors, textObject } from '../lib/zed.ts';
@@ -14,7 +15,7 @@ function byteOffset(text: string, index: number): number {
   return encoder.encode(text.slice(0, index)).length;
 }
 
-Deno.test('the outline lists what Zed shows, nested the way Zed nests it', () => {
+test('the outline lists what Zed shows, nested the way Zed nests it', () => {
   const failures: string[] = [];
   for (const language of manifest.languages) {
     for (
@@ -29,14 +30,14 @@ Deno.test('the outline lists what Zed shows, nested the way Zed nests it', () =>
       }
     }
   }
-  assertEquals(failures, []);
+  assert.deepStrictEqual(failures, []);
 });
 
-Deno.test('a comment right above an outline item is its annotation', () => {
+test('a comment right above an outline item is its annotation', () => {
   for (const language of manifest.languages.filter(({ syntax }) => syntax === 'gas')) {
     const source = '// adds\n#define N 4\n\n// apart\n\n#define M 5\n';
     const items = outlineItems(source, queryMatchesFor(language, 'outline', source, 'outline'));
-    assertEquals(
+    assert.deepStrictEqual(
       items.map((item) => item.annotation),
       [{ start: 0, end: 0 }, null],
       language.grammar,
@@ -44,7 +45,7 @@ Deno.test('a comment right above an outline item is its annotation', () => {
   }
 });
 
-Deno.test('breadcrumbs show the outline items around the cursor', () => {
+test('breadcrumbs show the outline items around the cursor', () => {
   const failures: string[] = [];
   for (const language of manifest.languages) {
     for (
@@ -62,10 +63,10 @@ Deno.test('breadcrumbs show the outline items around the cursor', () => {
       }
     }
   }
-  assertEquals(failures, []);
+  assert.deepStrictEqual(failures, []);
 });
 
-Deno.test('vim text objects select what Zed selects', () => {
+test('vim text objects select what Zed selects', () => {
   const failures: string[] = [];
   for (const language of manifest.languages) {
     for (
@@ -91,5 +92,5 @@ Deno.test('vim text objects select what Zed selects', () => {
       }
     }
   }
-  assertEquals(failures, []);
+  assert.deepStrictEqual(failures, []);
 });

@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 
-import { ensureDirSync } from '@std/fs';
-import { join } from '@std/path';
+import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
+import { join } from 'node:path';
 
 import { filesUnder, ROOT } from './lib/files.ts';
 import { type Language, manifest } from './lib/manifest.ts';
@@ -27,10 +27,10 @@ function inputs({ grammar, syntax, archs }: Language): [string, string][] {
   const fileEnd = syntax === 'gas' && archs.includes('x86') ? '    .att_syntax\n' : '';
   const all = fixtures()
     .filter((fixture) => fixture.grammars.includes(grammar))
-    .map((fixture) => `${Deno.readTextFileSync(join(ROOT, fixture.file))}${fileEnd}`)
+    .map((fixture) => `${readFileSync(join(ROOT, fixture.file), 'utf8')}${fileEnd}`)
     .join('');
   return [
-    ['basics', Deno.readTextFileSync(join(ROOT, 'test', 'fixtures', BASICS[grammar]))],
+    ['basics', readFileSync(join(ROOT, 'test', 'fixtures', BASICS[grammar]), 'utf8')],
     ['fixtures', all],
   ];
 }
@@ -41,7 +41,7 @@ function main(args: string[]): number {
     return invalid;
   }
   const directory = join(ROOT, '.build', 'bench');
-  ensureDirSync(directory);
+  mkdirSync(directory, { recursive: true });
   const kinds = [
     ...new Set(
       manifest.languages.flatMap(({ dir }) =>
@@ -58,13 +58,13 @@ function main(args: string[]): number {
   );
   for (const language of manifest.languages) {
     const { dir, grammar } = language;
-    const parser = Deno.readTextFileSync(join(ROOT, 'tree-sitter', grammar, 'src', 'parser.c'));
+    const parser = readFileSync(join(ROOT, 'tree-sitter', grammar, 'src', 'parser.c'), 'utf8');
     const states = /#define STATE_COUNT (\d+)/.exec(parser)?.[1] ?? '?';
     const queries = filesUnder(join(ROOT, 'languages', dir));
     for (const [name, text] of inputs(language)) {
       const copies = Math.ceil(TARGET_BYTES / text.length);
       const input = join(directory, `${grammar}-${name}.s`);
-      Deno.writeTextFileSync(input, text.repeat(copies));
+      writeFileSync(input, text.repeat(copies));
       const middle = Math.floor((copies * (text.split('\n').length - 1)) / 2);
       const { parse, edit } = parseTiming(grammar, input, {
         runs: RUNS,
@@ -87,5 +87,5 @@ function main(args: string[]): number {
 }
 
 if (import.meta.main) {
-  Deno.exitCode = main(Deno.args);
+  process.exitCode = main(process.argv.slice(2));
 }

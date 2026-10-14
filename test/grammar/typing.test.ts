@@ -1,7 +1,9 @@
 // SPDX-License-Identifier: MIT
 
-import { assertEquals } from '@std/assert';
-import { join } from '@std/path';
+import { test } from 'bun:test';
+import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
+import { join } from 'node:path';
 
 import { sourcesOf } from '../../scripts/build.ts';
 import { filesUnder, ROOT } from '../../scripts/lib/files.ts';
@@ -94,7 +96,7 @@ function parseAll(grammar: string, sources: string[]): Tree[] {
   const trees = treeText(parseFiles(grammar, 'typing', sources).output)
     .split(/^(?=\(source_file )/m)
     .filter((tree) => tree.startsWith('(source_file '));
-  assertEquals(trees.length, sources.length, `${grammar}: one tree per variant`);
+  assert.deepStrictEqual(trees.length, sources.length, `${grammar}: one tree per variant`);
   return trees.map(lineNodes);
 }
 
@@ -194,7 +196,7 @@ function corpusExamples(language: Language): [string, string][] {
   for (const source of [...sourcesOf(language), language.grammar]) {
     const directory = join(ROOT, 'test', 'corpus', source);
     for (const name of filesUnder(directory).filter((file) => file.endsWith('.txt'))) {
-      const blocks = Deno.readTextFileSync(join(directory, name)).split(/^={3,}\n(.*)\n={3,}\n/m);
+      const blocks = readFileSync(join(directory, name), 'utf8').split(/^={3,}\n(.*)\n={3,}\n/m);
       for (let index = 1; index + 1 < blocks.length; index += 2) {
         const input = blocks[index + 1].split(/^-{3,}\n/m)[0].replace(/^\n/, '').replace(
           /\n+$/,
@@ -207,10 +209,10 @@ function corpusExamples(language: Language): [string, string][] {
   return examples;
 }
 
-Deno.test('a line being typed in a fixture never changes how any other line parses', () => {
+test('a line being typed in a fixture never changes how any other line parses', () => {
   const failures: string[] = [];
   for (const { file, grammars } of fixtures()) {
-    const text = Deno.readTextFileSync(join(ROOT, file));
+    const text = readFileSync(join(ROOT, file), 'utf8');
     for (const grammar of grammars) {
       failures.push(...typingFailures(grammar, file, text));
       failures.push(
@@ -218,7 +220,7 @@ Deno.test('a line being typed in a fixture never changes how any other line pars
       );
     }
   }
-  assertEquals(failures, []);
+  assert.deepStrictEqual(failures, []);
 });
 
 const UNSUPPORTED: [string, string[]][] = [
@@ -232,7 +234,7 @@ const UNSUPPORTED: [string, string[]][] = [
   ['len equ $ - msg', ['asm_x86_nasm']],
 ];
 
-Deno.test('syntax the grammars do not parse yet keeps its errors on its own lines', () => {
+test('syntax the grammars do not parse yet keeps its errors on its own lines', () => {
   const failures: string[] = [];
   for (const [snippet, grammars] of UNSUPPORTED) {
     const text = `${snippet}\nnop\n`;
@@ -249,7 +251,7 @@ Deno.test('syntax the grammars do not parse yet keeps its errors on its own line
       failures.push(...typingFailures(grammar, JSON.stringify(snippet), text));
     }
   }
-  assertEquals(failures, []);
+  assert.deepStrictEqual(failures, []);
 });
 
 const STRAY_LABELS: [string, string[]][] = [
@@ -260,7 +262,7 @@ const STRAY_LABELS: [string, string[]][] = [
   ['mov ax, es:[bx]', ['asm_x86_nasm']],
 ];
 
-Deno.test('an operand the grammars do not parse yet never starts a label in the middle of its line', () => {
+test('an operand the grammars do not parse yet never starts a label in the middle of its line', () => {
   const failures: string[] = [];
   for (const [snippet, grammars] of STRAY_LABELS) {
     for (const grammar of grammars) {
@@ -273,7 +275,7 @@ Deno.test('an operand the grammars do not parse yet never starts a label in the 
       }
     }
   }
-  assertEquals(failures, []);
+  assert.deepStrictEqual(failures, []);
 });
 
 const OPEN_LINES: Record<string, string[]> = {
@@ -328,7 +330,7 @@ function openLines(language: Language): string[] {
   ];
 }
 
-Deno.test('any character typed into an open construct keeps its effects on its own line', () => {
+test('any character typed into an open construct keeps its effects on its own line', () => {
   const failures: string[] = [];
   for (const language of manifest.languages) {
     const lines = openLines(language);
@@ -346,7 +348,7 @@ Deno.test('any character typed into an open construct keeps its effects on its o
       }
     }
   }
-  assertEquals(failures, []);
+  assert.deepStrictEqual(failures, []);
 });
 
 const OPEN_BLOCKS: Record<string, string> = {
@@ -354,7 +356,7 @@ const OPEN_BLOCKS: Record<string, string> = {
   nasm: 'f:\n    nop\n    ',
 };
 
-Deno.test('any character typed on the last line of a file keeps the blocks around it', () => {
+test('any character typed on the last line of a file keeps the blocks around it', () => {
   const failures: string[] = [];
   for (const language of manifest.languages) {
     const prefix = OPEN_BLOCKS[language.syntax];
@@ -375,15 +377,15 @@ Deno.test('any character typed on the last line of a file keeps the blocks aroun
       }
     }
   }
-  assertEquals(failures, []);
+  assert.deepStrictEqual(failures, []);
 });
 
-Deno.test('a line being typed in a corpus example never changes how any other line parses', () => {
+test('a line being typed in a corpus example never changes how any other line parses', () => {
   const failures: string[] = [];
   for (const language of manifest.languages) {
     for (const [label, text] of corpusExamples(language)) {
       failures.push(...typingFailures(language.grammar, label, text));
     }
   }
-  assertEquals(failures, []);
+  assert.deepStrictEqual(failures, []);
 });

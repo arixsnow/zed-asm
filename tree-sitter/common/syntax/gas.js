@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: MIT
 
-const { operandList } = require('../core');
+const { operandList } = require('../core.js');
 
 const SYMBOL_TYPES = [
   'function',

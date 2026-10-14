@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: MIT
 
-import { join } from '@std/path';
+import { join } from 'node:path';
 
 import { run } from './lib/grammars.ts';
 import { manifest } from './lib/manifest.ts';
@@ -98,5 +98,5 @@ function main(args: string[]): number {
 }
 
 if (import.meta.main) {
-  Deno.exitCode = main(Deno.args);
+  process.exitCode = main(process.argv.slice(2));
 }

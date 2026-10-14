@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: MIT
 
-import { assertEquals } from '@std/assert';
+import { test } from 'bun:test';
+import assert from 'node:assert/strict';
 
 import { manifest } from '../../scripts/lib/manifest.ts';
 import { CURSOR, placeCursors, ZedEditor } from '../lib/zed.ts';
@@ -9,7 +10,7 @@ import { INDENT_CASES } from './cases.ts';
 
 const encoder = new TextEncoder();
 
-Deno.test('lines typed in Zed take the indentation of the block or label they belong to', () => {
+test('lines typed in Zed take the indentation of the block or label they belong to', () => {
   const failures: string[] = [];
   for (const language of manifest.languages) {
     const cases = INDENT_CASES.filter((testCase) => testCase.grammars.includes(language.grammar));
@@ -43,5 +44,5 @@ Deno.test('lines typed in Zed take the indentation of the block or label they be
       }
     }
   }
-  assertEquals(failures, []);
+  assert.deepStrictEqual(failures, []);
 });

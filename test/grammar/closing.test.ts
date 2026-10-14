@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: MIT
 
-import { assert, assertEquals } from '@std/assert';
+import { test } from 'bun:test';
+import assert from 'node:assert/strict';
 
 import { type Arch, type Dialect, manifest } from '../../scripts/lib/manifest.ts';
 import { lexes, readGrammar } from '../lib/grammar-sets.ts';
@@ -477,7 +478,7 @@ function observe(log: string, row: number, column: number): Observation {
   return { states: [...states], lexed, byScanner };
 }
 
-Deno.test('the scanner closes an open construct exactly where the parse table allows nothing else', () => {
+test('the scanner closes an open construct exactly where the parse table allows nothing else', () => {
   const failures: string[] = [];
   for (const { grammar, dialect, syntax, archs } of manifest.languages) {
     const table = new ParseTable(grammar, readGrammar(grammar));
@@ -495,11 +496,14 @@ Deno.test('the scanner closes an open construct exactly where the parse table al
     );
     const { output } = parseFiles(grammar, 'closing', sources, ['--debug']);
     const logs = output.split(/^new_parse$/m).slice(1);
-    assertEquals(logs.length, cases.length, `${grammar}: one log per case`);
+    assert.deepStrictEqual(logs.length, cases.length, `${grammar}: one log per case`);
     for (const [index, { position, typed }] of cases.entries()) {
       const row = (position.preamble ?? '').split('\n').length - 1;
       const seen = observe(logs[index], row, position.prefix.length - 1);
-      assert(seen.states.length > 0, `${grammar} ${position.name}: no parse state at the position`);
+      assert.ok(
+        seen.states.length > 0,
+        `${grammar} ${position.name}: no parse state at the position`,
+      );
       const closed = seen.lexed !== undefined && CLOSING.has(seen.lexed);
       if (!closed && !table.acceptsAny(seen.states, CLOSING)) {
         continue;
@@ -522,5 +526,5 @@ Deno.test('the scanner closes an open construct exactly where the parse table al
       }
     }
   }
-  assertEquals(failures, []);
+  assert.deepStrictEqual(failures, []);
 });

@@ -1,7 +1,9 @@
 // SPDX-License-Identifier: MIT
 
-import { assertEquals, assertThrows } from '@std/assert';
+import { test } from 'bun:test';
+import assert from 'node:assert/strict';
 
+import { assertThrowsIncluding } from '../lib/assert.ts';
 import {
   type Capture,
   highlightAt,
@@ -21,9 +23,9 @@ function capture(name: string, start: number, end: number, inclusive = false): C
   return { name, inclusive, start, end };
 }
 
-Deno.test('a character takes the last capture that covers it, end excluded', () => {
+test('a character takes the last capture that covers it, end excluded', () => {
   const captures = [capture('constant', 0, 4), capture('keyword', 0, 3)];
-  assertEquals([0, 2, 3, 4].map((offset) => highlightAt(captures, offset)), [
+  assert.deepStrictEqual([0, 2, 3, 4].map((offset) => highlightAt(captures, offset)), [
     'keyword',
     'keyword',
     'constant',
@@ -31,14 +33,18 @@ Deno.test('a character takes the last capture that covers it, end excluded', () 
   ]);
 });
 
-Deno.test('a plain scope contains a cursor strictly between its edges', () => {
+test('a plain scope contains a cursor strictly between its edges', () => {
   const captures = [capture('string', 2, 5)];
-  assertEquals([2, 3, 5].map((offset) => scopeAt(captures, offset)), [null, 'string', null]);
+  assert.deepStrictEqual([2, 3, 5].map((offset) => scopeAt(captures, offset)), [
+    null,
+    'string',
+    null,
+  ]);
 });
 
-Deno.test('an inclusive scope also contains a cursor on either edge', () => {
+test('an inclusive scope also contains a cursor on either edge', () => {
   const captures = [capture('comment', 2, 5, true)];
-  assertEquals([1, 2, 5, 6].map((offset) => scopeAt(captures, offset)), [
+  assert.deepStrictEqual([1, 2, 5, 6].map((offset) => scopeAt(captures, offset)), [
     null,
     'comment',
     'comment',
@@ -46,17 +52,17 @@ Deno.test('an inclusive scope also contains a cursor on either edge', () => {
   ]);
 });
 
-Deno.test('the smallest containing scope wins, and the first one on a tie', () => {
+test('the smallest containing scope wins, and the first one on a tie', () => {
   const nested = [capture('preproc', 0, 20, true), capture('comment', 10, 20, true)];
-  assertEquals(scopeAt(nested, 20), 'comment');
-  assertEquals(scopeAt(nested, 5), 'preproc');
+  assert.deepStrictEqual(scopeAt(nested, 20), 'comment');
+  assert.deepStrictEqual(scopeAt(nested, 5), 'preproc');
   const tied = [capture('first', 0, 4, true), capture('second', 0, 4, true)];
-  assertEquals(scopeAt(tied, 2), 'first');
+  assert.deepStrictEqual(scopeAt(tied, 2), 'first');
 });
 
-Deno.test('cursor markers are removed and their offsets recorded', () => {
-  assertEquals(placeCursors('<|>ab<|>c<|>'), { source: 'abc', cursors: [0, 2, 3] });
-  assertEquals(placeCursors('abc'), { source: 'abc', cursors: [] });
+test('cursor markers are removed and their offsets recorded', () => {
+  assert.deepStrictEqual(placeCursors('<|>ab<|>c<|>'), { source: 'abc', cursors: [0, 2, 3] });
+  assert.deepStrictEqual(placeCursors('abc'), { source: 'abc', cursors: [] });
 });
 
 function point(row: number, column: number): Point {
@@ -92,34 +98,37 @@ function suggest(
   );
 }
 
-Deno.test('indent ranges that start at the same point merge and keep the later end', () => {
+test('indent ranges that start at the same point merge and keep the later end', () => {
   const ranges: [Point, Point][] = [[point(0, 0), point(2, 0)], [point(0, 0), point(3, 0)]];
-  assertEquals(suggest(['a', '    b', 'c', 'd'], 2, { ranges })?.basisRow, 1);
-  assertEquals(suggest(['a', '    b', 'c', 'd'], 2, { ranges: [ranges[0]] })?.basisRow, 0);
+  assert.deepStrictEqual(suggest(['a', '    b', 'c', 'd'], 2, { ranges })?.basisRow, 1);
+  assert.deepStrictEqual(
+    suggest(['a', '    b', 'c', 'd'], 2, { ranges: [ranges[0]] })?.basisRow,
+    0,
+  );
 });
 
-Deno.test('the increase pattern applies only to the line right after the matching one', () => {
+test('the increase pattern applies only to the line right after the matching one', () => {
   const config = { increase_indent_pattern: '^f:' };
-  assertEquals(suggest(['f:', ''], 1, { config })?.delta, 1);
-  assertEquals(suggest(['f:', '', 'x'], 2, { config }), {
+  assert.deepStrictEqual(suggest(['f:', ''], 1, { config })?.delta, 1);
+  assert.deepStrictEqual(suggest(['f:', '', 'x'], 2, { config }), {
     basisRow: 0,
     delta: 0,
     withinError: false,
   });
 });
 
-Deno.test('a multi-line error marks a row within it unless a pattern decided the row', () => {
+test('a multi-line error marks a row within it unless a pattern decided the row', () => {
   const errors = [{ start: point(0, 0), end: point(2, 2) }];
-  assertEquals(suggest(['a', 'b', 'c:'], 2, { errors })?.withinError, true);
+  assert.deepStrictEqual(suggest(['a', 'b', 'c:'], 2, { errors })?.withinError, true);
   const config = { decrease_indent_pattern: ':$' };
-  assertEquals(suggest(['a', 'b', 'c:'], 2, { errors, config })?.withinError, false);
+  assert.deepStrictEqual(suggest(['a', 'b', 'c:'], 2, { errors, config })?.withinError, false);
 });
 
-Deno.test('a row after blank rows takes the last non-empty row as the previous one', () => {
-  assertEquals(suggest(['a', '', 'b'], 2), { basisRow: 0, delta: 0, withinError: false });
+test('a row after blank rows takes the last non-empty row as the previous one', () => {
+  assert.deepStrictEqual(suggest(['a', '', 'b'], 2), { basisRow: 0, delta: 0, withinError: false });
 });
 
-Deno.test('the model refuses settings and queries whose Zed behavior it does not reproduce', () => {
+test('the model refuses settings and queries whose Zed behavior it does not reproduce', () => {
   const cases: [LanguageConfig, Partial<LanguageQueries>, string][] = [
     [
       { decrease_indent_patterns: [] } as LanguageConfig,
@@ -148,6 +157,6 @@ Deno.test('the model refuses settings and queries whose Zed behavior it does not
     ],
   ];
   for (const [config, queries, message] of cases) {
-    assertThrows(() => new ZedLanguage(config, { ...NO_QUERIES, ...queries }), Error, message);
+    assertThrowsIncluding(() => new ZedLanguage(config, { ...NO_QUERIES, ...queries }), message);
   }
 });

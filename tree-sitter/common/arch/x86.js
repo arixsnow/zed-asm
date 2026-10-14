@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: MIT
 
-const { operatorToken, precedence } = require('../core');
+const { operatorToken, precedence } = require('../core.js');
 
 const PREFIX_SEMICOLONS = ['AUTO'];
 

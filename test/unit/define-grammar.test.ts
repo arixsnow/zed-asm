@@ -1,9 +1,12 @@
 // SPDX-License-Identifier: MIT
 
-import { assert, assertEquals, assertThrows } from '@std/assert';
+import { test } from 'bun:test';
+import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
 import { createRequire } from 'node:module';
 
 import { manifest } from '../../scripts/lib/manifest.ts';
+import { assertThrowsIncluding } from '../lib/assert.ts';
 
 interface RuleNode {
   type: string;
@@ -34,19 +37,19 @@ const $ = new Proxy({}, {
 });
 
 const SCANNER_TOKENS = /enum TokenType \{([^}]*)\}/.exec(
-  Deno.readTextFileSync(new URL('../../tree-sitter/common/scanner.h', import.meta.url)),
+  readFileSync(new URL('../../tree-sitter/common/scanner.h', import.meta.url), 'utf8'),
 )![1].split(',').map((name) => name.trim()).filter((name) => name !== '');
 
 function rulesOf(grammarName: string): string[] {
   return Object.keys(defineGrammar(grammarName).rules);
 }
 
-Deno.test('every language composes a grammar named after it that starts at source_file', () => {
+test('every language composes a grammar named after it that starts at source_file', () => {
   for (const { grammar } of manifest.languages) {
     const composed = defineGrammar(grammar);
-    assertEquals(composed.name, grammar);
-    assertEquals(Object.keys(composed.rules)[0], 'source_file');
-    assertEquals(
+    assert.deepStrictEqual(composed.name, grammar);
+    assert.deepStrictEqual(Object.keys(composed.rules)[0], 'source_file');
+    assert.deepStrictEqual(
       composed.externals($).map((symbol: RuleNode) =>
         String(symbol.name).replace(/^_/, '').toUpperCase()
       ),
@@ -55,7 +58,7 @@ Deno.test('every language composes a grammar named after it that starts at sourc
   }
 });
 
-Deno.test('modules contribute rules only to the languages that include them', () => {
+test('modules contribute rules only to the languages that include them', () => {
   const expectations: Record<string, { present: string[]; absent: string[] }> = {
     asm_auto: { present: ['shift', 'register', 'directive'], absent: [] },
     asm_arm: { present: ['shift', 'directive'], absent: ['register'] },
@@ -66,42 +69,42 @@ Deno.test('modules contribute rules only to the languages that include them', ()
   for (const [grammarName, { present, absent }] of Object.entries(expectations)) {
     const rules = rulesOf(grammarName);
     for (const name of present) {
-      assert(rules.includes(name), `${grammarName} should define ${name}`);
+      assert.ok(rules.includes(name), `${grammarName} should define ${name}`);
     }
     for (const name of absent) {
-      assert(!rules.includes(name), `${grammarName} should not define ${name}`);
+      assert.ok(!rules.includes(name), `${grammarName} should not define ${name}`);
     }
   }
 });
 
-Deno.test('choice points merge alternatives from every module without duplicates', () => {
+test('choice points merge alternatives from every module without duplicates', () => {
   const rules = defineGrammar('asm_auto').rules;
   const members = (name: string) =>
     ((rules[name]($) as RuleNode).members ?? []).map((member) =>
       member.name ?? member.members?.find((inner) => inner.name)?.name
     );
   const value = members('_value');
-  assertEquals(value.filter((name) => name === 'immediate').length, 1);
+  assert.deepStrictEqual(value.filter((name) => name === 'immediate').length, 1);
   for (const name of ['_expression', 'string', 'symbol_type', 'register']) {
-    assert(value.includes(name), `_value should offer ${name}`);
+    assert.ok(value.includes(name), `_value should offer ${name}`);
   }
   const operand = members('_operand');
   for (const name of ['_value', 'keyword_argument']) {
-    assert(operand.includes(name), `_operand should offer ${name}`);
+    assert.ok(operand.includes(name), `_operand should offer ${name}`);
   }
   const instructionOperand = members('_instruction_operand');
   for (const name of ['_operand', 'shift', 'memory_operand', 'register_list', 'literal_pool']) {
-    assert(instructionOperand.includes(name), `_instruction_operand should offer ${name}`);
+    assert.ok(instructionOperand.includes(name), `_instruction_operand should offer ${name}`);
   }
 });
 
-Deno.test('symbol types after @ exist only in grammars that include x86', () => {
+test('symbol types after @ exist only in grammars that include x86', () => {
   const hasAtForm: Record<string, boolean> = {};
   for (const { grammar } of manifest.languages.filter(({ syntax }) => syntax === 'gas')) {
     const rule = defineGrammar(grammar).rules.symbol_type($);
     hasAtForm[grammar] = JSON.stringify(rule).includes('"_at_type"');
   }
-  assertEquals(hasAtForm, {
+  assert.deepStrictEqual(hasAtForm, {
     asm_auto: true,
     asm_arm: false,
     asm_arm_apple: false,
@@ -109,19 +112,17 @@ Deno.test('symbol types after @ exist only in grammars that include x86', () => 
   });
 });
 
-Deno.test('an unknown grammar name fails with a clear message', () => {
-  assertThrows(
+test('an unknown grammar name fails with a clear message', () => {
+  assertThrowsIncluding(
     () => defineGrammar('asm_mips'),
-    Error,
     'languages.config.cjs declares no language with grammar "asm_mips"',
   );
 });
 
-Deno.test('a module missing from the registry fails with a clear message', () => {
+test('a module missing from the registry fails with a clear message', () => {
   const catalog = [{ grammar: 'asm_fake', syntax: 'gas', archs: ['mips'] }];
-  assertThrows(
+  assertThrowsIncluding(
     () => defineGrammar('asm_fake', catalog),
-    Error,
     'unknown module "mips" for grammar "asm_fake"',
   );
 });

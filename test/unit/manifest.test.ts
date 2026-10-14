@@ -1,7 +1,9 @@
 // SPDX-License-Identifier: MIT
 
-import { assertEquals, assertThrows } from '@std/assert';
-import { join } from '@std/path';
+import { test } from 'bun:test';
+import assert from 'node:assert/strict';
+import { readdirSync, readFileSync } from 'node:fs';
+import { join } from 'node:path';
 
 import config from '../../languages.config.cjs';
 import { ROOT } from '../../scripts/lib/files.ts';
@@ -12,6 +14,7 @@ import {
   parseAuthor,
   validateManifest,
 } from '../../scripts/lib/manifest.ts';
+import { assertThrowsIncluding } from '../lib/assert.ts';
 
 interface Editable {
   extension: Record<string, unknown>;
@@ -25,12 +28,12 @@ function edited(change: (copy: Editable) => void): unknown {
   return copy;
 }
 
-Deno.test('the shipped manifest is valid and keeps every field', () => {
+test('the shipped manifest is valid and keeps every field', () => {
   const asData = (value: unknown) => JSON.parse(JSON.stringify(value));
-  assertEquals(asData(manifest), asData(config));
+  assert.deepStrictEqual(asData(manifest), asData(config));
 });
 
-Deno.test('an invalid manifest fails with a message naming the field', () => {
+test('an invalid manifest fails with a message naming the field', () => {
   const cases: [(copy: Editable) => void, string][] = [
     [(copy) => {
       copy.extension.grammarRev = 'main';
@@ -97,29 +100,32 @@ Deno.test('an invalid manifest fails with a message naming the field', () => {
     }, 'languages[4].modelineAliases "nasm" is already used by languages[1]'],
   ];
   for (const [change, message] of cases) {
-    assertThrows(() => validateManifest(edited(change)), Error, `languages.config.cjs: ${message}`);
+    assertThrowsIncluding(
+      () => validateManifest(edited(change)),
+      `languages.config.cjs: ${message}`,
+    );
   }
 });
 
-Deno.test('parseAuthor splits "Name <email>"', () => {
-  assertEquals(parseAuthor('Arka Mondal <arka@arkamondal.net>', 'author'), {
+test('parseAuthor splits "Name <email>"', () => {
+  assert.deepStrictEqual(parseAuthor('Arka Mondal <arka@arkamondal.net>', 'author'), {
     name: 'Arka Mondal',
     email: 'arka@arkamondal.net',
   });
 });
 
-Deno.test('the dialect list matches the scanner', () => {
-  const scanner = Deno.readTextFileSync(join(ROOT, 'tree-sitter', 'common', 'scanner.h'));
+test('the dialect list matches the scanner', () => {
+  const scanner = readFileSync(join(ROOT, 'tree-sitter', 'common', 'scanner.h'), 'utf8');
   const dialects = new Set(
     [...scanner.matchAll(/(?:#ifdef |defined\()ASM_DIALECT_([A-Z0-9_]+)/g)].map((match) =>
       match[1]
     ),
   );
-  assertEquals([...dialects].sort(), [...DIALECTS].sort());
+  assert.deepStrictEqual([...dialects].sort(), [...DIALECTS].sort());
 });
 
-Deno.test('the architecture list matches the grammar modules', () => {
-  const modules = [...Deno.readDirSync(join(ROOT, 'tree-sitter', 'common', 'arch'))]
-    .map((entry) => entry.name.replace(/\.js$/, ''));
-  assertEquals(modules.toSorted(), [...ARCHS].sort());
+test('the architecture list matches the grammar modules', () => {
+  const modules = readdirSync(join(ROOT, 'tree-sitter', 'common', 'arch'))
+    .map((name) => name.replace(/\.js$/, ''));
+  assert.deepStrictEqual(modules.toSorted(), [...ARCHS].sort());
 });

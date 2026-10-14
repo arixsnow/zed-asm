@@ -729,7 +729,7 @@ export class ZedEditor {
     const prefix = trimEnd(config.prefix);
     const afterPrefix = content.startsWith(prefix) && blanks + utf8Length(prefix) <= cursor.column;
     const endIndex = line.indexOf(config.end);
-    const endColumn = endIndex === -1 ? null : [...line.slice(0, endIndex)].length;
+    const endColumn = endIndex === -1 ? null : Array.from(line.slice(0, endIndex)).length;
     if (!(afterStart || afterPrefix) || (endColumn !== null && cursor.column > endColumn)) {
       return null;
     }

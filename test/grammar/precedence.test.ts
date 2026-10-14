@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: MIT
 
-import { assertEquals } from '@std/assert';
+import { test } from 'bun:test';
+import assert from 'node:assert/strict';
 
 import { manifest } from '../../scripts/lib/manifest.ts';
 import { parseFiles, treeText } from '../lib/parse.ts';
@@ -95,7 +96,7 @@ function findBinary(node: Node): Node | undefined {
   return undefined;
 }
 
-Deno.test("operators group as each language's assemblers group them", () => {
+test("operators group as each language's assemblers group them", () => {
   const failures: string[] = [];
   for (const { grammar, syntax } of manifest.languages) {
     const family = FAMILIES[grammar];
@@ -107,7 +108,7 @@ Deno.test("operators group as each language's assemblers group them", () => {
     const sources = probes.map(([probe]) => `${directive} ${probe}\n`);
     const trees = treeText(parseFiles(grammar, 'precedence', sources).output)
       .split(/^(?=\(source_file )/m).filter((tree) => tree.startsWith('(source_file '));
-    assertEquals(trees.length, probes.length, `${grammar}: one tree per probe`);
+    assert.deepStrictEqual(trees.length, probes.length, `${grammar}: one tree per probe`);
     for (const [index, [probe, expected]] of probes.entries()) {
       const binary = findBinary(readTree(trees[index]));
       const found = binary === undefined ? 'no expression' : grouping(binary, sources[index]);
@@ -116,5 +117,5 @@ Deno.test("operators group as each language's assemblers group them", () => {
       }
     }
   }
-  assertEquals(failures, []);
+  assert.deepStrictEqual(failures, []);
 });

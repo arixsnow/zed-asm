@@ -1,43 +1,44 @@
 // SPDX-License-Identifier: MIT
 
-import { assertEquals, assertThrows } from '@std/assert';
-import { emptyDirSync } from '@std/fs';
-import { join } from '@std/path';
+import { test } from 'bun:test';
+import assert from 'node:assert/strict';
+import { mkdirSync, rmSync, writeFileSync } from 'node:fs';
+import { join } from 'node:path';
 
-import { filesUnder, readTextIfExists, ROOT } from '../../scripts/lib/files.ts';
+import { emptyDir, filesUnder, readTextIfExists, ROOT } from '../../scripts/lib/files.ts';
 
 const PROBE = join(ROOT, '.build', 'files-probe');
 
-Deno.test('readTextIfExists returns the text, or undefined when the file is missing', () => {
-  emptyDirSync(PROBE);
+test('readTextIfExists returns the text, or undefined when the file is missing', () => {
+  emptyDir(PROBE);
   try {
-    Deno.writeTextFileSync(join(PROBE, 'present.txt'), 'text\n');
-    assertEquals(readTextIfExists(join(PROBE, 'present.txt')), 'text\n');
-    assertEquals(readTextIfExists(join(PROBE, 'missing.txt')), undefined);
+    writeFileSync(join(PROBE, 'present.txt'), 'text\n');
+    assert.deepStrictEqual(readTextIfExists(join(PROBE, 'present.txt')), 'text\n');
+    assert.deepStrictEqual(readTextIfExists(join(PROBE, 'missing.txt')), undefined);
   } finally {
-    Deno.removeSync(PROBE, { recursive: true });
+    rmSync(PROBE, { recursive: true });
   }
 });
 
-Deno.test('readTextIfExists does not hide errors other than a missing file', () => {
-  emptyDirSync(PROBE);
+test('readTextIfExists does not hide errors other than a missing file', () => {
+  emptyDir(PROBE);
   try {
-    assertThrows(() => readTextIfExists(PROBE), Deno.errors.IsADirectory);
+    assert.throws(() => readTextIfExists(PROBE), { code: 'EISDIR' });
   } finally {
-    Deno.removeSync(PROBE, { recursive: true });
+    rmSync(PROBE, { recursive: true });
   }
 });
 
-Deno.test('filesUnder lists nested files relative to the directory, sorted', () => {
-  emptyDirSync(PROBE);
+test('filesUnder lists nested files relative to the directory, sorted', () => {
+  emptyDir(PROBE);
   try {
-    Deno.mkdirSync(join(PROBE, 'b', 'c'), { recursive: true });
-    Deno.writeTextFileSync(join(PROBE, 'b', 'c', 'deep.txt'), '');
-    Deno.writeTextFileSync(join(PROBE, 'z.txt'), '');
-    Deno.writeTextFileSync(join(PROBE, 'a.txt'), '');
-    assertEquals(filesUnder(PROBE), ['a.txt', 'b/c/deep.txt', 'z.txt']);
-    assertEquals(filesUnder(join(PROBE, 'missing')), []);
+    mkdirSync(join(PROBE, 'b', 'c'), { recursive: true });
+    writeFileSync(join(PROBE, 'b', 'c', 'deep.txt'), '');
+    writeFileSync(join(PROBE, 'z.txt'), '');
+    writeFileSync(join(PROBE, 'a.txt'), '');
+    assert.deepStrictEqual(filesUnder(PROBE), ['a.txt', 'b/c/deep.txt', 'z.txt']);
+    assert.deepStrictEqual(filesUnder(join(PROBE, 'missing')), []);
   } finally {
-    Deno.removeSync(PROBE, { recursive: true });
+    rmSync(PROBE, { recursive: true });
   }
 });

@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 
-import { ensureDirSync } from '@std/fs';
-import { join } from '@std/path';
+import { mkdirSync, readdirSync, writeFileSync } from 'node:fs';
+import { join } from 'node:path';
 
 import { ROOT } from './lib/files.ts';
 import { languageArgs, run } from './lib/grammars.ts';
@@ -11,8 +11,8 @@ import { Report, usage } from './lib/report.ts';
 const SAMPLE = join('.build', 'empty.txt');
 
 function queryFiles(dir: string): string[] {
-  return [...Deno.readDirSync(join(ROOT, 'languages', dir))]
-    .filter((entry) => entry.isFile && entry.name.endsWith('.scm'))
+  return readdirSync(join(ROOT, 'languages', dir), { withFileTypes: true })
+    .filter((entry) => entry.isFile() && entry.name.endsWith('.scm'))
     .map((entry) => join('languages', dir, entry.name))
     .sort();
 }
@@ -22,8 +22,8 @@ function main(args: string[]): number {
   if (invalid !== undefined) {
     return invalid;
   }
-  ensureDirSync(join(ROOT, '.build'));
-  Deno.writeTextFileSync(join(ROOT, SAMPLE), '');
+  mkdirSync(join(ROOT, '.build'), { recursive: true });
+  writeFileSync(join(ROOT, SAMPLE), '');
   const report = new Report();
   for (const { dir, grammar } of manifest.languages) {
     const language = languageArgs(grammar);
@@ -36,5 +36,5 @@ function main(args: string[]): number {
 }
 
 if (import.meta.main) {
-  Deno.exitCode = main(Deno.args);
+  process.exitCode = main(process.argv.slice(2));
 }

@@ -1,8 +1,9 @@
 // SPDX-License-Identifier: MIT
 
-import { assert, assertEquals, assertNotEquals } from '@std/assert';
-import { ensureDirSync } from '@std/fs';
-import { join } from '@std/path';
+import { test } from 'bun:test';
+import assert from 'node:assert/strict';
+import { mkdirSync, writeFileSync } from 'node:fs';
+import { join } from 'node:path';
 
 import { ROOT } from '../../scripts/lib/files.ts';
 import { languageArgs, run } from '../../scripts/lib/grammars.ts';
@@ -30,10 +31,10 @@ function byteOffset(source: string, index: number): number {
 
 function captures(grammar: string, query: string, source: string): Capture[] {
   const language = manifest.languages.find((entry) => entry.grammar === grammar);
-  assert(language !== undefined, `no language uses grammar ${grammar}`);
-  ensureDirSync(SCRATCH);
+  assert.ok(language !== undefined, `no language uses grammar ${grammar}`);
+  mkdirSync(SCRATCH, { recursive: true });
   const file = join(SCRATCH, `${grammar}-${query}.s`);
-  Deno.writeTextFileSync(file, source);
+  writeFileSync(file, source);
   const { ok, output } = run('tree-sitter', [
     'query',
     ...languageArgs(grammar),
@@ -41,7 +42,7 @@ function captures(grammar: string, query: string, source: string): Capture[] {
     join('languages', language.dir, `${query}.scm`),
     file,
   ]);
-  assert(ok, output);
+  assert.ok(ok, output);
   const offsets = lineOffsets(source);
   return output
     .split('\n')
@@ -64,14 +65,14 @@ function context(source: string, offset: number): string {
 }
 
 for (const testCase of HIGHLIGHT_CASES) {
-  Deno.test(testCase.name, () => {
+  test(testCase.name, () => {
     const list = captures(testCase.grammar, 'highlights', testCase.source);
     let cursor = 0;
     for (const [text, expected] of testCase.expect) {
       const start = testCase.source.indexOf(text, cursor);
-      assertNotEquals(start, -1, `"${text}" not found after offset ${cursor}`);
+      assert.notDeepStrictEqual(start, -1, `"${text}" not found after offset ${cursor}`);
       for (let offset = start; offset < start + text.length; offset++) {
-        assertEquals(
+        assert.deepStrictEqual(
           highlightAt(list, byteOffset(testCase.source, offset)),
           expected,
           `"${text}" at offset ${offset} (character "${testCase.source[offset]}")`,
@@ -83,12 +84,12 @@ for (const testCase of HIGHLIGHT_CASES) {
 }
 
 for (const testCase of SCOPE_CASES) {
-  Deno.test(testCase.name, () => {
+  test(testCase.name, () => {
     const { source, cursors } = placeCursors(testCase.source);
-    assertEquals(cursors.length, testCase.scopes.length, 'one expected scope per cursor');
+    assert.deepStrictEqual(cursors.length, testCase.scopes.length, 'one expected scope per cursor');
     const list = captures(testCase.grammar, 'overrides', source);
     for (const [index, offset] of cursors.entries()) {
-      assertEquals(
+      assert.deepStrictEqual(
         scopeAt(list, byteOffset(source, offset)),
         testCase.scopes[index],
         context(source, offset),

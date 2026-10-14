@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: MIT
 
-import { assertEquals } from '@std/assert';
+import { test } from 'bun:test';
+import assert from 'node:assert/strict';
 
 import { manifest } from '../../scripts/lib/manifest.ts';
 import { parseFiles, treeText } from '../lib/parse.ts';
@@ -50,7 +51,7 @@ function errorRows(tree: string): number[] {
   return [...rows].sort((a, b) => a - b);
 }
 
-Deno.test('syntax that every assembler of a language rejects parses with an error on its own lines only', () => {
+test('syntax that every assembler of a language rejects parses with an error on its own lines only', () => {
   const failures: string[] = [];
   for (const grammar of ALL) {
     const rejected = REJECTED.filter(([, , grammars]) => grammars.includes(grammar));
@@ -59,8 +60,8 @@ Deno.test('syntax that every assembler of a language rejects parses with an erro
     const trees = treeText(output)
       .split(/^(?=\(source_file )/m).filter((tree) => tree.startsWith('(source_file '));
     const statuses = output.split('\n').filter((line) => line.includes('\tParse:'));
-    assertEquals(trees.length, rejected.length, `${grammar}: one tree per snippet`);
-    assertEquals(statuses.length, rejected.length, `${grammar}: one status per snippet`);
+    assert.deepStrictEqual(trees.length, rejected.length, `${grammar}: one tree per snippet`);
+    assert.deepStrictEqual(statuses.length, rejected.length, `${grammar}: one status per snippet`);
     for (const [index, [snippet, rows]] of rejected.entries()) {
       const found = errorRows(`${trees[index]}\n${statuses[index]}`);
       if (found.join() !== rows.join()) {
@@ -70,5 +71,5 @@ Deno.test('syntax that every assembler of a language rejects parses with an erro
       }
     }
   }
-  assertEquals(failures, []);
+  assert.deepStrictEqual(failures, []);
 });

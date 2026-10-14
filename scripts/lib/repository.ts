@@ -1,18 +1,19 @@
 // SPDX-License-Identifier: MIT
 
-import { globToRegExp, join } from '@std/path';
+import { readdirSync } from 'node:fs';
+import { join } from 'node:path';
 
 import { readTextIfExists } from './files.ts';
 
 const SCANNED_HIDDEN_DIRECTORIES = new Set(['.github']);
 
 interface IgnorePattern {
-  pattern: RegExp;
+  pattern: Bun.Glob;
   directoryOnly: boolean;
 }
 
 interface GeneratedRule {
-  pattern: RegExp;
+  pattern: Bun.Glob;
   generated: boolean;
 }
 
@@ -32,7 +33,7 @@ function ignorePatterns(root: string): IgnorePattern[] {
     }
     const directoryOnly = line.endsWith('/');
     const glob = line.slice(1, directoryOnly ? -1 : undefined);
-    return { pattern: globToRegExp(glob, { globstar: true }), directoryOnly };
+    return { pattern: new Bun.Glob(glob), directoryOnly };
   });
 }
 
@@ -40,19 +41,19 @@ export function repositoryFiles(root: string): string[] {
   const ignored = ignorePatterns(root);
   const files: string[] = [];
   const visit = (directory: string): void => {
-    for (const entry of Deno.readDirSync(join(root, directory))) {
+    for (const entry of readdirSync(join(root, directory), { withFileTypes: true })) {
       const path = directory === '' ? entry.name : `${directory}/${entry.name}`;
       const isIgnored = ignored.some((rule) =>
-        (entry.isDirectory || !rule.directoryOnly) && rule.pattern.test(path)
+        (entry.isDirectory() || !rule.directoryOnly) && rule.pattern.match(path)
       );
       if (isIgnored) {
         continue;
       }
-      if (entry.isDirectory) {
+      if (entry.isDirectory()) {
         if (!entry.name.startsWith('.') || SCANNED_HIDDEN_DIRECTORIES.has(path)) {
           visit(path);
         }
-      } else if (entry.isFile) {
+      } else if (entry.isFile()) {
         files.push(path);
       }
     }
@@ -80,8 +81,8 @@ export function generatedMatcher(root: string): (path: string) => boolean {
     const generated = generatedState(attributes);
     if (generated !== undefined) {
       const anchored = glob.includes('/') ? glob.replace(/^\//, '') : `**/${glob}`;
-      rules.push({ pattern: globToRegExp(anchored, { globstar: true }), generated });
+      rules.push({ pattern: new Bun.Glob(anchored), generated });
     }
   }
-  return (path) => rules.findLast((rule) => rule.pattern.test(path))?.generated ?? false;
+  return (path) => rules.findLast((rule) => rule.pattern.match(path))?.generated ?? false;
 }

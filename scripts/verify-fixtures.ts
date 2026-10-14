@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 
-import { ensureDirSync } from '@std/fs';
-import { dirname, extname, join, SEPARATOR } from '@std/path';
+import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
+import { dirname, extname, join, sep } from 'node:path';
 
 import { filesUnder, ROOT } from './lib/files.ts';
 import { languageArgs, run } from './lib/grammars.ts';
@@ -85,7 +85,7 @@ export function fixtures(): Fixture[] {
       throw new Error(`${directory} holds no fixture`);
     }
     for (const name of names) {
-      const parts = name.split(SEPARATOR);
+      const parts = name.split(sep);
       if (parts.length > 2 || (parts.length === 2 && !Object.hasOwn(assemblers, parts[0]))) {
         throw new Error(
           `${join(directory, name)}: only a directory named after one of ${
@@ -117,13 +117,13 @@ function main(args: string[]): number {
   );
 
   for (const { dialect, name, file, grammars, assemblers } of fixtures()) {
-    const text = Deno.readTextFileSync(join(ROOT, file));
+    const text = readFileSync(join(ROOT, file), 'utf8');
     const copies = [
       file,
       ...VARIANTS.map(([variant, transform]) => {
         const copy = join('.build', 'fixture-variants', variant, dialect, name);
-        ensureDirSync(join(ROOT, dirname(copy)));
-        Deno.writeTextFileSync(join(ROOT, copy), transform(text));
+        mkdirSync(join(ROOT, dirname(copy)), { recursive: true });
+        writeFileSync(join(ROOT, copy), transform(text));
         return copy;
       }),
     ];
@@ -152,5 +152,5 @@ function main(args: string[]): number {
 }
 
 if (import.meta.main) {
-  Deno.exitCode = main(Deno.args);
+  process.exitCode = main(process.argv.slice(2));
 }

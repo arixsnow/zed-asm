@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: MIT
 
-import { assertEquals } from '@std/assert';
+import { test } from 'bun:test';
+import assert from 'node:assert/strict';
 
 import { manifest } from '../../scripts/lib/manifest.ts';
 import type { Point } from '../lib/zed.ts';
@@ -46,7 +47,7 @@ function offset(source: string, point: Point): number {
   return lines.slice(0, point.row).reduce((sum, line) => sum + line.length + 1, 0) + point.column;
 }
 
-Deno.test('bracket pairs match each opener with its closer', () => {
+test('bracket pairs match each opener with its closer', () => {
   const failures: string[] = [];
   for (const language of manifest.languages) {
     for (const testCase of CASES.filter((entry) => entry.grammars.includes(language.grammar))) {
@@ -66,5 +67,5 @@ Deno.test('bracket pairs match each opener with its closer', () => {
       }
     }
   }
-  assertEquals(failures, []);
+  assert.deepStrictEqual(failures, []);
 });

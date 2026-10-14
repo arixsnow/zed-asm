@@ -1,10 +1,11 @@
 // SPDX-License-Identifier: MIT
 
-import { assertEquals } from '@std/assert';
+import { test } from 'bun:test';
+import assert from 'node:assert/strict';
 
 import { shellScripts } from '../../scripts/check-shell.ts';
 import { ROOT } from '../../scripts/lib/files.ts';
 
-Deno.test('shellcheck covers every shell script in the repository', () => {
-  assertEquals(shellScripts(ROOT).sort(), ['scripts/dev', 'scripts/zed']);
+test('shellcheck covers every shell script in the repository', () => {
+  assert.deepStrictEqual(shellScripts(ROOT).sort(), ['scripts/dev', 'scripts/zed']);
 });
