@@ -1780,8 +1780,13 @@ of every file in it (about 150,000 in LLVM) on each run, so that container runs 
 requires a row in the table below for every script, `--network=none` as the only network option of
 both launchers, and a read-only `/sources` mount that is never relabeled.
 
-dprint formats TypeScript, JavaScript, JSON, Markdown and YAML to 100 columns, with single quotes
-and braces on every block. oxlint fails on every correctness rule of its eslint, typescript,
+All hand-written code and configuration, and what the generators write, is indented with four
+spaces; only test data keeps hard tabs, and `.editorconfig` tells editors the same. dprint formats
+TypeScript, JavaScript, JSON, Markdown and YAML to 100 columns, with single quotes and braces on
+every block. clang-format formats the C by `.clang-format`: 100 columns, a function's brace on its
+own line, a line break before a binary operator, one `&&` or `||` operand per line once a condition
+breaks, and aligned macros. It needs clang-format 23, which is the first to read the per-operator
+`BreakBinaryOperations` setting. oxlint fails on every correctness rule of its eslint, typescript,
 unicorn, oxc and import plugins and on the further rules in `.oxlintrc.json`, among them `curly`
 for every block, `eqeqeq`, and `import/extensions`, which wants the file extension in every
 relative `import` and `require`. A disable comment that hides nothing is an error too. `tsc` from

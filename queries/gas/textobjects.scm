@@ -1,11 +1,11 @@
 ; SPDX-License-Identifier: MIT
 
 (macro_definition
-  body: (_
-    .
-    (_) @class.inside
-    (_)? @class.inside
-    .)) @class.around
+    body: (_
+        .
+        (_) @class.inside
+        (_)? @class.inside
+        .)) @class.around
 
 (block_comment) @comment.around
 

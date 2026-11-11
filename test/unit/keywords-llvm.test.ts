@@ -4,26 +4,26 @@ import { test } from 'bun:test';
 import assert from 'node:assert/strict';
 
 import {
-  aarch64PredicateQualifiers,
-  aarch64Relocations,
-  aarch64Shifts,
-  aliasNames,
-  armRelocations,
-  armShifts,
-  armSuffixRelocations,
-  caseStrings,
-  cppDirectives,
-  indexedRegisters,
-  lookedUpNames,
-  machoSectionTypes,
-  matcherRegisters,
-  variantEntries,
-  withoutMasmBlocks,
-  x86Decorators,
-  x86EncodingSuffixes,
-  x86IntelWords,
-  x86MaskRegisters,
-  x86SyntaxWords,
+    aarch64PredicateQualifiers,
+    aarch64Relocations,
+    aarch64Shifts,
+    aliasNames,
+    armRelocations,
+    armShifts,
+    armSuffixRelocations,
+    caseStrings,
+    cppDirectives,
+    indexedRegisters,
+    lookedUpNames,
+    machoSectionTypes,
+    matcherRegisters,
+    variantEntries,
+    withoutMasmBlocks,
+    x86Decorators,
+    x86EncodingSuffixes,
+    x86IntelWords,
+    x86MaskRegisters,
+    x86SyntaxWords,
 } from '../../scripts/lib/keywords/llvm.ts';
 import { assertThrowsIncluding } from '../lib/assert.ts';
 import { sourceTree, testReaders } from '../lib/keyword-sources.ts';
@@ -297,276 +297,276 @@ bool X86AsmParser::ParseDirective(AsmToken DirectiveID) {
 `;
 
 testReaders('llvm', [
-  {
-    name: 'x86EncodingSuffixes',
-    read: x86EncodingSuffixes,
-    files: { [X86_PARSER]: ENCODING_SOURCE },
-    expected: [['.d32', []], ['.d8', []]],
-    breakages: [
-      {
-        file: X86_PARSER,
-        from: `if (Name.consume_back(".d32")) {
+    {
+        name: 'x86EncodingSuffixes',
+        read: x86EncodingSuffixes,
+        files: { [X86_PARSER]: ENCODING_SOURCE },
+        expected: [['.d32', []], ['.d8', []]],
+        breakages: [
+            {
+                file: X86_PARSER,
+                from: `if (Name.consume_back(".d32")) {
     ForcedDispEncoding = DispEncoding_Disp32;
   } else if (Name.consume_back(".d8")) {
     ForcedDispEncoding = DispEncoding_Disp8;
   }`,
-        to: '',
-        stops: 'parseInstruction reads no suffix after a dot',
-      },
-    ],
-  },
-  {
-    name: 'x86SyntaxWords',
-    read: x86SyntaxWords,
-    files: { [X86_PARSER]: SYNTAX_SOURCE },
-    expected: [
-      ['noprefix', [...LOWER, 'llvm:syntax:intel']],
-      ['prefix', [...LOWER, 'llvm:syntax:att']],
-    ],
-    breakages: [
-      {
-        file: X86_PARSER,
-        from: 'IDVal.starts_with(".att_syntax")',
-        to: 'IDVal == ".other"',
-        stops: '.att_syntax no longer takes a word as written',
-      },
-      {
-        file: X86_PARSER,
-        from: 'IDVal.starts_with(".intel_syntax")',
-        to: 'IDVal == ".other"',
-        stops: '.intel_syntax no longer takes a word as written',
-      },
-    ],
-  },
-  {
-    name: 'cppDirectives',
-    read: cppDirectives,
-    files: { [CPP]: CPP_SOURCE },
-    expected: [
-      ['__public_macro', ['llvm:handler:HandleMacroPublicDirective']],
-      ['assert', ['llvm:handler:none']],
-      ['elif', ['llvm:handler:HandleElifFamilyDirective']],
-      ['elifdef', ['llvm:handler:HandleElifFamilyDirective']],
-      ['if', ['llvm:handler:HandleIfDirective']],
-      ['import', ['llvm:handler:HandleImportDirective']],
-      ['warning', ['llvm:handler:HandleUserDiagnosticDirective']],
-    ],
-    breakages: [
-      {
-        file: CPP,
-        from: 'if (!II) break; // Not an identifier.',
-        to: 'if (II == nullptr) return;',
-        stops: 'HandleDirective no longer switches on the directive word',
-      },
-      {
-        file: CPP,
-        from: 'if (Introducer.isModuleContextualKeyword())\n        ',
-        to: '',
-        stops: 'a word left out of the table may now be a # directive',
-      },
-      {
-        file: CPP,
-        from: 'assert(getLangOpts().CPlusPlusModules && ImportTok.is(tok::kw_import));',
-        to: '',
-        stops: 'a word left out of the table may now be a # directive',
-      },
-      {
-        file: CPP,
-        from: 'Diag(Tok.getLocation(), diag::pp_include_macros_out_of_predefines);',
-        to: '',
-        stops: 'a word left out of the table may now be a # directive',
-      },
-    ],
-  },
-  {
-    name: 'x86IntelWords',
-    read: x86IntelWords,
-    files: { [X86_PARSER]: INTEL_SOURCE },
-    expected: [
-      ['byte', ['llvm:no-mixed-case', 'llvm:ptr-follows', 'llvm:size']],
-      ['float', ['llvm:no-mixed-case', 'llvm:ptr-follows', 'llvm:size']],
-      ['not', ['llvm:no-mixed-case', 'llvm:operator:onNot']],
-      ['or', ['llvm:no-mixed-case', 'llvm:operator:onOr']],
-      ['ptr', ['llvm:no-mixed-case', 'llvm:ptr']],
-    ],
-    breakages: [
-      {
-        file: X86_PARSER,
-        from: 'if (Name != Name.lower() && Name != Name.upper() &&\n' +
-          '      !getParser().isParsingMasm())\n    return false;',
-        to: '',
-        stops: 'ParseIntelNamedOperator no longer rejects mixed case',
-      },
-      {
-        file: X86_PARSER,
-        from: 'SM.onNot();',
-        to: '',
-        stops: 'the named operator "not" calls no handler',
-      },
-      {
-        file: X86_PARSER,
-        from: 'if (Parser.isParsingMasm() &&\n      ParseMasmNamedOperator',
-        to: 'if (ParseMasmNamedOperator',
-        stops: 'ParseMasmNamedOperator is no longer MASM only',
-      },
-      {
-        file: X86_PARSER,
-        from: 'Tok.getString() == "ptr"',
-        to: 'Tok.getString() == "other"',
-        stops: 'ParseIntelMemoryOperandSize no longer requires one word after a size',
-      },
-      {
-        file: X86_PARSER,
-        from: '.Cases({"FLOAT", "float"}, 32)',
-        to: '.Case("FLOAT", 32)',
-        stops: 'ParseIntelMemoryOperandSize has a case this reader does not know',
-      },
-      {
-        file: X86_PARSER,
-        from: '.Cases({"FLOAT", "float"}, 32)',
-        to: '.Cases({"FLOAT", "real"}, 32)',
-        stops: 'the size case {"FLOAT", "real"} is not one word',
-      },
-    ],
-  },
-  {
-    name: 'x86Decorators with any word after the dash',
-    read: x86Decorators,
-    files: { [X86_PARSER]: DECORATOR_SOURCE },
-    expected: [
-      ['1to16', LOWER],
-      ['1to8', LOWER],
-      ['dfv', ['llvm:flags']],
-      ['rd', ['llvm:dashed', ...LOWER]],
-      ['rn', ['llvm:dashed', ...LOWER]],
-      ['sae', LOWER],
-      ['z', LOWER],
-    ],
-    breakages: [
-      {
-        file: X86_PARSER,
-        from: 'if (!getLexer().is(AsmToken::Minus))',
-        to: 'if (other)',
-        stops: 'ParseRoundingModeOp reads no rounding mode before a',
-      },
-      {
-        file: X86_PARSER,
-        from: '.Case("1to8", "{1to8}")\n          .Case("1to16", "{1to16}")',
-        to: '',
-        stops: 'HandleAVX512Operand reads no broadcast',
-      },
-      {
-        file: X86_PARSER,
-        from: 'if (ParseZ(Z, consumedToken))',
-        to: 'if (other)',
-        stops: 'HandleAVX512Operand no longer reads a zeroing mark',
-      },
-      {
-        file: X86_PARSER,
-        from: 'getIdentifier() == "z"',
-        to: 'getIdentifier().empty()',
-        stops: 'ParseZ compares no identifier',
-      },
-      {
-        file: X86_PARSER,
-        from: 'Tok.getIdentifier().lower() != "dfv"',
-        to: 'other',
-        stops: 'parseCFlagsOp reads no flags decorator',
-      },
-    ],
-  },
-  {
-    name: 'x86Decorators with a fixed word after the dash',
-    read: x86Decorators,
-    files: {
-      [X86_PARSER]: DECORATOR_SOURCE.replace(
-        '"Expected - at this point");',
-        '"Expected - at this point");\n    if (Tok.getIdentifier() != "sae")\n      return false;',
-      ),
+                to: '',
+                stops: 'parseInstruction reads no suffix after a dot',
+            },
+        ],
     },
-    expected: [
-      ['1to16', LOWER],
-      ['1to8', LOWER],
-      ['dfv', ['llvm:flags']],
-      ['rd-sae', LOWER],
-      ['rn-sae', LOWER],
-      ['sae', LOWER],
-      ['z', LOWER],
-    ],
-  },
-  {
-    name: 'aarch64Shifts',
-    read: aarch64Shifts,
-    files: { [AARCH64_PARSER]: AARCH64_SHIFT_SOURCE },
-    expected: [
-      ['lsl', ['llvm:shift']],
-      ['mul', ['llvm:shift']],
-      ['ror', ['llvm:shift']],
-      ['uxtb', ['llvm:extend']],
-    ],
-    breakages: [
-      {
-        file: AARCH64_PARSER,
-        from: 'std::string LowerID = Tok.getString().lower();',
-        to: 'StringRef LowerID = Tok.getString();',
-        stops: 'tryParseOptionalShiftExtend no longer reads its words',
-      },
-      {
-        file: AARCH64_PARSER,
-        from: 'return TokError("expected #imm after shift specifier");',
-        to: 'return false;',
-        stops: 'tryParseOptionalShiftExtend no longer reads its words',
-      },
-      {
-        file: AARCH64_PARSER,
-        from: '!(NextIsVL || NextIsHash)',
-        to: 'other',
-        stops: 'no shift words, or mul no longer needs an amount',
-      },
-    ],
-  },
-  {
-    name: 'armShifts',
-    read: armShifts,
-    files: { [ARM_PARSER]: ARM_SHIFT_SOURCE },
-    expected: [
-      ['asl', ['llvm:shift']],
-      ['lsl', ['llvm:no-mixed-case', 'llvm:shift']],
-      ['rrx', ['llvm:extend']],
-      ['uxtw', ['llvm:no-mixed-case', 'llvm:no-upper-case', 'llvm:shift']],
-    ],
-    breakages: [
-      {
-        file: ARM_PARSER,
-        from: 'std::string lowerCase = Tok.getString().lower();',
-        to: 'StringRef lowerCase = Tok.getString();',
-        stops: 'the shift parsers no longer read their words and amounts',
-      },
-      {
-        file: ARM_PARSER,
-        from: 'if (ShiftTy == ARM_AM::rrx)',
-        to: 'if (other)',
-        stops: 'the shift parsers no longer read their words and amounts',
-      },
-      {
-        file: ARM_PARSER,
-        from: 'if (St != ARM_AM::rrx)',
-        to: 'if (other)',
-        stops: 'the shift parsers no longer read their words and amounts',
-      },
-      {
-        file: ARM_PARSER,
-        from: '.Case("asl", ARM_AM::lsl)\n      .Case("rrx", ARM_AM::rrx)',
-        to: '',
-        stops: 'the shift parsers name no word',
-      },
-    ],
-  },
-  {
-    name: 'machoSectionTypes',
-    read: machoSectionTypes,
-    files: {
-      [MACH_O]: `
+    {
+        name: 'x86SyntaxWords',
+        read: x86SyntaxWords,
+        files: { [X86_PARSER]: SYNTAX_SOURCE },
+        expected: [
+            ['noprefix', [...LOWER, 'llvm:syntax:intel']],
+            ['prefix', [...LOWER, 'llvm:syntax:att']],
+        ],
+        breakages: [
+            {
+                file: X86_PARSER,
+                from: 'IDVal.starts_with(".att_syntax")',
+                to: 'IDVal == ".other"',
+                stops: '.att_syntax no longer takes a word as written',
+            },
+            {
+                file: X86_PARSER,
+                from: 'IDVal.starts_with(".intel_syntax")',
+                to: 'IDVal == ".other"',
+                stops: '.intel_syntax no longer takes a word as written',
+            },
+        ],
+    },
+    {
+        name: 'cppDirectives',
+        read: cppDirectives,
+        files: { [CPP]: CPP_SOURCE },
+        expected: [
+            ['__public_macro', ['llvm:handler:HandleMacroPublicDirective']],
+            ['assert', ['llvm:handler:none']],
+            ['elif', ['llvm:handler:HandleElifFamilyDirective']],
+            ['elifdef', ['llvm:handler:HandleElifFamilyDirective']],
+            ['if', ['llvm:handler:HandleIfDirective']],
+            ['import', ['llvm:handler:HandleImportDirective']],
+            ['warning', ['llvm:handler:HandleUserDiagnosticDirective']],
+        ],
+        breakages: [
+            {
+                file: CPP,
+                from: 'if (!II) break; // Not an identifier.',
+                to: 'if (II == nullptr) return;',
+                stops: 'HandleDirective no longer switches on the directive word',
+            },
+            {
+                file: CPP,
+                from: 'if (Introducer.isModuleContextualKeyword())\n        ',
+                to: '',
+                stops: 'a word left out of the table may now be a # directive',
+            },
+            {
+                file: CPP,
+                from: 'assert(getLangOpts().CPlusPlusModules && ImportTok.is(tok::kw_import));',
+                to: '',
+                stops: 'a word left out of the table may now be a # directive',
+            },
+            {
+                file: CPP,
+                from: 'Diag(Tok.getLocation(), diag::pp_include_macros_out_of_predefines);',
+                to: '',
+                stops: 'a word left out of the table may now be a # directive',
+            },
+        ],
+    },
+    {
+        name: 'x86IntelWords',
+        read: x86IntelWords,
+        files: { [X86_PARSER]: INTEL_SOURCE },
+        expected: [
+            ['byte', ['llvm:no-mixed-case', 'llvm:ptr-follows', 'llvm:size']],
+            ['float', ['llvm:no-mixed-case', 'llvm:ptr-follows', 'llvm:size']],
+            ['not', ['llvm:no-mixed-case', 'llvm:operator:onNot']],
+            ['or', ['llvm:no-mixed-case', 'llvm:operator:onOr']],
+            ['ptr', ['llvm:no-mixed-case', 'llvm:ptr']],
+        ],
+        breakages: [
+            {
+                file: X86_PARSER,
+                from: 'if (Name != Name.lower() && Name != Name.upper() &&\n' +
+                    '      !getParser().isParsingMasm())\n    return false;',
+                to: '',
+                stops: 'ParseIntelNamedOperator no longer rejects mixed case',
+            },
+            {
+                file: X86_PARSER,
+                from: 'SM.onNot();',
+                to: '',
+                stops: 'the named operator "not" calls no handler',
+            },
+            {
+                file: X86_PARSER,
+                from: 'if (Parser.isParsingMasm() &&\n      ParseMasmNamedOperator',
+                to: 'if (ParseMasmNamedOperator',
+                stops: 'ParseMasmNamedOperator is no longer MASM only',
+            },
+            {
+                file: X86_PARSER,
+                from: 'Tok.getString() == "ptr"',
+                to: 'Tok.getString() == "other"',
+                stops: 'ParseIntelMemoryOperandSize no longer requires one word after a size',
+            },
+            {
+                file: X86_PARSER,
+                from: '.Cases({"FLOAT", "float"}, 32)',
+                to: '.Case("FLOAT", 32)',
+                stops: 'ParseIntelMemoryOperandSize has a case this reader does not know',
+            },
+            {
+                file: X86_PARSER,
+                from: '.Cases({"FLOAT", "float"}, 32)',
+                to: '.Cases({"FLOAT", "real"}, 32)',
+                stops: 'the size case {"FLOAT", "real"} is not one word',
+            },
+        ],
+    },
+    {
+        name: 'x86Decorators with any word after the dash',
+        read: x86Decorators,
+        files: { [X86_PARSER]: DECORATOR_SOURCE },
+        expected: [
+            ['1to16', LOWER],
+            ['1to8', LOWER],
+            ['dfv', ['llvm:flags']],
+            ['rd', ['llvm:dashed', ...LOWER]],
+            ['rn', ['llvm:dashed', ...LOWER]],
+            ['sae', LOWER],
+            ['z', LOWER],
+        ],
+        breakages: [
+            {
+                file: X86_PARSER,
+                from: 'if (!getLexer().is(AsmToken::Minus))',
+                to: 'if (other)',
+                stops: 'ParseRoundingModeOp reads no rounding mode before a',
+            },
+            {
+                file: X86_PARSER,
+                from: '.Case("1to8", "{1to8}")\n          .Case("1to16", "{1to16}")',
+                to: '',
+                stops: 'HandleAVX512Operand reads no broadcast',
+            },
+            {
+                file: X86_PARSER,
+                from: 'if (ParseZ(Z, consumedToken))',
+                to: 'if (other)',
+                stops: 'HandleAVX512Operand no longer reads a zeroing mark',
+            },
+            {
+                file: X86_PARSER,
+                from: 'getIdentifier() == "z"',
+                to: 'getIdentifier().empty()',
+                stops: 'ParseZ compares no identifier',
+            },
+            {
+                file: X86_PARSER,
+                from: 'Tok.getIdentifier().lower() != "dfv"',
+                to: 'other',
+                stops: 'parseCFlagsOp reads no flags decorator',
+            },
+        ],
+    },
+    {
+        name: 'x86Decorators with a fixed word after the dash',
+        read: x86Decorators,
+        files: {
+            [X86_PARSER]: DECORATOR_SOURCE.replace(
+                '"Expected - at this point");',
+                '"Expected - at this point");\n    if (Tok.getIdentifier() != "sae")\n      return false;',
+            ),
+        },
+        expected: [
+            ['1to16', LOWER],
+            ['1to8', LOWER],
+            ['dfv', ['llvm:flags']],
+            ['rd-sae', LOWER],
+            ['rn-sae', LOWER],
+            ['sae', LOWER],
+            ['z', LOWER],
+        ],
+    },
+    {
+        name: 'aarch64Shifts',
+        read: aarch64Shifts,
+        files: { [AARCH64_PARSER]: AARCH64_SHIFT_SOURCE },
+        expected: [
+            ['lsl', ['llvm:shift']],
+            ['mul', ['llvm:shift']],
+            ['ror', ['llvm:shift']],
+            ['uxtb', ['llvm:extend']],
+        ],
+        breakages: [
+            {
+                file: AARCH64_PARSER,
+                from: 'std::string LowerID = Tok.getString().lower();',
+                to: 'StringRef LowerID = Tok.getString();',
+                stops: 'tryParseOptionalShiftExtend no longer reads its words',
+            },
+            {
+                file: AARCH64_PARSER,
+                from: 'return TokError("expected #imm after shift specifier");',
+                to: 'return false;',
+                stops: 'tryParseOptionalShiftExtend no longer reads its words',
+            },
+            {
+                file: AARCH64_PARSER,
+                from: '!(NextIsVL || NextIsHash)',
+                to: 'other',
+                stops: 'no shift words, or mul no longer needs an amount',
+            },
+        ],
+    },
+    {
+        name: 'armShifts',
+        read: armShifts,
+        files: { [ARM_PARSER]: ARM_SHIFT_SOURCE },
+        expected: [
+            ['asl', ['llvm:shift']],
+            ['lsl', ['llvm:no-mixed-case', 'llvm:shift']],
+            ['rrx', ['llvm:extend']],
+            ['uxtw', ['llvm:no-mixed-case', 'llvm:no-upper-case', 'llvm:shift']],
+        ],
+        breakages: [
+            {
+                file: ARM_PARSER,
+                from: 'std::string lowerCase = Tok.getString().lower();',
+                to: 'StringRef lowerCase = Tok.getString();',
+                stops: 'the shift parsers no longer read their words and amounts',
+            },
+            {
+                file: ARM_PARSER,
+                from: 'if (ShiftTy == ARM_AM::rrx)',
+                to: 'if (other)',
+                stops: 'the shift parsers no longer read their words and amounts',
+            },
+            {
+                file: ARM_PARSER,
+                from: 'if (St != ARM_AM::rrx)',
+                to: 'if (other)',
+                stops: 'the shift parsers no longer read their words and amounts',
+            },
+            {
+                file: ARM_PARSER,
+                from: '.Case("asl", ARM_AM::lsl)\n      .Case("rrx", ARM_AM::rrx)',
+                to: '',
+                stops: 'the shift parsers name no word',
+            },
+        ],
+    },
+    {
+        name: 'machoSectionTypes',
+        read: machoSectionTypes,
+        files: {
+            [MACH_O]: `
 static constexpr struct {
   StringLiteral AssemblerName, EnumName;
 } SectionTypeDescriptors[MachO::LAST_KNOWN_SECTION_TYPE + 1] = {
@@ -578,50 +578,50 @@ bool f() {
   return SectionType == Descriptor.AssemblerName;
 }
 `,
+        },
+        expected: [['4byte_literals', LOWER], ['regular', LOWER]],
+        breakages: [
+            {
+                file: MACH_O,
+                from: 'return SectionType == Descriptor.AssemblerName;',
+                to: 'return SectionType.equals_insensitive(Descriptor.AssemblerName);',
+                stops: 'section types are no longer compared as written',
+            },
+            {
+                file: MACH_O,
+                from: '{StringLiteral("regular"), StringLiteral("S_REGULAR")},    // 0x00\n    ' +
+                    '{StringLiteral(""), StringLiteral("S_ZEROFILL")},          // 0x01\n    ' +
+                    '{StringLiteral("4byte_literals"), StringLiteral("S_4BYTE_LITERALS")},',
+                to: '{StringLiteral(""), StringLiteral("S_ZEROFILL")},',
+                stops: 'SectionTypeDescriptors names no type',
+            },
+        ],
     },
-    expected: [['4byte_literals', LOWER], ['regular', LOWER]],
-    breakages: [
-      {
-        file: MACH_O,
-        from: 'return SectionType == Descriptor.AssemblerName;',
-        to: 'return SectionType.equals_insensitive(Descriptor.AssemblerName);',
-        stops: 'section types are no longer compared as written',
-      },
-      {
-        file: MACH_O,
-        from: '{StringLiteral("regular"), StringLiteral("S_REGULAR")},    // 0x00\n    ' +
-          '{StringLiteral(""), StringLiteral("S_ZEROFILL")},          // 0x01\n    ' +
-          '{StringLiteral("4byte_literals"), StringLiteral("S_4BYTE_LITERALS")},',
-        to: '{StringLiteral(""), StringLiteral("S_ZEROFILL")},',
-        stops: 'SectionTypeDescriptors names no type',
-      },
-    ],
-  },
-  {
-    name: 'aarch64PredicateQualifiers',
-    read: aarch64PredicateQualifiers,
-    files: { [AARCH64_PARSER]: PREDICATION_SOURCE },
-    expected: [['m', []], ['z', []]],
-    breakages: [
-      {
-        file: AARCH64_PARSER,
-        from: 'auto Pred = getTok().getString().lower();',
-        to: 'auto Pred = getTok().getString();',
-        stops: 'the predication type is no longer read in any case',
-      },
-      {
-        file: AARCH64_PARSER,
-        from: 'CreateToken(ZM',
-        to: 'CreateToken(Pred',
-        stops: 'the predication type is no longer read in any case',
-      },
-    ],
-  },
-  {
-    name: 'aarch64Relocations',
-    read: aarch64Relocations,
-    files: {
-      [AARCH64_PARSER]: `
+    {
+        name: 'aarch64PredicateQualifiers',
+        read: aarch64PredicateQualifiers,
+        files: { [AARCH64_PARSER]: PREDICATION_SOURCE },
+        expected: [['m', []], ['z', []]],
+        breakages: [
+            {
+                file: AARCH64_PARSER,
+                from: 'auto Pred = getTok().getString().lower();',
+                to: 'auto Pred = getTok().getString();',
+                stops: 'the predication type is no longer read in any case',
+            },
+            {
+                file: AARCH64_PARSER,
+                from: 'CreateToken(ZM',
+                to: 'CreateToken(Pred',
+                stops: 'the predication type is no longer read in any case',
+            },
+        ],
+    },
+    {
+        name: 'aarch64Relocations',
+        read: aarch64Relocations,
+        files: {
+            [AARCH64_PARSER]: `
 bool AArch64AsmParser::parseSymbolicImmVal(const MCExpr *&ImmVal) {
     std::string LowerCase = getTok().getIdentifier().lower();
     RefKind = StringSwitch<AArch64::Specifier>(LowerCase)
@@ -630,29 +630,29 @@ bool AArch64AsmParser::parseSymbolicImmVal(const MCExpr *&ImmVal) {
                   .Default(AArch64::S_INVALID);
 }
 `,
+        },
+        expected: [['got_lo12', []], ['lo12', []]],
+        breakages: [
+            {
+                file: AARCH64_PARSER,
+                from: 'getTok().getIdentifier().lower()',
+                to: 'getTok().getIdentifier()',
+                stops: 'parseSymbolicImmVal no longer reads a relocation in any case',
+            },
+            {
+                file: AARCH64_PARSER,
+                from: '.Case("lo12", AArch64::S_LO12)\n                  ' +
+                    '.Case("GOT_LO12", AArch64::S_GOT_LO12)',
+                to: '',
+                stops: 'no name matches',
+            },
+        ],
     },
-    expected: [['got_lo12', []], ['lo12', []]],
-    breakages: [
-      {
-        file: AARCH64_PARSER,
-        from: 'getTok().getIdentifier().lower()',
-        to: 'getTok().getIdentifier()',
-        stops: 'parseSymbolicImmVal no longer reads a relocation in any case',
-      },
-      {
-        file: AARCH64_PARSER,
-        from: '.Case("lo12", AArch64::S_LO12)\n                  ' +
-          '.Case("GOT_LO12", AArch64::S_GOT_LO12)',
-        to: '',
-        stops: 'no name matches',
-      },
-    ],
-  },
-  {
-    name: 'armRelocations',
-    read: armRelocations,
-    files: {
-      [ARM_PARSER]: `
+    {
+        name: 'armRelocations',
+        read: armRelocations,
+        files: {
+            [ARM_PARSER]: `
 bool ARMAsmParser::parsePrefix(ARM::Specifier &Spec) {
   static const struct PrefixEntry {
     const char *Spelling;
@@ -665,22 +665,22 @@ bool ARMAsmParser::parsePrefix(ARM::Specifier &Spec) {
   });
 }
 `,
+        },
+        expected: [['lower16', LOWER], ['upper16', LOWER]],
+        breakages: [
+            {
+                file: ARM_PARSER,
+                from: 'return PE.Spelling == IDVal;',
+                to: 'return IDVal.equals_insensitive(PE.Spelling);',
+                stops: 'parsePrefix no longer compares a relocation as written',
+            },
+        ],
     },
-    expected: [['lower16', LOWER], ['upper16', LOWER]],
-    breakages: [
-      {
-        file: ARM_PARSER,
-        from: 'return PE.Spelling == IDVal;',
-        to: 'return IDVal.equals_insensitive(PE.Spelling);',
-        stops: 'parsePrefix no longer compares a relocation as written',
-      },
-    ],
-  },
-  {
-    name: 'armSuffixRelocations',
-    read: armSuffixRelocations,
-    files: {
-      [ARM_ASM_INFO]: `
+    {
+        name: 'armSuffixRelocations',
+        read: armSuffixRelocations,
+        files: {
+            [ARM_ASM_INFO]: `
 static const MCAsmInfo::AtSpecifier AtSpecifierDefs[] = {
     {{"GOT"}, ARM::S_GOT},
     {{"plt"}, ARM::S_PLT},
@@ -689,59 +689,62 @@ void f() {
   UseParensForSpecifier = true;
 }
 `,
-      [ASM_INFO]: 'auto It = NameToAtSpecifier.find(Name.lower());\n',
+            [ASM_INFO]: 'auto It = NameToAtSpecifier.find(Name.lower());\n',
+        },
+        expected: [['got', []], ['plt', []]],
+        breakages: [
+            {
+                file: ARM_ASM_INFO,
+                from: 'UseParensForSpecifier = true;',
+                to: '',
+                stops: 'no ARM target writes a specifier in parentheses',
+            },
+            {
+                file: ASM_INFO,
+                from: 'Name.lower()',
+                to: 'Name',
+                stops: 'specifiers are no longer looked up in any case',
+            },
+        ],
     },
-    expected: [['got', []], ['plt', []]],
-    breakages: [
-      {
-        file: ARM_ASM_INFO,
-        from: 'UseParensForSpecifier = true;',
-        to: '',
-        stops: 'no ARM target writes a specifier in parentheses',
-      },
-      {
-        file: ASM_INFO,
-        from: 'Name.lower()',
-        to: 'Name',
-        stops: 'specifiers are no longer looked up in any case',
-      },
-    ],
-  },
 ]);
 
 test('x86MaskRegisters expands the VK1 sequence to the names of its registers', () => {
-  const files = { [X86_REGISTERS]: MASK_REGISTERS, [X86_PARSER]: DECORATOR_SOURCE };
-  assert.deepStrictEqual(x86MaskRegisters(sourceTree('llvm-masks', files)), ['k0', 'k1']);
-  assertThrowsIncluding(
-    () =>
-      x86MaskRegisters(
-        sourceTree('llvm-masks-class', {
-          ...files,
-          [X86_REGISTERS]: 'def K0 : X86Reg<"k0", 0>;\n',
-        }),
-      ),
-    'VK1 is no longer a register sequence',
-  );
-  assertThrowsIncluding(
-    () =>
-      x86MaskRegisters(
-        sourceTree('llvm-masks-parser', {
-          ...files,
-          [X86_PARSER]: DECORATOR_SOURCE.replace('X86::VK1RegClassID', 'X86::VK2RegClassID'),
-        }),
-      ),
-    'HandleAVX512Operand no longer takes VK1 registers as masks',
-  );
-  assertThrowsIncluding(
-    () =>
-      x86MaskRegisters(
-        sourceTree('llvm-masks-register', {
-          ...files,
-          [X86_REGISTERS]: MASK_REGISTERS.replace('def K1 :', 'def K9 :'),
-        }),
-      ),
-    'no register K1',
-  );
+    const files = { [X86_REGISTERS]: MASK_REGISTERS, [X86_PARSER]: DECORATOR_SOURCE };
+    assert.deepStrictEqual(x86MaskRegisters(sourceTree('llvm-masks', files)), ['k0', 'k1']);
+    assertThrowsIncluding(
+        () =>
+            x86MaskRegisters(
+                sourceTree('llvm-masks-class', {
+                    ...files,
+                    [X86_REGISTERS]: 'def K0 : X86Reg<"k0", 0>;\n',
+                }),
+            ),
+        'VK1 is no longer a register sequence',
+    );
+    assertThrowsIncluding(
+        () =>
+            x86MaskRegisters(
+                sourceTree('llvm-masks-parser', {
+                    ...files,
+                    [X86_PARSER]: DECORATOR_SOURCE.replace(
+                        'X86::VK1RegClassID',
+                        'X86::VK2RegClassID',
+                    ),
+                }),
+            ),
+        'HandleAVX512Operand no longer takes VK1 registers as masks',
+    );
+    assertThrowsIncluding(
+        () =>
+            x86MaskRegisters(
+                sourceTree('llvm-masks-register', {
+                    ...files,
+                    [X86_REGISTERS]: MASK_REGISTERS.replace('def K1 :', 'def K9 :'),
+                }),
+            ),
+        'no register K1',
+    );
 });
 
 const MATCHER = `
@@ -758,32 +761,32 @@ static MCRegister MatchRegisterName(StringRef Name) {
 `;
 
 test('matcherRegisters reads every register the matcher returns', () => {
-  assert.deepStrictEqual(matcherRegisters(MATCHER, 'MatchRegisterName'), ['ax', 'eax']);
+    assert.deepStrictEqual(matcherRegisters(MATCHER, 'MatchRegisterName'), ['ax', 'eax']);
 });
 
 test('matcherRegisters stops when a return has no name or none are found', () => {
-  assertThrowsIncluding(
-    () =>
-      matcherRegisters(
-        MATCHER.replace('return X86::AX;\t // "ax"', 'return X86::AX;'),
-        'MatchRegisterName',
-      ),
-    'MatchRegisterName: read 1 of 2 register names',
-  );
-  assertThrowsIncluding(
-    () =>
-      matcherRegisters(
-        'static MCRegister MatchRegisterName(StringRef Name) {\n  return 0;\n}\n',
-        'MatchRegisterName',
-      ),
-    'MatchRegisterName: read 0 of 0 register names',
-  );
-  assertThrowsIncluding(() => matcherRegisters(MATCHER, 'Other'), 'no Other');
+    assertThrowsIncluding(
+        () =>
+            matcherRegisters(
+                MATCHER.replace('return X86::AX;\t // "ax"', 'return X86::AX;'),
+                'MatchRegisterName',
+            ),
+        'MatchRegisterName: read 1 of 2 register names',
+    );
+    assertThrowsIncluding(
+        () =>
+            matcherRegisters(
+                'static MCRegister MatchRegisterName(StringRef Name) {\n  return 0;\n}\n',
+                'MatchRegisterName',
+            ),
+        'MatchRegisterName: read 0 of 0 register names',
+    );
+    assertThrowsIncluding(() => matcherRegisters(MATCHER, 'Other'), 'no Other');
 });
 
 test('caseStrings lists the cases in lower case and stops on none', () => {
-  assert.deepStrictEqual(caseStrings('.Case("FP", X::A)\n.Case("lr", X::B)', 'it'), ['fp', 'lr']);
-  assertThrowsIncluding(() => caseStrings('.Default(0)', 'it'), 'it: no register names');
+    assert.deepStrictEqual(caseStrings('.Case("FP", X::A)\n.Case("lr", X::B)', 'it'), ['fp', 'lr']);
+    assertThrowsIncluding(() => caseStrings('.Default(0)', 'it'), 'it: no register names');
 });
 
 const LOOKUPS = `
@@ -804,45 +807,46 @@ constexpr PState PStatesList[] = {
 `;
 
 test('lookedUpNames follows each lookup of a function to its table', () => {
-  assert.deepStrictEqual(
-    lookedUpNames('it', LOOKUPS, [/^ParseStatus P::tryParseSysReg\(/m], LOOKUP_TABLES).entries(),
-    [['sp_el0', []], ['spsel', []], ['vbar_el1', []]],
-  );
+    assert.deepStrictEqual(
+        lookedUpNames('it', LOOKUPS, [/^ParseStatus P::tryParseSysReg\(/m], LOOKUP_TABLES)
+            .entries(),
+        [['sp_el0', []], ['spsel', []], ['vbar_el1', []]],
+    );
 });
 
 test('lookedUpNames stops on a function without a lookup or a lookup without a table', () => {
-  assertThrowsIncluding(
-    () => lookedUpNames('it', 'bool f() {\n  return 0;\n}\n', [/^bool f\(/m], LOOKUP_TABLES),
-    'it: ^bool f\\( looks up no names',
-  );
-  assertThrowsIncluding(
-    () => lookedUpNames('it', LOOKUPS, [/^ParseStatus P::tryParseSysReg\(/m], ''),
-    'no SysReg table',
-  );
+    assertThrowsIncluding(
+        () => lookedUpNames('it', 'bool f() {\n  return 0;\n}\n', [/^bool f\(/m], LOOKUP_TABLES),
+        'it: ^bool f\\( looks up no names',
+    );
+    assertThrowsIncluding(
+        () => lookedUpNames('it', LOOKUPS, [/^ParseStatus P::tryParseSysReg\(/m], ''),
+        'no SysReg table',
+    );
 });
 
 test('indexedRegisters turn numbered forms into a count on the base name', () => {
-  assert.deepStrictEqual(indexedRegisters(['st', 'st(1)', 'st(0)', 'ax']).entries(), [
-    ['ax', []],
-    ['st', ['index:2']],
-  ]);
-  assertThrowsIncluding(
-    () => indexedRegisters(['fp(0)']),
-    'the register matcher indexes fp, which it does not name',
-  );
+    assert.deepStrictEqual(indexedRegisters(['st', 'st(1)', 'st(0)', 'ax']).entries(), [
+        ['ax', []],
+        ['st', ['index:2']],
+    ]);
+    assertThrowsIncluding(
+        () => indexedRegisters(['fp(0)']),
+        'the register matcher indexes fp, which it does not name',
+    );
 });
 
 test('withoutMasmBlocks removes each MASM block with its braces', () => {
-  assert.strictEqual(
-    withoutMasmBlocks(
-      'a; if (getParser().isParsingMasm()) { b { c } } d; if (Parser.isParsingMasm()) { e } f;',
-    ),
-    'a;  d;  f;',
-  );
+    assert.strictEqual(
+        withoutMasmBlocks(
+            'a; if (getParser().isParsingMasm()) { b { c } } d; if (Parser.isParsingMasm()) { e } f;',
+        ),
+        'a;  d;  f;',
+    );
 });
 
 test('variantEntries read the mnemonic and operand classes of each match table', () => {
-  const entries = variantEntries(`
+    const entries = variantEntries(`
 static const MatchEntry MatchTable0[] = {
   { 0 /* ADD */, X86::ADD, Convert__Reg1_0, AMFBS_None, { MCK_GR32, MCK_Imm }, },
   { 5 /* mov */, X86::MOV, Convert__Reg1_0, AMFBS_None, { }, },
@@ -851,18 +855,18 @@ static const MatchEntry MatchTable1[] = {
   { 9 /* add */, X86::ADD, Convert__Reg1_0, AMFBS_None, { MCK_GR64 }, },
 };
 `);
-  assert.deepStrictEqual([...entries], [
-    [0, [
-      { mnemonic: 'add', classes: ['MCK_GR32', 'MCK_Imm'] },
-      { mnemonic: 'mov', classes: [] },
-    ]],
-    [1, [{ mnemonic: 'add', classes: ['MCK_GR64'] }]],
-  ]);
-  assertThrowsIncluding(() => variantEntries(''), 'the asm matcher has no MatchTable');
+    assert.deepStrictEqual([...entries], [
+        [0, [
+            { mnemonic: 'add', classes: ['MCK_GR32', 'MCK_Imm'] },
+            { mnemonic: 'mov', classes: [] },
+        ]],
+        [1, [{ mnemonic: 'add', classes: ['MCK_GR64'] }]],
+    ]);
+    assertThrowsIncluding(() => variantEntries(''), 'the asm matcher has no MatchTable');
 });
 
 test('aliasNames read the aliases of each variant, in lower case', () => {
-  const aliases = aliasNames(`
+    const aliases = aliasNames(`
 static void applyMnemonicAliases(StringRef &Mnemonic, unsigned VariantID) {
   switch (VariantID) {
   case 0:
@@ -874,6 +878,6 @@ static void applyMnemonicAliases(StringRef &Mnemonic, unsigned VariantID) {
   }
 }
 `);
-  assert.deepStrictEqual([...aliases], [[0, new Set(['jmp'])], [1, new Set(['b'])]]);
-  assert.deepStrictEqual(aliasNames('no aliases'), new Map());
+    assert.deepStrictEqual([...aliases], [[0, new Set(['jmp'])], [1, new Set(['b'])]]);
+    assert.deepStrictEqual(aliasNames('no aliases'), new Map());
 });

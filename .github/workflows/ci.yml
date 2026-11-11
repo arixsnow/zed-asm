@@ -3,59 +3,59 @@
 name: CI
 
 on:
-  push:
-  pull_request:
+    push:
+    pull_request:
 
 permissions:
-  contents: read
+    contents: read
 
 jobs:
-  test:
-    if: github.event_name == 'push' || github.event.pull_request.head.repo.full_name != github.repository
-    runs-on: ubuntu-26.04
-    timeout-minutes: 30
-    steps:
-      - name: Check out (actions/checkout v7.0.1)
-        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
-        with:
-          persist-credentials: false
+    test:
+        if: github.event_name == 'push' || github.event.pull_request.head.repo.full_name != github.repository
+        runs-on: ubuntu-26.04
+        timeout-minutes: 30
+        steps:
+            - name: Check out (actions/checkout v7.0.1)
+              uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+              with:
+                  persist-credentials: false
 
-      - name: Name the toolchain image
-        id: image
-        run: |
-          image=$(scripts/dev --image)
-          week=$(date -u +%G-W%V)
-          echo "name=${image}" >> "${GITHUB_OUTPUT}"
-          echo "key=${image##*:}-${week}" >> "${GITHUB_OUTPUT}"
+            - name: Name the toolchain image
+              id: image
+              run: |
+                  image=$(scripts/dev --image)
+                  week=$(date -u +%G-W%V)
+                  echo "name=${image}" >> "${GITHUB_OUTPUT}"
+                  echo "key=${image##*:}-${week}" >> "${GITHUB_OUTPUT}"
 
-      - name: Restore the toolchain image (actions/cache v6.1.0)
-        id: restore
-        uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9
-        with:
-          path: ${{ runner.temp }}/toolchain.tar
-          key: toolchain-${{ steps.image.outputs.key }}
+            - name: Restore the toolchain image (actions/cache v6.1.0)
+              id: restore
+              uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9
+              with:
+                  path: ${{ runner.temp }}/toolchain.tar
+                  key: toolchain-${{ steps.image.outputs.key }}
 
-      - name: Load the toolchain image
-        if: steps.restore.outputs.cache-hit == 'true'
-        run: podman load --input "${RUNNER_TEMP}/toolchain.tar"
+            - name: Load the toolchain image
+              if: steps.restore.outputs.cache-hit == 'true'
+              run: podman load --input "${RUNNER_TEMP}/toolchain.tar"
 
-      - name: Build the toolchain image
-        if: steps.restore.outputs.cache-hit != 'true'
-        env:
-          IMAGE: ${{ steps.image.outputs.name }}
-        run: |
-          scripts/dev true
-          podman save --output "${RUNNER_TEMP}/toolchain.tar" "${IMAGE}"
+            - name: Build the toolchain image
+              if: steps.restore.outputs.cache-hit != 'true'
+              env:
+                  IMAGE: ${{ steps.image.outputs.name }}
+              run: |
+                  scripts/dev true
+                  podman save --output "${RUNNER_TEMP}/toolchain.tar" "${IMAGE}"
 
-      - name: Save the toolchain image (actions/cache v6.1.0)
-        if: steps.restore.outputs.cache-hit != 'true'
-        uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9
-        with:
-          path: ${{ runner.temp }}/toolchain.tar
-          key: toolchain-${{ steps.image.outputs.key }}
+            - name: Save the toolchain image (actions/cache v6.1.0)
+              if: steps.restore.outputs.cache-hit != 'true'
+              uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9
+              with:
+                  path: ${{ runner.temp }}/toolchain.tar
+                  key: toolchain-${{ steps.image.outputs.key }}
 
-      - name: Test
-        run: scripts/dev bun run test
+            - name: Test
+              run: scripts/dev bun run test
 
-      - name: Sanitizers
-        run: scripts/dev bun run sanitize
+            - name: Sanitizers
+              run: scripts/dev bun run sanitize

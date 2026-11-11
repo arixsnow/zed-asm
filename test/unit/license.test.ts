@@ -11,20 +11,20 @@ import { generatedMatcher, repositoryFiles } from '../../scripts/lib/repository.
 const SPDX = 'SPDX-License-Identifier: MIT';
 const SOURCE = /\.(c|h|js|cjs|ts|scm|toml|ya?ml)$/;
 const CONFIG =
-  /(?:^|\/)(?:\.clang-format|\.clang-tidy|\.clangd|\.editorconfig|\.gitattributes|\.gitignore|\.containerignore|Containerfile)$/;
+    /(?:^|\/)(?:\.clang-format|\.clang-tidy|\.clangd|\.editorconfig|\.gitattributes|\.gitignore|\.containerignore|Containerfile)$/;
 
 function isScript(path: string): boolean {
-  return readFileSync(join(ROOT, path), 'utf8').startsWith('#!');
+    return readFileSync(join(ROOT, path), 'utf8').startsWith('#!');
 }
 
 test('every hand-written source and config file declares its license in its first two lines', () => {
-  const isGenerated = generatedMatcher(ROOT);
-  const missing = repositoryFiles(ROOT)
-    .filter((path) => SOURCE.test(path) || CONFIG.test(path) || isScript(path))
-    .filter((path) => !isGenerated(path))
-    .filter((path) => {
-      const head = readFileSync(join(ROOT, path), 'utf8').split('\n', 2);
-      return !head.some((line) => line.includes(SPDX));
-    });
-  assert.deepStrictEqual(missing, []);
+    const isGenerated = generatedMatcher(ROOT);
+    const missing = repositoryFiles(ROOT)
+        .filter((path) => SOURCE.test(path) || CONFIG.test(path) || isScript(path))
+        .filter((path) => !isGenerated(path))
+        .filter((path) => {
+            const head = readFileSync(join(ROOT, path), 'utf8').split('\n', 2);
+            return !head.some((line) => line.includes(SPDX));
+        });
+    assert.deepStrictEqual(missing, []);
 });

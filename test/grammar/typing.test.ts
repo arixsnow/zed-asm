@@ -13,477 +13,493 @@ import { fixtures } from '../../scripts/verify-fixtures.ts';
 import { parseFiles, PRINTABLE, treeText } from '../lib/parse.ts';
 
 interface Node {
-  type: string;
-  startRow: number;
-  endRow: number;
-  text: string;
+    type: string;
+    startRow: number;
+    endRow: number;
+    text: string;
 }
 
 interface Block {
-  rows: number[];
-  parent: Block | null;
+    rows: number[];
+    parent: Block | null;
 }
 
 interface Tree {
-  nodes: Node[];
-  blocks: Block[];
-  comments: { startRow: number; endRow: number }[];
+    nodes: Node[];
+    blocks: Block[];
+    comments: { startRow: number; endRow: number }[];
 }
 
 const PREPROCESSOR_TYPES = new Set(['preproc_line', 'preproc_define']);
 const LEXING = statementLexing(
-  readFileSync(join(ROOT, 'tree-sitter', 'common', 'scanner.h'), 'utf8'),
+    readFileSync(join(ROOT, 'tree-sitter', 'common', 'scanner.h'), 'utf8'),
 );
 const SYNTAX_DIRECTIVE = /^\s*\.(?:intel|att)_syntax\b/i;
 const BLOCK_TYPES = new Set([
-  'macro_definition',
-  'conditional',
-  'repeat_block',
-  'structure',
-  'structure_instance',
+    'macro_definition',
+    'conditional',
+    'repeat_block',
+    'structure',
+    'structure_instance',
 ]);
 const CLAUSE_TYPES = new Set(['elseif_clause', 'else_clause']);
 const CONTAINER_TYPES = new Set([
-  'label_block',
-  'body',
-  'unclosed_body',
-  'structure_body',
-  'field_initializer',
-  ...BLOCK_TYPES,
-  ...CLAUSE_TYPES,
+    'label_block',
+    'body',
+    'unclosed_body',
+    'structure_body',
+    'field_initializer',
+    ...BLOCK_TYPES,
+    ...CLAUSE_TYPES,
 ]);
 const HEADER = /^( *)(?:\w+: )?\((\w+) \[(\d+), \d+\] - \[(\d+), (\d+)\]/;
 const COMMENT = /\((?:block_comment|preproc_comment) \[(\d+), \d+\] - \[(\d+), (\d+)\]/g;
 
 function lastRow(range: RegExpMatchArray, first: number): number {
-  const [startRow, endRow, endColumn] = [0, 1, 2].map((offset) => Number(range[first + offset]));
-  return endColumn === 0 && endRow > startRow ? endRow - 1 : endRow;
+    const [startRow, endRow, endColumn] = [0, 1, 2].map((offset) => Number(range[first + offset]));
+    return endColumn === 0 && endRow > startRow ? endRow - 1 : endRow;
 }
 
 function lineNodes(tree: string): Tree {
-  const nodes: Node[] = [];
-  const blocks: Block[] = [];
-  const containers: { depth: number; block: Block | null }[] = [{ depth: 0, block: null }];
-  let current: { depth: number; node: Node } | null = null;
-  for (const line of tree.split('\n').slice(1).map((text) => text.replace(/\)+$/, ''))) {
-    const header = HEADER.exec(line);
-    const depth = line.search(/\S/);
-    if (current !== null && depth > current.depth) {
-      current.node.text += `\n${line.slice(current.depth)}`;
-      continue;
+    const nodes: Node[] = [];
+    const blocks: Block[] = [];
+    const containers: { depth: number; block: Block | null }[] = [{ depth: 0, block: null }];
+    let current: { depth: number; node: Node } | null = null;
+    for (const line of tree.split('\n').slice(1).map((text) => text.replace(/\)+$/, ''))) {
+        const header = HEADER.exec(line);
+        const depth = line.search(/\S/);
+        if (current !== null && depth > current.depth) {
+            current.node.text += `\n${line.slice(current.depth)}`;
+            continue;
+        }
+        current = null;
+        if (header === null) {
+            continue;
+        }
+        while (containers[containers.length - 1].depth >= depth) {
+            containers.pop();
+        }
+        if (CONTAINER_TYPES.has(header[2])) {
+            const enclosing = containers.findLast((container) => container.block !== null)?.block ??
+                null;
+            const block = BLOCK_TYPES.has(header[2])
+                ? { rows: [Number(header[3]), lastRow(header, 3)], parent: enclosing }
+                : null;
+            if (block !== null) {
+                blocks.push(block);
+            }
+            if (CLAUSE_TYPES.has(header[2])) {
+                enclosing?.rows.push(Number(header[3]));
+            }
+            containers.push({ depth, block });
+            continue;
+        }
+        const node = {
+            type: header[2],
+            startRow: Number(header[3]),
+            endRow: lastRow(header, 3),
+            text: line.slice(depth).replace(/^label: /, ''),
+        };
+        nodes.push(node);
+        current = { depth, node };
     }
-    current = null;
-    if (header === null) {
-      continue;
-    }
-    while (containers[containers.length - 1].depth >= depth) {
-      containers.pop();
-    }
-    if (CONTAINER_TYPES.has(header[2])) {
-      const enclosing = containers.findLast((container) => container.block !== null)?.block ??
-        null;
-      const block = BLOCK_TYPES.has(header[2])
-        ? { rows: [Number(header[3]), lastRow(header, 3)], parent: enclosing }
-        : null;
-      if (block !== null) {
-        blocks.push(block);
-      }
-      if (CLAUSE_TYPES.has(header[2])) {
-        enclosing?.rows.push(Number(header[3]));
-      }
-      containers.push({ depth, block });
-      continue;
-    }
-    const node = {
-      type: header[2],
-      startRow: Number(header[3]),
-      endRow: lastRow(header, 3),
-      text: line.slice(depth).replace(/^label: /, ''),
-    };
-    nodes.push(node);
-    current = { depth, node };
-  }
-  const comments = [...tree.matchAll(COMMENT)].map((match) => ({
-    startRow: Number(match[1]),
-    endRow: lastRow(match, 1),
-  }));
-  return { nodes, blocks, comments };
+    const comments = [...tree.matchAll(COMMENT)].map((match) => ({
+        startRow: Number(match[1]),
+        endRow: lastRow(match, 1),
+    }));
+    return { nodes, blocks, comments };
 }
 
 function parseAll(grammar: string, sources: string[]): Tree[] {
-  const trees = treeText(parseFiles(grammar, 'typing', sources).output)
-    .split(/^(?=\(source_file )/m)
-    .filter((tree) => tree.startsWith('(source_file '));
-  assert.deepStrictEqual(trees.length, sources.length, `${grammar}: one tree per variant`);
-  return trees.map(lineNodes);
+    const trees = treeText(parseFiles(grammar, 'typing', sources).output)
+        .split(/^(?=\(source_file )/m)
+        .filter((tree) => tree.startsWith('(source_file '));
+    assert.deepStrictEqual(trees.length, sources.length, `${grammar}: one tree per variant`);
+    return trees.map(lineNodes);
 }
 
 function delimiterRows(blocks: Block[], row: number): number[] {
-  const rows: number[] = [];
-  for (const block of blocks.filter((candidate) => candidate.rows.includes(row))) {
-    for (let current: Block | null = block; current !== null; current = current.parent) {
-      rows.push(...current.rows);
+    const rows: number[] = [];
+    for (const block of blocks.filter((candidate) => candidate.rows.includes(row))) {
+        for (let current: Block | null = block; current !== null; current = current.parent) {
+            rows.push(...current.rows);
+        }
     }
-  }
-  return rows;
+    return rows;
 }
 
 function enclosingRows(blocks: Block[], row: number): number[] {
-  const rows: number[] = [];
-  for (
-    const block of blocks.filter((candidate) =>
-      candidate.rows[0] <= row && row <= candidate.rows[1]
-    )
-  ) {
-    for (let current: Block | null = block; current !== null; current = current.parent) {
-      rows.push(...current.rows);
+    const rows: number[] = [];
+    for (
+        const block of blocks.filter((candidate) =>
+            candidate.rows[0] <= row && row <= candidate.rows[1]
+        )
+    ) {
+        for (let current: Block | null = block; current !== null; current = current.parent) {
+            rows.push(...current.rows);
+        }
     }
-  }
-  return rows;
+    return rows;
 }
 
 function joiner(grammar: string, tree: Tree, lines: string[]): (index: number) => boolean {
-  const language = manifest.languages.find((candidate) => candidate.grammar === grammar);
-  const lexing = language === undefined ? undefined : LEXING[language.dialect];
-  if (lexing === undefined) {
-    throw new Error(`no scanner settings for ${grammar}`);
-  }
-  const join = lexing.spacedJoins ? /\\[ \t\f\v\r]*$/ : /\\\r?$/;
-  return (index: number) =>
-    join.test(lines[index]) &&
-    (lexing.lineJoins ||
-      tree.nodes.some((node) =>
-        PREPROCESSOR_TYPES.has(node.type) && node.startRow <= index && index <= node.endRow
-      ));
+    const language = manifest.languages.find((candidate) => candidate.grammar === grammar);
+    const lexing = language === undefined ? undefined : LEXING[language.dialect];
+    if (lexing === undefined) {
+        throw new Error(`no scanner settings for ${grammar}`);
+    }
+    const join = lexing.spacedJoins ? /\\[ \t\f\v\r]*$/ : /\\\r?$/;
+    return (index: number) =>
+        join.test(lines[index]) &&
+        (lexing.lineJoins ||
+            tree.nodes.some((node) =>
+                PREPROCESSOR_TYPES.has(node.type) && node.startRow <= index && index <= node.endRow
+            ));
 }
 
 function joinedStart(grammar: string, tree: Tree, lines: string[], row: number): number {
-  const joins = joiner(grammar, tree, lines);
-  let start = row;
-  while (start > 0 && joins(start - 1)) {
-    start--;
-  }
-  return start;
+    const joins = joiner(grammar, tree, lines);
+    let start = row;
+    while (start > 0 && joins(start - 1)) {
+        start--;
+    }
+    return start;
 }
 
 function reach(grammar: string, tree: Tree, lines: string[], row: number): number {
-  const joins = joiner(grammar, tree, lines);
-  let end = row;
-  let extended = true;
-  while (extended) {
-    extended = false;
-    while (end + 1 < lines.length && joins(end)) {
-      end++;
-      extended = true;
+    const joins = joiner(grammar, tree, lines);
+    let end = row;
+    let extended = true;
+    while (extended) {
+        extended = false;
+        while (end + 1 < lines.length && joins(end)) {
+            end++;
+            extended = true;
+        }
+        const comment = tree.comments.find((range) => range.startRow <= end && range.endRow > end);
+        if (comment !== undefined) {
+            const closing = lines.findIndex((line, index) =>
+                index > comment.startRow && line.includes('*/')
+            );
+            end = closing === -1 ? lines.length - 1 : closing;
+            extended = true;
+        }
     }
-    const comment = tree.comments.find((range) => range.startRow <= end && range.endRow > end);
-    if (comment !== undefined) {
-      const closing = lines.findIndex((line, index) =>
-        index > comment.startRow && line.includes('*/')
-      );
-      end = closing === -1 ? lines.length - 1 : closing;
-      extended = true;
-    }
-  }
-  return end;
+    return end;
 }
 
 function logicalRows(grammar: string, tree: Tree, lines: string[], rows: number[]): number[] {
-  return [
-    ...new Set(rows.flatMap((row) => {
-      const start = joinedStart(grammar, tree, lines, row);
-      return Array.from(
-        { length: reach(grammar, tree, lines, row) - start + 1 },
-        (_, offset) => start + offset,
-      );
-    })),
-  ];
+    return [
+        ...new Set(rows.flatMap((row) => {
+            const start = joinedStart(grammar, tree, lines, row);
+            return Array.from(
+                { length: reach(grammar, tree, lines, row) - start + 1 },
+                (_, offset) => start + offset,
+            );
+        })),
+    ];
 }
 
 function outside(nodes: Node[], first: number, last: number, partners: number[]): string[] {
-  return nodes
-    .filter((node) => node.endRow < first || node.startRow > last)
-    .filter((node) => !partners.includes(node.startRow))
-    .map((node) => node.text);
+    return nodes
+        .filter((node) => node.endRow < first || node.startRow > last)
+        .filter((node) => !partners.includes(node.startRow))
+        .map((node) => node.text);
 }
 
 interface Variant {
-  row: number;
-  typed: string;
-  source: string;
+    row: number;
+    typed: string;
+    source: string;
 }
 
 function variants(text: string): Variant[] {
-  const lines = text.split('\n');
-  const found: Variant[] = [];
-  for (const [row, line] of lines.entries()) {
-    for (let length = 0; length < line.length; length++) {
-      const typed = line.slice(0, length);
-      const copy = [...lines];
-      copy[row] = typed;
-      found.push({ row, typed, source: copy.join('\n') });
+    const lines = text.split('\n');
+    const found: Variant[] = [];
+    for (const [row, line] of lines.entries()) {
+        for (let length = 0; length < line.length; length++) {
+            const typed = line.slice(0, length);
+            const copy = [...lines];
+            copy[row] = typed;
+            found.push({ row, typed, source: copy.join('\n') });
+        }
     }
-  }
-  return found;
+    return found;
 }
 
 function typingFailures(grammar: string, label: string, text: string): string[] {
-  const typing = variants(text);
-  const [baseline, ...parsed] = parseAll(grammar, [
-    text,
-    ...typing.map((variant) => variant.source),
-  ]);
-  const failures: string[] = [];
-  const lines = text.split('\n');
-  for (const [index, { row, typed, source }] of typing.entries()) {
-    if (SYNTAX_DIRECTIVE.test(lines[row])) {
-      continue;
+    const typing = variants(text);
+    const [baseline, ...parsed] = parseAll(grammar, [
+        text,
+        ...typing.map((variant) => variant.source),
+    ]);
+    const failures: string[] = [];
+    const lines = text.split('\n');
+    for (const [index, { row, typed, source }] of typing.entries()) {
+        if (SYNTAX_DIRECTIVE.test(lines[row])) {
+            continue;
+        }
+        const touching = baseline.nodes.filter((node) =>
+            node.startRow <= row && row <= node.endRow
+        );
+        const typedLines = source.split('\n');
+        const first = Math.min(
+            row,
+            ...touching.map((node) => node.startRow),
+            joinedStart(grammar, baseline, lines, row),
+            joinedStart(grammar, parsed[index], typedLines, row),
+        );
+        const last = Math.max(
+            row,
+            ...touching.map((node) => node.endRow),
+            reach(grammar, baseline, lines, row),
+            reach(grammar, parsed[index], typedLines, row),
+        );
+        const typedRows = logicalRows(grammar, baseline, lines, [row]);
+        const delimiters = logicalRows(
+            grammar,
+            baseline,
+            lines,
+            typedRows.flatMap((typedRow) => delimiterRows(baseline.blocks, typedRow)),
+        );
+        const partners = delimiters.length === 0 ? delimiters : [
+            ...delimiters,
+            ...logicalRows(
+                grammar,
+                parsed[index],
+                typedLines,
+                typedRows.flatMap((typedRow) => enclosingRows(parsed[index].blocks, typedRow)),
+            ),
+        ];
+        const nodes = parsed[index].nodes;
+        const leaked = nodes.some((node) =>
+            node.startRow <= last && node.endRow >= first &&
+            (node.startRow < first || node.endRow > last)
+        );
+        if (
+            leaked ||
+            outside(baseline.nodes, first, last, partners).join('\n') !==
+                outside(nodes, first, last, partners).join('\n')
+        ) {
+            failures.push(`${grammar} ${label} line ${row + 1}: ${JSON.stringify(typed)}`);
+        }
     }
-    const touching = baseline.nodes.filter((node) => node.startRow <= row && row <= node.endRow);
-    const typedLines = source.split('\n');
-    const first = Math.min(
-      row,
-      ...touching.map((node) => node.startRow),
-      joinedStart(grammar, baseline, lines, row),
-      joinedStart(grammar, parsed[index], typedLines, row),
-    );
-    const last = Math.max(
-      row,
-      ...touching.map((node) => node.endRow),
-      reach(grammar, baseline, lines, row),
-      reach(grammar, parsed[index], typedLines, row),
-    );
-    const typedRows = logicalRows(grammar, baseline, lines, [row]);
-    const delimiters = logicalRows(
-      grammar,
-      baseline,
-      lines,
-      typedRows.flatMap((typedRow) => delimiterRows(baseline.blocks, typedRow)),
-    );
-    const partners = delimiters.length === 0 ? delimiters : [
-      ...delimiters,
-      ...logicalRows(
-        grammar,
-        parsed[index],
-        typedLines,
-        typedRows.flatMap((typedRow) => enclosingRows(parsed[index].blocks, typedRow)),
-      ),
-    ];
-    const nodes = parsed[index].nodes;
-    const leaked = nodes.some((node) =>
-      node.startRow <= last && node.endRow >= first && (node.startRow < first || node.endRow > last)
-    );
-    if (
-      leaked ||
-      outside(baseline.nodes, first, last, partners).join('\n') !==
-        outside(nodes, first, last, partners).join('\n')
-    ) {
-      failures.push(`${grammar} ${label} line ${row + 1}: ${JSON.stringify(typed)}`);
-    }
-  }
-  return failures;
+    return failures;
 }
 
 function corpusExamples(language: Language): [string, string][] {
-  const examples: [string, string][] = [];
-  for (const source of [...sourcesOf(language), language.grammar]) {
-    const directory = join(ROOT, 'test', 'corpus', source);
-    for (const name of filesUnder(directory).filter((file) => file.endsWith('.txt'))) {
-      const blocks = readFileSync(join(directory, name), 'utf8').split(/^={3,}\n(.*)\n={3,}\n/m);
-      for (let index = 1; index + 1 < blocks.length; index += 2) {
-        const input = blocks[index + 1].split(/^-{3,}\n/m)[0].replace(/^\n/, '').replace(
-          /\n+$/,
-          '',
-        );
-        examples.push([`${source}/${name}: ${blocks[index]}`, `${input}\nnop\n`]);
-      }
+    const examples: [string, string][] = [];
+    for (const source of [...sourcesOf(language), language.grammar]) {
+        const directory = join(ROOT, 'test', 'corpus', source);
+        for (const name of filesUnder(directory).filter((file) => file.endsWith('.txt'))) {
+            const blocks = readFileSync(join(directory, name), 'utf8').split(
+                /^={3,}\n(.*)\n={3,}\n/m,
+            );
+            for (let index = 1; index + 1 < blocks.length; index += 2) {
+                const input = blocks[index + 1].split(/^-{3,}\n/m)[0].replace(/^\n/, '').replace(
+                    /\n+$/,
+                    '',
+                );
+                examples.push([`${source}/${name}: ${blocks[index]}`, `${input}\nnop\n`]);
+            }
+        }
     }
-  }
-  return examples;
+    return examples;
 }
 
 test('a line being typed in a fixture never changes how any other line parses', () => {
-  const failures: string[] = [];
-  for (const { file, grammars } of fixtures()) {
-    const text = readFileSync(join(ROOT, file), 'utf8');
-    for (const grammar of grammars) {
-      failures.push(...typingFailures(grammar, file, text));
-      failures.push(
-        ...typingFailures(grammar, `${file} without a final newline`, text.replace(/\n$/, '')),
-      );
+    const failures: string[] = [];
+    for (const { file, grammars } of fixtures()) {
+        const text = readFileSync(join(ROOT, file), 'utf8');
+        for (const grammar of grammars) {
+            failures.push(...typingFailures(grammar, file, text));
+            failures.push(
+                ...typingFailures(
+                    grammar,
+                    `${file} without a final newline`,
+                    text.replace(/\n$/, ''),
+                ),
+            );
+        }
     }
-  }
-  assert.deepStrictEqual(failures, []);
+    assert.deepStrictEqual(failures, []);
 });
 
 const UNSUPPORTED: [string, string[]][] = [
-  ['mov eax, dword ptr [rbx]', ['asm_auto', 'asm_x86_gas']],
+    ['mov eax, dword ptr [rbx]', ['asm_auto', 'asm_x86_gas']],
 ];
 
 test('syntax the grammars do not parse yet keeps its errors on its own lines', () => {
-  const failures: string[] = [];
-  for (const [snippet, grammars] of UNSUPPORTED) {
-    const text = `${snippet}\nnop\n`;
-    const nopRow = snippet.split('\n').length;
-    for (const grammar of grammars) {
-      const [{ nodes }] = parseAll(grammar, [text]);
-      const onNopRow = nodes.filter((node) => node.startRow <= nopRow && node.endRow >= nopRow);
-      if (
-        onNopRow.length !== 1 || onNopRow[0].type !== 'instruction' ||
-        onNopRow[0].startRow !== nopRow
-      ) {
-        failures.push(`${grammar}: ${JSON.stringify(snippet)} reaches the next line`);
-      }
-      failures.push(...typingFailures(grammar, JSON.stringify(snippet), text));
+    const failures: string[] = [];
+    for (const [snippet, grammars] of UNSUPPORTED) {
+        const text = `${snippet}\nnop\n`;
+        const nopRow = snippet.split('\n').length;
+        for (const grammar of grammars) {
+            const [{ nodes }] = parseAll(grammar, [text]);
+            const onNopRow = nodes.filter((node) =>
+                node.startRow <= nopRow && node.endRow >= nopRow
+            );
+            if (
+                onNopRow.length !== 1 || onNopRow[0].type !== 'instruction' ||
+                onNopRow[0].startRow !== nopRow
+            ) {
+                failures.push(`${grammar}: ${JSON.stringify(snippet)} reaches the next line`);
+            }
+            failures.push(...typingFailures(grammar, JSON.stringify(snippet), text));
+        }
     }
-  }
-  assert.deepStrictEqual(failures, []);
+    assert.deepStrictEqual(failures, []);
 });
 
 const STRAY_LABELS: [string, string[]][] = [
-  ['add x0, x0, :lo12:.LC0 // c', ['asm_arm_apple']],
-  ['ldr x1, [x0, :got_lo12:sym]', ['asm_arm_apple']],
-  ['mov rax, qword ptr fs:[0x28]', ['asm_auto', 'asm_x86_gas']],
+    ['add x0, x0, :lo12:.LC0 // c', ['asm_arm_apple']],
+    ['ldr x1, [x0, :got_lo12:sym]', ['asm_arm_apple']],
+    ['mov rax, qword ptr fs:[0x28]', ['asm_auto', 'asm_x86_gas']],
 ];
 
 test('an operand the grammars do not parse yet never starts a label in the middle of its line', () => {
-  const failures: string[] = [];
-  for (const [snippet, grammars] of STRAY_LABELS) {
-    for (const grammar of grammars) {
-      const tree = treeText(parseFiles(grammar, 'stray', [`f:\n    ${snippet}\n    ret\n`]).output);
-      const blocks = tree.match(/\(label_block /g) ?? [];
-      if (blocks.length !== 1) {
-        failures.push(
-          `${grammar}: ${JSON.stringify(snippet)} starts ${blocks.length - 1} more label block(s)`,
-        );
-      }
+    const failures: string[] = [];
+    for (const [snippet, grammars] of STRAY_LABELS) {
+        for (const grammar of grammars) {
+            const tree = treeText(
+                parseFiles(grammar, 'stray', [`f:\n    ${snippet}\n    ret\n`]).output,
+            );
+            const blocks = tree.match(/\(label_block /g) ?? [];
+            if (blocks.length !== 1) {
+                failures.push(
+                    `${grammar}: ${JSON.stringify(snippet)} starts ${
+                        blocks.length - 1
+                    } more label block(s)`,
+                );
+            }
+        }
     }
-  }
-  assert.deepStrictEqual(failures, []);
+    assert.deepStrictEqual(failures, []);
 });
 
 const OPEN_LINES: Record<string, string[]> = {
-  gas: [
-    '',
-    'mov',
-    'mov r0',
-    'mov r0,',
-    'mov r0, 1 +',
-    'mov r0, -',
-    'mov r0, (',
-    'mov r0, (a',
-    'mov r0, (a +',
-    'mov r0, a@',
-    '.size f, .-',
-    '.asciz "a',
-    '.asciz "a\\',
-    'x:',
-    '#define X',
-  ],
-  nasm: [
-    '',
-    'mov',
-    'mov r0',
-    'mov r0,',
-    'mov r0, 1 +',
-    'mov r0, -',
-    'mov r0, (',
-    'mov r0, (a',
-    'mov r0, (a +',
-    "db 'a",
-    'db "a',
-    'db `a',
-    'db `a\\',
-    'x:',
-    'dd $',
-    'dd $-',
-    'dd $$',
-    'mov eax, 7 %',
-    'dd 1 ?',
-    'at',
-    'at a',
-    'at a,',
-    'at a, dd',
-  ],
-  arm: ['mov r0, #', 'mov r0, #(', 'add r0, r1, lsl', 'add r0, r1, lsl #'],
-  x86: ['movq $', 'movq $(', 'movq %', '.type f, @'],
+    gas: [
+        '',
+        'mov',
+        'mov r0',
+        'mov r0,',
+        'mov r0, 1 +',
+        'mov r0, -',
+        'mov r0, (',
+        'mov r0, (a',
+        'mov r0, (a +',
+        'mov r0, a@',
+        '.size f, .-',
+        '.asciz "a',
+        '.asciz "a\\',
+        'x:',
+        '#define X',
+    ],
+    nasm: [
+        '',
+        'mov',
+        'mov r0',
+        'mov r0,',
+        'mov r0, 1 +',
+        'mov r0, -',
+        'mov r0, (',
+        'mov r0, (a',
+        'mov r0, (a +',
+        "db 'a",
+        'db "a',
+        'db `a',
+        'db `a\\',
+        'x:',
+        'dd $',
+        'dd $-',
+        'dd $$',
+        'mov eax, 7 %',
+        'dd 1 ?',
+        'at',
+        'at a',
+        'at a,',
+        'at a, dd',
+    ],
+    arm: ['mov r0, #', 'mov r0, #(', 'add r0, r1, lsl', 'add r0, r1, lsl #'],
+    x86: ['movq $', 'movq $(', 'movq %', '.type f, @'],
 };
 
 const OPENING_LINES: Record<string, string[]> = {
-  gas: [],
-  nasm: ['struc', 'struc a', 'struc a,', 'istruc', 'istruc a'],
+    gas: [],
+    nasm: ['struc', 'struc a', 'struc a,', 'istruc', 'istruc a'],
 };
 
 function openLines(language: Language, extra: string[] = []): string[] {
-  const contexts = [
-    ...OPEN_LINES[language.syntax],
-    ...(language.syntax === 'gas' ? language.archs.flatMap((arch) => OPEN_LINES[arch]) : []),
-    ...extra,
-  ];
-  return [
-    ...new Set(
-      contexts.flatMap((context) =>
-        PRINTABLE.flatMap((char) => [context + char, `${context} ${char}`])
-      ),
-    ),
-  ];
+    const contexts = [
+        ...OPEN_LINES[language.syntax],
+        ...(language.syntax === 'gas' ? language.archs.flatMap((arch) => OPEN_LINES[arch]) : []),
+        ...extra,
+    ];
+    return [
+        ...new Set(
+            contexts.flatMap((context) =>
+                PRINTABLE.flatMap((char) => [context + char, `${context} ${char}`])
+            ),
+        ),
+    ];
 }
 
 test('any character typed into an open construct keeps its effects on its own line', () => {
-  const failures: string[] = [];
-  for (const language of manifest.languages) {
-    const lines = openLines(language, OPENING_LINES[language.syntax]);
-    const parsed = parseAll(language.grammar, lines.map((line) => `${line}\nnop\n`));
-    for (const [index, tree] of parsed.entries()) {
-      const { nodes } = tree;
-      const spansByDesign = reach(language.grammar, tree, [lines[index], 'nop', ''], 0) > 0;
-      const onNopRow = nodes.filter((node) => node.startRow <= 1 && node.endRow >= 1);
-      if (
-        !spansByDesign &&
-        (onNopRow.length !== 1 || onNopRow[0].type !== 'instruction' || onNopRow[0].startRow !== 1)
-      ) {
-        failures.push(`${language.grammar}: ${JSON.stringify(lines[index])}`);
-      }
+    const failures: string[] = [];
+    for (const language of manifest.languages) {
+        const lines = openLines(language, OPENING_LINES[language.syntax]);
+        const parsed = parseAll(language.grammar, lines.map((line) => `${line}\nnop\n`));
+        for (const [index, tree] of parsed.entries()) {
+            const { nodes } = tree;
+            const spansByDesign = reach(language.grammar, tree, [lines[index], 'nop', ''], 0) > 0;
+            const onNopRow = nodes.filter((node) => node.startRow <= 1 && node.endRow >= 1);
+            if (
+                !spansByDesign &&
+                (onNopRow.length !== 1 || onNopRow[0].type !== 'instruction' ||
+                    onNopRow[0].startRow !== 1)
+            ) {
+                failures.push(`${language.grammar}: ${JSON.stringify(lines[index])}`);
+            }
+        }
     }
-  }
-  assert.deepStrictEqual(failures, []);
+    assert.deepStrictEqual(failures, []);
 });
 
 const OPEN_BLOCKS: Record<string, string> = {
-  gas: '.if A\n    .rept 2\n    nop\n    ',
-  nasm: 'f:\n    nop\n    ',
+    gas: '.if A\n    .rept 2\n    nop\n    ',
+    nasm: 'f:\n    nop\n    ',
 };
 
 test('any character typed on the last line of a file keeps the blocks around it', () => {
-  const failures: string[] = [];
-  for (const language of manifest.languages) {
-    const prefix = OPEN_BLOCKS[language.syntax];
-    const row = prefix.split('\n').length - 1;
-    const lines = openLines(language);
-    const [baseline, ...parsed] = parseAll(language.grammar, [
-      prefix,
-      ...lines.map((line) => `${prefix}${line}`),
-    ]);
-    const before = (tree: Tree) =>
-      JSON.stringify([
-        tree.nodes.filter((node) => node.endRow < row),
-        tree.blocks.map((block) => block.rows[0]),
-      ]);
-    for (const [index, tree] of parsed.entries()) {
-      if (before(tree) !== before(baseline)) {
-        failures.push(`${language.grammar}: ${JSON.stringify(lines[index])}`);
-      }
+    const failures: string[] = [];
+    for (const language of manifest.languages) {
+        const prefix = OPEN_BLOCKS[language.syntax];
+        const row = prefix.split('\n').length - 1;
+        const lines = openLines(language);
+        const [baseline, ...parsed] = parseAll(language.grammar, [
+            prefix,
+            ...lines.map((line) => `${prefix}${line}`),
+        ]);
+        const before = (tree: Tree) =>
+            JSON.stringify([
+                tree.nodes.filter((node) => node.endRow < row),
+                tree.blocks.map((block) => block.rows[0]),
+            ]);
+        for (const [index, tree] of parsed.entries()) {
+            if (before(tree) !== before(baseline)) {
+                failures.push(`${language.grammar}: ${JSON.stringify(lines[index])}`);
+            }
+        }
     }
-  }
-  assert.deepStrictEqual(failures, []);
+    assert.deepStrictEqual(failures, []);
 });
 
 test('a line being typed in a corpus example never changes how any other line parses', () => {
-  const failures: string[] = [];
-  for (const language of manifest.languages) {
-    for (const [label, text] of corpusExamples(language)) {
-      failures.push(...typingFailures(language.grammar, label, text));
+    const failures: string[] = [];
+    for (const language of manifest.languages) {
+        for (const [label, text] of corpusExamples(language)) {
+            failures.push(...typingFailures(language.grammar, label, text));
+        }
     }
-  }
-  assert.deepStrictEqual(failures, []);
+    assert.deepStrictEqual(failures, []);
 });

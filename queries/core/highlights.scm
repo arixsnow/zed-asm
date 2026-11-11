@@ -5,7 +5,7 @@
 (mnemonic) @keyword
 
 (label
-  name: (identifier) @function.definition)
+    name: (identifier) @function.definition)
 
 (local_identifier) @label
 
@@ -18,35 +18,35 @@
 (line_comment) @comment
 
 [
-  "+"
-  "-"
-  "*"
-  "/"
-  "%"
-  "<<"
-  ">>"
-  "&"
-  "|"
-  "^"
-  "~"
-  "!"
-  "&&"
-  "||"
-  "=="
-  "!="
-  "<>"
-  "<"
-  "<="
-  ">"
-  ">="
+    "+"
+    "-"
+    "*"
+    "/"
+    "%"
+    "<<"
+    ">>"
+    "&"
+    "|"
+    "^"
+    "~"
+    "!"
+    "&&"
+    "||"
+    "=="
+    "!="
+    "<>"
+    "<"
+    "<="
+    ">"
+    ">="
 ] @operator
 
 [
-  "("
-  ")"
+    "("
+    ")"
 ] @punctuation.bracket
 
 [
-  ","
-  ":"
+    ","
+    ":"
 ] @punctuation.delimiter

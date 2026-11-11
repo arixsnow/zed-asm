@@ -9,142 +9,144 @@ import { parseFiles, treeText } from '../lib/parse.ts';
 type Family = 'gnu' | 'darwin' | 'nasm';
 
 const FAMILIES: Record<string, Family> = {
-  asm_auto: 'gnu',
-  asm_arm: 'gnu',
-  asm_arm_apple: 'darwin',
-  asm_x86_gas: 'gnu',
-  asm_x86_nasm: 'nasm',
+    asm_auto: 'gnu',
+    asm_arm: 'gnu',
+    asm_arm_apple: 'darwin',
+    asm_x86_gas: 'gnu',
+    asm_x86_nasm: 'nasm',
 };
 
 const PROBES: [string, Record<Family, string>][] = [
-  ['2 + 3 << 1', { gnu: '2 + (3 << 1)', darwin: '(2 + 3) << 1', nasm: '(2 + 3) << 1' }],
-  ['6 & 3 + 1', { gnu: '(6 & 3) + 1', darwin: '6 & (3 + 1)', nasm: '6 & (3 + 1)' }],
-  ['1 | 2 ^ 3', { gnu: '(1 | 2) ^ 3', darwin: '(1 | 2) ^ 3', nasm: '1 | (2 ^ 3)' }],
-  ['1 | 2 & 0', { gnu: '(1 | 2) & 0', darwin: '(1 | 2) & 0', nasm: '1 | (2 & 0)' }],
-  ['2 == 1 + 1', { gnu: '2 == (1 + 1)', darwin: '2 == (1 + 1)', nasm: '2 == (1 + 1)' }],
-  ['1 || 1 && 0', { gnu: '1 || (1 && 0)', darwin: '(1 || 1) && 0', nasm: '1 || (1 && 0)' }],
-  ['1 & 2 == 2', { gnu: '(1 & 2) == 2', darwin: '1 & (2 == 2)', nasm: '(1 & 2) == 2' }],
-  ['4 >> 1 - 1', { gnu: '(4 >> 1) - 1', darwin: '4 >> (1 - 1)', nasm: '4 >> (1 - 1)' }],
-  ['3 ^ 1 + 1', { gnu: '(3 ^ 1) + 1', darwin: '3 ^ (1 + 1)', nasm: '3 ^ (1 + 1)' }],
-  ['7 % 4 * 2', { gnu: '(7 % 4) * 2', darwin: '(7 % 4) * 2', nasm: '(7 % 4) * 2' }],
-  ['2 * 3 | 1', { gnu: '(2 * 3) | 1', darwin: '(2 * 3) | 1', nasm: '(2 * 3) | 1' }],
-  ['2 << 1 * 3', { gnu: '(2 << 1) * 3', darwin: '2 << (1 * 3)', nasm: '2 << (1 * 3)' }],
-  [
-    '1 + 1 == 2 & 3',
-    { gnu: '(1 + 1) == (2 & 3)', darwin: '((1 + 1) == 2) & 3', nasm: '(1 + 1) == (2 & 3)' },
-  ],
+    ['2 + 3 << 1', { gnu: '2 + (3 << 1)', darwin: '(2 + 3) << 1', nasm: '(2 + 3) << 1' }],
+    ['6 & 3 + 1', { gnu: '(6 & 3) + 1', darwin: '6 & (3 + 1)', nasm: '6 & (3 + 1)' }],
+    ['1 | 2 ^ 3', { gnu: '(1 | 2) ^ 3', darwin: '(1 | 2) ^ 3', nasm: '1 | (2 ^ 3)' }],
+    ['1 | 2 & 0', { gnu: '(1 | 2) & 0', darwin: '(1 | 2) & 0', nasm: '1 | (2 & 0)' }],
+    ['2 == 1 + 1', { gnu: '2 == (1 + 1)', darwin: '2 == (1 + 1)', nasm: '2 == (1 + 1)' }],
+    ['1 || 1 && 0', { gnu: '1 || (1 && 0)', darwin: '(1 || 1) && 0', nasm: '1 || (1 && 0)' }],
+    ['1 & 2 == 2', { gnu: '(1 & 2) == 2', darwin: '1 & (2 == 2)', nasm: '(1 & 2) == 2' }],
+    ['4 >> 1 - 1', { gnu: '(4 >> 1) - 1', darwin: '4 >> (1 - 1)', nasm: '4 >> (1 - 1)' }],
+    ['3 ^ 1 + 1', { gnu: '(3 ^ 1) + 1', darwin: '3 ^ (1 + 1)', nasm: '3 ^ (1 + 1)' }],
+    ['7 % 4 * 2', { gnu: '(7 % 4) * 2', darwin: '(7 % 4) * 2', nasm: '(7 % 4) * 2' }],
+    ['2 * 3 | 1', { gnu: '(2 * 3) | 1', darwin: '(2 * 3) | 1', nasm: '(2 * 3) | 1' }],
+    ['2 << 1 * 3', { gnu: '(2 << 1) * 3', darwin: '2 << (1 * 3)', nasm: '2 << (1 * 3)' }],
+    [
+        '1 + 1 == 2 & 3',
+        { gnu: '(1 + 1) == (2 & 3)', darwin: '((1 + 1) == 2) & 3', nasm: '(1 + 1) == (2 & 3)' },
+    ],
 ];
 
 const GNU_ONLY: [string, string][] = [['1 ! 2 + 3', '(1 ! 2) + 3']];
 
 const NASM_ONLY: [string, string][] = [
-  ['1 || 0 ^^ 1', '1 || (0 ^^ 1)'],
-  ['1 ^^ 1 && 0', '1 ^^ (1 && 0)'],
-  ['1 | 2 ^^ 2', '(1 | 2) ^^ 2'],
-  ['2 && 3 = 3', '2 && (3 = 3)'],
-  ['2 = 1 + 1', '2 = (1 + 1)'],
-  ['1 < 2 <=> 0', '(1 < 2) <=> 0'],
-  ['1 <<< 2 + 1', '1 <<< (2 + 1)'],
-  ['16 >>> 2 - 1', '16 >>> (2 - 1)'],
-  ['8 // 2 * 3', '(8 // 2) * 3'],
-  ['1 + 7 %% 4', '1 + (7 %% 4)'],
-  ['0 || 1 ? 5 : 6', '(0 || 1) ? 5 : 6'],
-  ['1 + 2 ? 4 : 5', '(1 + 2) ? 4 : 5'],
-  ['1 ? 2 : 0 ? 3 : 4', '1 ? 2 : (0 ? 3 : 4)'],
-  ['1 ? 0 ? 5 : 6 : 7', '1 ? (0 ? 5 : 6) : 7'],
+    ['1 || 0 ^^ 1', '1 || (0 ^^ 1)'],
+    ['1 ^^ 1 && 0', '1 ^^ (1 && 0)'],
+    ['1 | 2 ^^ 2', '(1 | 2) ^^ 2'],
+    ['2 && 3 = 3', '2 && (3 = 3)'],
+    ['2 = 1 + 1', '2 = (1 + 1)'],
+    ['1 < 2 <=> 0', '(1 < 2) <=> 0'],
+    ['1 <<< 2 + 1', '1 <<< (2 + 1)'],
+    ['16 >>> 2 - 1', '16 >>> (2 - 1)'],
+    ['8 // 2 * 3', '(8 // 2) * 3'],
+    ['1 + 7 %% 4', '1 + (7 %% 4)'],
+    ['0 || 1 ? 5 : 6', '(0 || 1) ? 5 : 6'],
+    ['1 + 2 ? 4 : 5', '(1 + 2) ? 4 : 5'],
+    ['1 ? 2 : 0 ? 3 : 4', '1 ? 2 : (0 ? 3 : 4)'],
+    ['1 ? 0 ? 5 : 6 : 7', '1 ? (0 ? 5 : 6) : 7'],
 ];
 
 interface Node {
-  type: string;
-  field: string;
-  start: number;
-  end: number;
-  children: Node[];
+    type: string;
+    field: string;
+    start: number;
+    end: number;
+    children: Node[];
 }
 
 const HEADER = /^( *)(?:(\w+): )?\((\w+) \[0, (\d+)\] - \[0, (\d+)\]/;
 
 function readTree(tree: string): Node {
-  const root: Node = { type: 'root', field: '', start: 0, end: 0, children: [] };
-  const stack: [number, Node][] = [[-1, root]];
-  for (const line of tree.split('\n')) {
-    const header = HEADER.exec(line);
-    if (header === null) {
-      continue;
+    const root: Node = { type: 'root', field: '', start: 0, end: 0, children: [] };
+    const stack: [number, Node][] = [[-1, root]];
+    for (const line of tree.split('\n')) {
+        const header = HEADER.exec(line);
+        if (header === null) {
+            continue;
+        }
+        const depth = header[1].length;
+        const node: Node = {
+            type: header[3],
+            field: header[2] ?? '',
+            start: Number(header[4]),
+            end: Number(header[5]),
+            children: [],
+        };
+        while (stack[stack.length - 1][0] >= depth) {
+            stack.pop();
+        }
+        stack[stack.length - 1][1].children.push(node);
+        stack.push([depth, node]);
     }
-    const depth = header[1].length;
-    const node: Node = {
-      type: header[3],
-      field: header[2] ?? '',
-      start: Number(header[4]),
-      end: Number(header[5]),
-      children: [],
-    };
-    while (stack[stack.length - 1][0] >= depth) {
-      stack.pop();
-    }
-    stack[stack.length - 1][1].children.push(node);
-    stack.push([depth, node]);
-  }
-  return root;
+    return root;
 }
 
 const GROUPED = new Set(['binary_expression', 'conditional_expression']);
 
 function grouping(node: Node, source: string, top = true): string {
-  if (!GROUPED.has(node.type)) {
-    return source.slice(node.start, node.end);
-  }
-  const child = (field: string) => node.children.find((each) => each.field === field) as Node;
-  let text: string;
-  if (node.type === 'conditional_expression') {
-    const parts = ['condition', 'consequence', 'alternative'].map((field) =>
-      grouping(child(field), source, false)
-    );
-    text = `${parts[0]} ? ${parts[1]} : ${parts[2]}`;
-  } else {
-    const left = child('left');
-    const right = child('right');
-    const operator = source.slice(left.end, right.start).trim();
-    text = `${grouping(left, source, false)} ${operator} ${grouping(right, source, false)}`;
-  }
-  return top ? text : `(${text})`;
+    if (!GROUPED.has(node.type)) {
+        return source.slice(node.start, node.end);
+    }
+    const child = (field: string) => node.children.find((each) => each.field === field) as Node;
+    let text: string;
+    if (node.type === 'conditional_expression') {
+        const parts = ['condition', 'consequence', 'alternative'].map((field) =>
+            grouping(child(field), source, false)
+        );
+        text = `${parts[0]} ? ${parts[1]} : ${parts[2]}`;
+    } else {
+        const left = child('left');
+        const right = child('right');
+        const operator = source.slice(left.end, right.start).trim();
+        text = `${grouping(left, source, false)} ${operator} ${grouping(right, source, false)}`;
+    }
+    return top ? text : `(${text})`;
 }
 
 function findGrouped(node: Node): Node | undefined {
-  if (GROUPED.has(node.type)) {
-    return node;
-  }
-  for (const child of node.children) {
-    const found = findGrouped(child);
-    if (found !== undefined) {
-      return found;
+    if (GROUPED.has(node.type)) {
+        return node;
     }
-  }
-  return undefined;
+    for (const child of node.children) {
+        const found = findGrouped(child);
+        if (found !== undefined) {
+            return found;
+        }
+    }
+    return undefined;
 }
 
 test("operators group as each language's assemblers group them", () => {
-  const failures: string[] = [];
-  for (const { grammar, syntax } of manifest.languages) {
-    const family = FAMILIES[grammar];
-    const directive = syntax === 'nasm' ? 'dd' : '.long';
-    const probes: [string, string][] = [
-      ...PROBES.map(([probe, expected]): [string, string] => [probe, expected[family]]),
-      ...(family === 'gnu' ? GNU_ONLY : []),
-      ...(family === 'nasm' ? NASM_ONLY : []),
-    ];
-    const sources = probes.map(([probe]) => `${directive} ${probe}\n`);
-    const trees = treeText(parseFiles(grammar, 'precedence', sources).output)
-      .split(/^(?=\(source_file )/m).filter((tree) => tree.startsWith('(source_file '));
-    assert.deepStrictEqual(trees.length, probes.length, `${grammar}: one tree per probe`);
-    for (const [index, [probe, expected]] of probes.entries()) {
-      const grouped = findGrouped(readTree(trees[index]));
-      const found = grouped === undefined ? 'no expression' : grouping(grouped, sources[index]);
-      if (found !== expected) {
-        failures.push(`${grammar}: ${probe} groups as ${found}, not ${expected}`);
-      }
+    const failures: string[] = [];
+    for (const { grammar, syntax } of manifest.languages) {
+        const family = FAMILIES[grammar];
+        const directive = syntax === 'nasm' ? 'dd' : '.long';
+        const probes: [string, string][] = [
+            ...PROBES.map(([probe, expected]): [string, string] => [probe, expected[family]]),
+            ...(family === 'gnu' ? GNU_ONLY : []),
+            ...(family === 'nasm' ? NASM_ONLY : []),
+        ];
+        const sources = probes.map(([probe]) => `${directive} ${probe}\n`);
+        const trees = treeText(parseFiles(grammar, 'precedence', sources).output)
+            .split(/^(?=\(source_file )/m).filter((tree) => tree.startsWith('(source_file '));
+        assert.deepStrictEqual(trees.length, probes.length, `${grammar}: one tree per probe`);
+        for (const [index, [probe, expected]] of probes.entries()) {
+            const grouped = findGrouped(readTree(trees[index]));
+            const found = grouped === undefined
+                ? 'no expression'
+                : grouping(grouped, sources[index]);
+            if (found !== expected) {
+                failures.push(`${grammar}: ${probe} groups as ${found}, not ${expected}`);
+            }
+        }
     }
-  }
-  assert.deepStrictEqual(failures, []);
+    assert.deepStrictEqual(failures, []);
 });

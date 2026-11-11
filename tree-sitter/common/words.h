@@ -2,7 +2,7 @@
 #define ASM_WORDS_H
 
 enum {
-  ASM_AARCH32_TYPE_ELEMENTS = 5,
+    ASM_AARCH32_TYPE_ELEMENTS = 5,
 };
 
 #define WORD_HASH_PRIME 0x01000193U
@@ -13,25 +13,25 @@ enum {
 #define WORD_VERTEX_SHIFT 32U
 
 enum WordKind {
-  KIND_CONDITIONS,
-  KIND_CPP_DIRECTIVES,
-  KIND_DECORATORS,
-  KIND_DEFAULT_FLAGS,
-  KIND_DIRECTIVES,
-  KIND_ENCODING_SUFFIXES,
-  KIND_INSTRUCTIONS,
-  KIND_LIST_WORDS,
-  KIND_MACHO_SECTION_TYPES,
-  KIND_OPERAND_WORDS,
-  KIND_PREDICATE_QUALIFIERS,
-  KIND_PREFIXES,
-  KIND_REGISTERS,
-  KIND_RELOCATIONS,
-  KIND_SHIFTS,
-  KIND_SUFFIX_RELOCATIONS,
-  KIND_SYNTAX_WORDS,
-  KIND_SYSTEM_REGISTERS,
-  KIND_VECTOR_CONDITIONS,
+    KIND_CONDITIONS,
+    KIND_CPP_DIRECTIVES,
+    KIND_DECORATORS,
+    KIND_DEFAULT_FLAGS,
+    KIND_DIRECTIVES,
+    KIND_ENCODING_SUFFIXES,
+    KIND_INSTRUCTIONS,
+    KIND_LIST_WORDS,
+    KIND_MACHO_SECTION_TYPES,
+    KIND_OPERAND_WORDS,
+    KIND_PREDICATE_QUALIFIERS,
+    KIND_PREFIXES,
+    KIND_REGISTERS,
+    KIND_RELOCATIONS,
+    KIND_SHIFTS,
+    KIND_SUFFIX_RELOCATIONS,
+    KIND_SYNTAX_WORDS,
+    KIND_SYSTEM_REGISTERS,
+    KIND_VECTOR_CONDITIONS,
 };
 
 #define SCOPE_AARCH64_GNU 0x01U
@@ -42,11 +42,11 @@ enum WordKind {
 #define SCOPE_GNU 0x20U
 
 struct WordRole {
-  TSSymbol symbol;
-  unsigned char kind;
-  unsigned char scope;
-  unsigned char flags;
-  unsigned char indexes;
+    TSSymbol symbol;
+    unsigned char kind;
+    unsigned char scope;
+    unsigned char flags;
+    unsigned char indexes;
 };
 
 #if defined(ASM_DIALECT_AUTO)
@@ -54,15 +54,15 @@ struct WordRole {
 #define WORD_SECOND_SEED 0x30f4c306U
 
 enum {
-  WORD_COUNT = 15315,
-  WORD_SIDE = 19144,
-  WORD_LENGTH = 36,
+    WORD_COUNT = 15315,
+    WORD_SIDE = 19144,
+    WORD_LENGTH = 36,
 };
 
 struct WordEntry {
-  const char *name;
-  uint16_t first;
-  unsigned char count;
+    const char *name;
+    uint16_t first;
+    unsigned char count;
 };
 
 static const struct WordRole WORD_ROLES[] = {
@@ -39820,15 +39820,15 @@ static const uint16_t WORD_GRAPH[] = {
 #define WORD_SECOND_SEED 0x30f4c306U
 
 enum {
-  WORD_COUNT = 6425,
-  WORD_SIDE = 8032,
-  WORD_LENGTH = 36,
+    WORD_COUNT = 6425,
+    WORD_SIDE = 8032,
+    WORD_LENGTH = 36,
 };
 
 struct WordEntry {
-  const char *name;
-  uint16_t first;
-  unsigned char count;
+    const char *name;
+    uint16_t first;
+    unsigned char count;
 };
 
 static const struct WordRole WORD_ROLES[] = {
@@ -54731,15 +54731,15 @@ static const uint16_t WORD_GRAPH[] = {
 #define WORD_SECOND_SEED 0x30f4c306U
 
 enum {
-  WORD_COUNT = 5938,
-  WORD_SIDE = 7423,
-  WORD_LENGTH = 30,
+    WORD_COUNT = 5938,
+    WORD_SIDE = 7423,
+    WORD_LENGTH = 30,
 };
 
 struct WordEntry {
-  const char *name;
-  uint16_t first;
-  unsigned char count;
+    const char *name;
+    uint16_t first;
+    unsigned char count;
 };
 
 static const struct WordRole WORD_ROLES[] = {
@@ -67884,15 +67884,15 @@ static const uint16_t WORD_GRAPH[] = {
 #define WORD_SECOND_SEED 0x249cb285U
 
 enum {
-  WORD_COUNT = 8135,
-  WORD_SIDE = 10169,
-  WORD_LENGTH = 36,
+    WORD_COUNT = 8135,
+    WORD_SIDE = 10169,
+    WORD_LENGTH = 36,
 };
 
 struct WordEntry {
-  const char *name;
-  uint16_t first;
-  unsigned char count;
+    const char *name;
+    uint16_t first;
+    unsigned char count;
 };
 
 static const struct WordRole WORD_ROLES[] = {
@@ -85952,15 +85952,15 @@ static const uint16_t WORD_GRAPH[] = {
 #define WORD_SECOND_SEED 0x30f4c306U
 
 enum {
-  WORD_COUNT = 3376,
-  WORD_SIDE = 4220,
-  WORD_LENGTH = 23,
+    WORD_COUNT = 3376,
+    WORD_SIDE = 4220,
+    WORD_LENGTH = 23,
 };
 
 struct WordEntry {
-  const char *name;
-  uint16_t first;
-  unsigned char count;
+    const char *name;
+    uint16_t first;
+    unsigned char count;
 };
 
 static const struct WordRole WORD_ROLES[] = {

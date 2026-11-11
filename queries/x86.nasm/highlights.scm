@@ -1,17 +1,17 @@
 ; SPDX-License-Identifier: MIT
 
 [
-  (prefix)
-  (operand_type)
-  (address_modifier)
-  "wrt"
-  "__?masm_ptr?__"
+    (prefix)
+    (operand_type)
+    (address_modifier)
+    "wrt"
+    "__?masm_ptr?__"
 ] @keyword
 
 (typed_operand
-  type: (identifier) @keyword)
+    type: (identifier) @keyword)
 
 [
-  (decorator)
-  (special_symbol)
+    (decorator)
+    (special_symbol)
 ] @attribute

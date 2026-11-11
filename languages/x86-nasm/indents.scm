@@ -3,27 +3,27 @@
 (unclosed_body) @indent
 
 (source_file
-  (label) @start) @indent
+    (label) @start) @indent
 
 (label_block
-  (label) @start) @indent
+    (label) @start) @indent
 
 (body
-  (label) @start) @indent
+    (label) @start) @indent
 
 (unclosed_body
-  (label) @start) @indent
+    (label) @start) @indent
 
 (source_file
-  (label) @outdent)
+    (label) @outdent)
 
 (label_block
-  (label) @outdent)
+    (label) @outdent)
 
 (body
-  (label) @outdent)
+    (label) @outdent)
 
 (unclosed_body
-  (label) @outdent)
+    (label) @outdent)
 
 (structure_body) @indent

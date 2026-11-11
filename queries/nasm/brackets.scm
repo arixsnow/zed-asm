@@ -1,7 +1,7 @@
 ; SPDX-License-Identifier: MIT
 
 ("{" @open
-  "}" @close)
+    "}" @close)
 
 ("%(" @open
-  ")" @close)
+    ")" @close)

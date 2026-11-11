@@ -3,7 +3,7 @@
 (mnemonic) @keyword
 
 (label
-  name: (identifier) @function.definition)
+    name: (identifier) @function.definition)
 
 (local_identifier) @label
 
@@ -16,37 +16,37 @@
 (line_comment) @comment
 
 [
-  "+"
-  "-"
-  "*"
-  "/"
-  "%"
-  "<<"
-  ">>"
-  "&"
-  "|"
-  "^"
-  "~"
-  "!"
-  "&&"
-  "||"
-  "=="
-  "!="
-  "<>"
-  "<"
-  "<="
-  ">"
-  ">="
+    "+"
+    "-"
+    "*"
+    "/"
+    "%"
+    "<<"
+    ">>"
+    "&"
+    "|"
+    "^"
+    "~"
+    "!"
+    "&&"
+    "||"
+    "=="
+    "!="
+    "<>"
+    "<"
+    "<="
+    ">"
+    ">="
 ] @operator
 
 [
-  "("
-  ")"
+    "("
+    ")"
 ] @punctuation.bracket
 
 [
-  ","
-  ":"
+    ","
+    ":"
 ] @punctuation.delimiter
 
 (block_comment) @comment
@@ -58,14 +58,14 @@
 (preproc_directive) @keyword.preproc @preproc
 
 (preproc_define
-  name: (identifier) @constant)
+    name: (identifier) @constant)
 
 (preproc_define
-  name: (identifier) @function.special
-  parameters: (preproc_params))
+    name: (identifier) @function.special
+    parameters: (preproc_params))
 
 (preproc_params
-  (identifier) @variable.parameter)
+    (identifier) @variable.parameter)
 
 (char) @string
 
@@ -76,93 +76,93 @@
 (symbol_type) @type.builtin
 
 (relocation
-  "@" @punctuation.special)
+    "@" @punctuation.special)
 
 (relocation
-  specifier: (identifier) @attribute)
+    specifier: (identifier) @attribute)
 
 (numeric_label) @label
 
 (float) @number
 
 [
-  ".macro"
-  ".endm"
-  ".if"
-  ".elseif"
-  ".else"
-  ".endif"
-  ".rept"
-  ".irp"
-  ".irpc"
-  ".endr"
+    ".macro"
+    ".endm"
+    ".if"
+    ".elseif"
+    ".else"
+    ".endif"
+    ".rept"
+    ".irp"
+    ".irpc"
+    ".endr"
 ] @keyword.directive @preproc
 
 (macro_definition
-  name: (identifier) @function.special.definition)
+    name: (identifier) @function.special.definition)
 
 (parameter
-  name: (identifier) @variable.parameter)
+    name: (identifier) @variable.parameter)
 
 (repeat_block
-  parameter: (identifier) @variable.parameter)
+    parameter: (identifier) @variable.parameter)
 
 (keyword_argument
-  name: (identifier) @variable.parameter)
+    name: (identifier) @variable.parameter)
 
 (instruction
-  mnemonic: (concatenation
-    (identifier) @keyword))
+    mnemonic: (concatenation
+        (identifier) @keyword))
 
 (label
-  name: (concatenation
-    (identifier) @label))
+    name: (concatenation
+        (identifier) @label))
 
 (macro_argument) @variable.parameter
 
 (macro_call
-  function: (identifier) @function.special)
+    function: (identifier) @function.special)
 
 [
-  "["
-  "]"
+    "["
+    "]"
 ] @punctuation.bracket
 
 (concatenation
-  "\\()" @punctuation.special)
+    "\\()" @punctuation.special)
 
 (directive
-  name: (directive_name) @_section
-  .
-  argument: (identifier) @namespace
-  (#match? @_section "^\\.(?i:section|pushsection)$"))
+    name: (directive_name) @_section
+    .
+    argument: (identifier) @namespace
+    (#match? @_section "^\\.(?i:section|pushsection)$"))
 
 (directive
-  name: (directive_name) @_section
-  .
-  argument: (identifier)
-  .
-  argument: (identifier) @namespace
-  (#match? @_section "^\\.(?i:section|pushsection)$"))
+    name: (directive_name) @_section
+    .
+    argument: (identifier)
+    .
+    argument: (identifier) @namespace
+    (#match? @_section "^\\.(?i:section|pushsection)$"))
 
 (immediate
-  "#" @punctuation.special)
+    "#" @punctuation.special)
 
 (literal_pool
-  "=" @punctuation.special)
+    "=" @punctuation.special)
 
 (shift_operator) @keyword.operator
 
 (condition) @keyword.operator
 
 (register_alias
-  name: (identifier) @variable.special)
+    name: (identifier) @variable.special)
 
 (predicate
-  "/" @variable.special
-  qualifier: (identifier) @variable.special)
+    "/" @variable.special
+    qualifier: (identifier) @variable.special)
 
 [
-  "{"
-  "}"
+    "{"
+    "}"
 ] @punctuation.bracket

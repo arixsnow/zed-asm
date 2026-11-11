@@ -1,23 +1,23 @@
 ; SPDX-License-Identifier: MIT
 
 (immediate
-  "#" @punctuation.special)
+    "#" @punctuation.special)
 
 (literal_pool
-  "=" @punctuation.special)
+    "=" @punctuation.special)
 
 (shift_operator) @keyword.operator
 
 (condition) @keyword.operator
 
 (register_alias
-  name: (identifier) @variable.special)
+    name: (identifier) @variable.special)
 
 (predicate
-  "/" @variable.special
-  qualifier: (identifier) @variable.special)
+    "/" @variable.special
+    qualifier: (identifier) @variable.special)
 
 [
-  "{"
-  "}"
+    "{"
+    "}"
 ] @punctuation.bracket
