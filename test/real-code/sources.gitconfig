@@ -1,0 +1,58 @@
+# SPDX-License-Identifier: MIT
+
+[source "linux"]
+    url = https://github.com/torvalds/linux.git
+    branch = master
+    commit = 067c5c24cef23d913b67eaaf71ae67e7169a6620
+
+[source "glibc"]
+    url = https://sourceware.org/git/glibc.git
+    branch = master
+    commit = fcc57fe96f8f27a84f7493d9540a4268b187d67f
+
+[source "ffmpeg"]
+    url = https://github.com/FFmpeg/FFmpeg.git
+    branch = master
+    commit = 9bee1e603cdb6e83d2e99c3cb9a452c2002139c5
+
+[files "linux x86"]
+    source = linux
+    include = arch/x86/**/*.S
+    exclude = **/*.lds.S
+    language = asm_x86_gas
+    language = asm_auto
+
+[files "linux arm"]
+    source = linux
+    include = arch/arm64/**/*.S
+    include = arch/arm/**/*.S
+    exclude = **/*.lds.S
+    language = asm_arm
+    language = asm_auto
+
+[files "glibc x86"]
+    source = glibc
+    include = sysdeps/**/x86/**/*.S
+    include = sysdeps/**/x86_64/**/*.S
+    include = sysdeps/**/i386/**/*.S
+    language = asm_x86_gas
+    language = asm_auto
+
+[files "glibc arm"]
+    source = glibc
+    include = sysdeps/**/aarch64/**/*.S
+    include = sysdeps/**/arm/**/*.S
+    language = asm_arm
+    language = asm_auto
+
+[files "ffmpeg x86"]
+    source = ffmpeg
+    include = **/x86/**/*.asm
+    language = asm_x86_nasm
+
+[files "ffmpeg arm"]
+    source = ffmpeg
+    include = **/aarch64/**/*.S
+    include = **/arm/**/*.S
+    language = asm_arm
+    language = asm_auto

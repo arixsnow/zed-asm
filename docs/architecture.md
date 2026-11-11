@@ -1770,7 +1770,8 @@ data labels.
 
 The tooling is TypeScript that Bun runs, and the scripts in `package.json` are its commands. Every
 command runs in a container that `scripts/dev` and `scripts/zed` start with `--network=none`, so no
-check, test or script can reach the network; only the image build downloads anything. The image
+check, test or script can reach the network. Only the image build and `scripts/fetch-sources`,
+which run on the host, download anything. The image
 pins Bun, its npm tools and dprint with its plugins, and `bunfig.toml` turns off Bun's automatic
 package installs, so importing a package the image lacks fails at once. `scripts/dev --sources DIR`
 also mounts DIR read-only at `/sources`, for the command that reads upstream sources
@@ -1801,6 +1802,7 @@ type packages as well.
 | `bun run generate`        | runs `build`, then regenerates all five parsers                                                                                                                                                                                                                                               |
 | `bun run set-grammar-rev` | pins the commit Zed fetches the grammars from (`bun run set-grammar-rev <sha>`) and runs `build`                                                                                                                                                                                              |
 | `bun run keywords`        | not a check: regenerates `tree-sitter/common/keywords.h` from the upstream sources at `/sources` (`scripts/dev --sources DIR`); see "Generated tables"                                                                                                                                        |
+| `bun run real-code`       | every file of every file set in `test/real-code/sources.gitconfig` parses without an error in each of its languages, from the clones at `/sources` (`scripts/dev --sources DIR`); `--summary` counts every error line by its first word                                                       |
 | `bun run fmt`             | formats with dprint, and the C scanner with clang-format                                                                                                                                                                                                                                      |
 | `bun run lint`            | oxlint                                                                                                                                                                                                                                                                                        |
 | `bun run check:types`     | `tsc` on every TypeScript file                                                                                                                                                                                                                                                                |
@@ -1816,6 +1818,7 @@ type packages as well.
 | `bun run bench`           | not a check: prints parse, edit and query times, states and parser size for every grammar                                                                                                                                                                                                     |
 | `bun run zed:qa`          | the `docs/qa.md` checks; `scripts/zed` runs it in the container that holds Zed and a display                                                                                                                                                                                                  |
 | `scripts/zed`             | the `docs/qa.md` checks in the real Zed app, in Podman on a virtual display                                                                                                                                                                                                                   |
+| `scripts/fetch-sources`   | not a check: fetches the real code pinned in `test/real-code/sources.gitconfig` into a directory, on the host (`--update DIR` first moves each pin to its branch head)                                                                                                                        |
 
 `scripts/zed` builds the `zed` stage of the Containerfile: Xvfb, xdotool, Mesa's software Vulkan,
 and Zed from its official install script, always the latest release. It compiles each grammar to
@@ -1832,6 +1835,26 @@ C library functions only (`lib/src/wasm-stdlib/imports.txt` at the tree-sitter r
 `strchr`, fails to load, and Zed opens its files with no language. `scripts/lib/wasm.ts` reads the
 import section of each built module and holds that list; `check:c` and `scripts/zed` both refuse a
 module that imports anything else.
+
+`test/real-code/sources.gitconfig` pins the real code: per source a URL, branch and commit; per
+file set a source, `include` and `exclude` globs and the languages that parse it.
+`scripts/fetch-sources DIR` runs on the host with `sh` and `git`. Per source it fetches the pinned
+commit into `DIR/<source>` with `--depth 1 --filter=blob:none` and a non-cone sparse checkout of the
+`include` globs, 22 MB for all three. With nothing changed it does nothing; `--update` first moves
+each pin to its branch head. It checks the whole pin file before writing anything and refuses a
+`DIR/<source>` that is not a sparse checkout of the pinned URL. Sparse patterns are last-match-wins
+across file sets, so `bun run real-code` applies the excludes. `scripts/lib/real-code.ts` parses
+the pin file and rejects what git would read differently: quotes, escapes, `#` or `;` in a value,
+upper-case names, repeated sections.
+
+`bun run real-code` first checks each clone against the pins: its HEAD is the pinned commit, its
+sparse patterns are the includes, every checked-out file matches an include and every include
+matches a file. `scripts/lib/wildmatch.ts` matches globs as git's wildmatch does for sparse
+patterns: on bytes, `*` and `?` stop at `/`, `**` spans directories only between slashes, brackets
+take ranges, `!` or `^` and the POSIX classes, and a path matches when it or a parent directory
+does. A file fails when tree-sitter reports an error in its tree (`--json-summary`); the error lines
+come from a query for every ERROR and MISSING node. One parse and one query run per language cover
+all files.
 
 The fixtures live in `test/fixtures/<dialect>/`, and every assembler of the dialect must accept each
 file there. Forms that only one assembler accepts, such as `.eqv` and `0f1.5` in GNU as or

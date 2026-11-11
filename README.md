@@ -58,8 +58,8 @@ Everything runs in a Podman container built from `Containerfile`, so your machin
 and the Perl, Python, CMake and Ninja that regenerating the keyword tables needs come from Fedora
 45's repositories as they are when the image is built. CI builds it fresh whenever the Containerfile
 changes and in the first run of each week, and reuses that image for the rest of the week;
-`scripts/dev` rebuilds it locally whenever the Containerfile changes. Only the build downloads
-anything: the container itself runs without a network.
+`scripts/dev` rebuilds it locally whenever the Containerfile changes. Only the image build and
+`scripts/fetch-sources` download anything: the container itself runs without a network.
 
 ```sh
 scripts/dev bun run test       # every check except the sanitizers
@@ -84,6 +84,14 @@ run once per clone:
 
 ```sh
 git config blame.ignoreRevsFile .git-blame-ignore-revs
+```
+
+`scripts/fetch-sources` fetches the Linux, glibc and FFmpeg files pinned in
+`test/real-code/sources.gitconfig`. It runs on the host:
+
+```sh
+scripts/fetch-sources ../references            # the pinned commits
+scripts/fetch-sources --update ../references   # move each pin to its branch head, then fetch
 ```
 
 `scripts/zed` runs the editor checks from [docs/qa.md](docs/qa.md) in Zed inside Podman, on your

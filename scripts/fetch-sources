@@ -1,0 +1,117 @@
+#!/bin/sh
+# SPDX-License-Identifier: MIT
+
+set -eu
+
+root=$(CDPATH='' cd -- "$(dirname -- "$0")/.." && pwd)
+pins="${root}/test/real-code/sources.gitconfig"
+
+fail() {
+    printf '%s: %s\n' "$0" "$1" >&2
+    exit 1
+}
+
+if [ "${1:-}" = --update ]; then
+    update=true
+    shift
+else
+    update=false
+fi
+if [ "$#" -ne 1 ]; then
+    printf 'usage: %s [--update] DIR\n' "$0" >&2
+    exit 2
+fi
+
+pin() {
+    if ! git config --file "${pins}" --get "$1"; then
+        fail "${pins} has no $1"
+    fi
+}
+
+set_commit() {
+    if ! awk -v section="[source \"$1\"]" -v commit="$2" '
+        /^\[/ { inside = $0 == section }
+        inside && /^    commit =/ { $0 = "    commit = " commit; found = 1 }
+        { print }
+        END { exit found ? 0 : 1 }
+    ' "${pins}" >"${pins}.new"; then
+        rm -f -- "${pins}.new"
+        fail "no commit line for source $1"
+    fi
+    mv -- "${pins}.new" "${pins}"
+}
+
+patterns() {
+    git config --file "${pins}" --name-only --get-regexp '^files\..*\.source$' |
+        while IFS= read -r key; do
+            section=${key%.source}
+            owner=$(git config --file "${pins}" --get "${key}")
+            if [ "${owner}" = "$1" ]; then
+                git config --file "${pins}" --get-all "${section}.include" | sed 's|^|/|'
+            fi
+        done
+}
+
+check() {
+    pin "source.$1.url" >/dev/null
+    pin "source.$1.branch" >/dev/null
+    commit=$(pin "source.$1.commit")
+    if [ -z "${commit}" ] && [ "${update}" = false ]; then
+        fail "no commit is pinned for $1; run $0 --update DIR"
+    fi
+    wanted=$(patterns "$1")
+    if [ -z "${wanted}" ]; then
+        fail "no files section names source $1"
+    fi
+}
+
+fetch() {
+    name=$1
+    url=$(pin "source.${name}.url")
+    branch=$(pin "source.${name}.branch")
+    wanted=$(patterns "${name}")
+    if [ "${update}" = true ]; then
+        commit=$(git ls-remote -- "${url}" "refs/heads/${branch}" |
+            awk -v ref="refs/heads/${branch}" '$2 == ref { print $1 }')
+        if [ -z "${commit}" ]; then
+            fail "${url} has no branch ${branch}"
+        fi
+        set_commit "${name}" "${commit}"
+    fi
+    commit=$(pin "source.${name}.commit")
+    directory="${target}/${name}"
+    if [ -e "${directory}" ]; then
+        if [ ! -d "${directory}/.git" ] ||
+            [ "$(git -C "${directory}" config --get remote.origin.url || true)" != "${url}" ] ||
+            [ "$(git -C "${directory}" config --bool --get core.sparseCheckout || true)" != true ]; then
+            fail "${directory} is not a sparse checkout of ${url}; move it away first"
+        fi
+        head=$(git -C "${directory}" rev-parse --verify --quiet HEAD || true)
+        listed=$(git -C "${directory}" sparse-checkout list)
+        if [ "${head}" = "${commit}" ] && [ "${listed}" = "${wanted}" ]; then
+            printf '%s: %s is already checked out\n' "${name}" "${commit}"
+            return
+        fi
+    else
+        git init --quiet -- "${directory}"
+        git -C "${directory}" remote add origin "${url}"
+    fi
+    printf '%s\n' "${wanted}" | git -C "${directory}" sparse-checkout set --no-cone --stdin
+    git -C "${directory}" fetch --quiet --depth 1 --filter=blob:none origin "${commit}"
+    git -C "${directory}" checkout --quiet --detach "${commit}"
+    printf '%s: %s\n' "${name}" "${commit}"
+}
+
+sources=$(git config --file "${pins}" --name-only --get-regexp '^source\..*\.url$' |
+    sed 's/^source\.//; s/\.url$//')
+if [ -z "${sources}" ]; then
+    fail "${pins} names no source"
+fi
+printf '%s\n' "${sources}" | while IFS= read -r name; do
+    check "${name}"
+done
+mkdir -p -- "$1"
+target=$(CDPATH='' cd -- "$1" && pwd)
+printf '%s\n' "${sources}" | while IFS= read -r name; do
+    fetch "${name}"
+done

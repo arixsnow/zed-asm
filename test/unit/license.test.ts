@@ -9,7 +9,7 @@ import { ROOT } from '../../scripts/lib/files.ts';
 import { generatedMatcher, repositoryFiles } from '../../scripts/lib/repository.ts';
 
 const SPDX = 'SPDX-License-Identifier: MIT';
-const SOURCE = /\.(c|h|js|cjs|ts|scm|toml|ya?ml)$/;
+const SOURCE = /\.(c|h|js|cjs|ts|scm|toml|ya?ml|gitconfig)$/;
 const CONFIG =
     /(?:^|\/)(?:\.clang-format|\.clang-tidy|\.clangd|\.editorconfig|\.gitattributes|\.git-blame-ignore-revs|\.gitignore|\.containerignore|Containerfile)$/;
 

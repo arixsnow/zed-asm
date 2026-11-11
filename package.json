@@ -7,6 +7,7 @@
         "generate": "bun run build && bun scripts/tree-sitter.ts generate",
         "set-grammar-rev": "bun scripts/build.ts set-grammar-rev",
         "keywords": "bun scripts/keywords.ts",
+        "real-code": "bun scripts/real-code.ts",
         "fmt": "dprint fmt && clang-format -i tree-sitter/common/scanner.h",
         "lint": "oxlint",
         "check:types": "tsc",
