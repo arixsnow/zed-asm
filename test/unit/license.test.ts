@@ -11,7 +11,7 @@ import { generatedMatcher, repositoryFiles } from '../../scripts/lib/repository.
 const SPDX = 'SPDX-License-Identifier: MIT';
 const SOURCE = /\.(c|h|js|cjs|ts|scm|toml|ya?ml)$/;
 const CONFIG =
-    /(?:^|\/)(?:\.clang-format|\.clang-tidy|\.clangd|\.editorconfig|\.gitattributes|\.gitignore|\.containerignore|Containerfile)$/;
+    /(?:^|\/)(?:\.clang-format|\.clang-tidy|\.clangd|\.editorconfig|\.gitattributes|\.git-blame-ignore-revs|\.gitignore|\.containerignore|Containerfile)$/;
 
 function isScript(path: string): boolean {
     return readFileSync(join(ROOT, path), 'utf8').startsWith('#!');

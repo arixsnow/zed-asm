@@ -78,6 +78,14 @@ and `test/`. `extension.toml`, `languages/`, `tree-sitter/tree-sitter.json`,
 `bun run test` fails when any of them is out of date. `tree-sitter/common/keywords.h` is generated
 from the upstream sources (see Generated tables in the architecture doc).
 
+Commits that change only layout are listed in `.git-blame-ignore-revs`, so that blame shows the
+commit that last changed each line. GitHub's blame view reads the file on its own; for `git blame`,
+run once per clone:
+
+```sh
+git config blame.ignoreRevsFile .git-blame-ignore-revs
+```
+
 `scripts/zed` runs the editor checks from [docs/qa.md](docs/qa.md) in Zed inside Podman, on your
 uncommitted tree. To install a change in your own Zed, push it, run
 `scripts/dev bun run set-grammar-rev <pushed commit>`, push again, then use **Extensions > Install
