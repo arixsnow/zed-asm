@@ -60,11 +60,14 @@ test('every language composes a grammar named after it that starts at source_fil
 
 test('modules contribute rules only to the languages that include them', () => {
   const expectations: Record<string, { present: string[]; absent: string[] }> = {
-    asm_auto: { present: ['shift', 'register', 'directive'], absent: [] },
-    asm_arm: { present: ['shift', 'directive'], absent: ['register'] },
-    asm_arm_apple: { present: ['shift', 'directive'], absent: ['register'] },
-    asm_x86_gas: { present: ['register', 'directive'], absent: ['shift'] },
-    asm_x86_nasm: { present: ['string'], absent: ['shift', 'register', 'directive', 'immediate'] },
+    asm_auto: { present: ['shift', 'indirect', 'directive'], absent: [] },
+    asm_arm: { present: ['shift', 'directive'], absent: ['indirect'] },
+    asm_arm_apple: { present: ['shift', 'directive'], absent: ['indirect'] },
+    asm_x86_gas: { present: ['indirect', 'directive'], absent: ['shift'] },
+    asm_x86_nasm: {
+      present: ['string', 'directive', 'times'],
+      absent: ['shift', 'indirect', 'immediate'],
+    },
   };
   for (const [grammarName, { present, absent }] of Object.entries(expectations)) {
     const rules = rulesOf(grammarName);
@@ -85,7 +88,7 @@ test('choice points merge alternatives from every module without duplicates', ()
     );
   const value = members('_value');
   assert.deepStrictEqual(value.filter((name) => name === 'immediate').length, 1);
-  for (const name of ['_expression', 'string', 'symbol_type', 'register']) {
+  for (const name of ['_expression', 'string', 'symbol_type', '_register']) {
     assert.ok(value.includes(name), `_value should offer ${name}`);
   }
   const operand = members('_operand');
@@ -93,16 +96,20 @@ test('choice points merge alternatives from every module without duplicates', ()
     assert.ok(operand.includes(name), `_operand should offer ${name}`);
   }
   const instructionOperand = members('_instruction_operand');
-  for (const name of ['_operand', 'shift', 'memory_operand', 'register_list', 'literal_pool']) {
+  for (const name of ['_value', 'shift', 'memory_operand', 'register_list', 'literal_pool']) {
     assert.ok(instructionOperand.includes(name), `_instruction_operand should offer ${name}`);
   }
+  assert.ok(
+    !instructionOperand.includes('keyword_argument') && !instructionOperand.includes('_operand'),
+    'keyword arguments belong to macro calls, not to instruction operands',
+  );
 });
 
 test('symbol types after @ exist only in grammars that include x86', () => {
   const hasAtForm: Record<string, boolean> = {};
   for (const { grammar } of manifest.languages.filter(({ syntax }) => syntax === 'gas')) {
     const rule = defineGrammar(grammar).rules.symbol_type($);
-    hasAtForm[grammar] = JSON.stringify(rule).includes('"_at_type"');
+    hasAtForm[grammar] = JSON.stringify(rule).includes('"@"');
   }
   assert.deepStrictEqual(hasAtForm, {
     asm_auto: true,
@@ -125,4 +132,16 @@ test('a module missing from the registry fails with a clear message', () => {
     () => defineGrammar('asm_fake', catalog),
     'unknown module "mips" for grammar "asm_fake"',
   );
+});
+
+test('an architecture module for one syntax joins only the grammars of that syntax', () => {
+  assert.ok(rulesOf('asm_x86_gas').includes('_att_memory'));
+  assert.ok(rulesOf('asm_auto').includes('_att_memory'));
+  assert.ok(!rulesOf('asm_x86_nasm').includes('_att_memory'));
+  assert.ok(!rulesOf('asm_arm').includes('_att_memory'));
+});
+
+test('x86 (NASM) composes the shared x86 operand layer', () => {
+  assert.ok(rulesOf('asm_x86_nasm').includes('_x86_register'));
+  assert.ok(rulesOf('asm_x86_nasm').includes('address_modifier'));
 });

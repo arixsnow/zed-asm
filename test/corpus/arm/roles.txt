@@ -262,6 +262,50 @@ csel x0, eq, x2, lt
     operand: (condition)))
 
 ================================================================================
+SVE condition aliases in a condition slot, and a shift word needs its amount
+================================================================================
+
+csel x0, x1, x2, tcont
+cset x0, NONE
+mov x0, lsl
+add x0, x1, x2, lsl #2
+add x0, x1, w2, UxTw
+
+--------------------------------------------------------------------------------
+
+(source_file
+  (instruction
+    mnemonic: (mnemonic)
+    operand: (register)
+    operand: (register)
+    operand: (register)
+    operand: (condition))
+  (instruction
+    mnemonic: (mnemonic)
+    operand: (register)
+    operand: (condition))
+  (instruction
+    mnemonic: (mnemonic)
+    operand: (register)
+    operand: (identifier))
+  (instruction
+    mnemonic: (mnemonic)
+    operand: (register)
+    operand: (register)
+    operand: (register)
+    operand: (shift
+      operator: (shift_operator)
+      amount: (immediate
+        value: (integer))))
+  (instruction
+    mnemonic: (mnemonic)
+    operand: (register)
+    operand: (register)
+    operand: (register)
+    operand: (shift
+      operator: (shift_operator))))
+
+================================================================================
 Role words in any case
 ================================================================================
 
@@ -292,7 +336,7 @@ Cbz x0, x1
     operand: (identifier)))
 
 ================================================================================
-Longer mnemonics that start with a role word are ordinary mnemonics
+Longer words that start with a role word are mnemonics or macro calls, never role words
 ================================================================================
 
 bic x0, x1, x2
@@ -330,18 +374,15 @@ mov x0, lslx
     mnemonic: (mnemonic)
     operand: (immediate
       value: (integer)))
-  (instruction
-    mnemonic: (mnemonic)
-    operand: (register))
-  (instruction
-    mnemonic: (mnemonic)
-    operand: (register)
-    operand: (identifier))
-  (instruction
-    mnemonic: (mnemonic)
-    operand: (register)
-    operand: (memory_operand
-      operand: (register)))
+  (macro_call
+    function: (identifier)
+    arguments: (argument_list
+      argument: (register)))
+  (macro_call
+    function: (identifier)
+    arguments: (argument_list
+      argument: (register)
+      argument: (identifier)))
   (instruction
     mnemonic: (mnemonic)
     operand: (register)
@@ -349,7 +390,13 @@ mov x0, lslx
       operand: (register)))
   (instruction
     mnemonic: (mnemonic)
-    operand: (register))
+    operand: (register)
+    operand: (memory_operand
+      operand: (register)))
+  (macro_call
+    function: (identifier)
+    arguments: (argument_list
+      argument: (register)))
   (instruction
     mnemonic: (mnemonic)
     operand: (register)
@@ -384,3 +431,24 @@ csel == 5
   (assignment
     name: (identifier)
     value: (integer)))
+
+================================================================================
+Dotted condition mnemonics take a label
+================================================================================
+
+b.eq 1f
+bc.ne 1f
+b.cs 1f
+
+--------------------------------------------------------------------------------
+
+(source_file
+  (instruction
+    mnemonic: (mnemonic)
+    operand: (numeric_label))
+  (instruction
+    mnemonic: (mnemonic)
+    operand: (numeric_label))
+  (instruction
+    mnemonic: (mnemonic)
+    operand: (numeric_label)))

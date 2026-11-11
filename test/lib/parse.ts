@@ -27,3 +27,14 @@ export function parseFiles(
 export function treeText(output: string): string {
   return output.split('\n').filter((line) => !line.includes('\tParse:')).join('\n');
 }
+
+export function flatTrees(grammar: string, scratch: string, sources: string[]): string[] {
+  const trees = treeText(parseFiles(grammar, scratch, sources).output)
+    .split(/^(?=\(source_file )/m)
+    .filter((tree) => tree.startsWith('(source_file '))
+    .map((tree) => tree.replace(/ \[\d+, \d+\] - \[\d+, \d+\]/g, '').replace(/\s+/g, ' ').trim());
+  if (trees.length !== sources.length) {
+    throw new Error(`${grammar}: ${trees.length} trees for ${sources.length} files`);
+  }
+  return trees;
+}

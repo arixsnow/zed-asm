@@ -77,7 +77,6 @@ A macro argument may stand where only a register may
     ld1 {\a\().16b - \b\().16b}, [\base]
     st1 {\a}, [x0]
     ins \a\().s[1], w0
-    ldm \base!, {\a}
 .endm
 
 --------------------------------------------------------------------------------
@@ -130,10 +129,4 @@ A macro argument may stand where only a register may
             (macro_argument)
             (identifier))
           index: (integer))
-        operand: (register))
-      (instruction
-        mnemonic: (mnemonic)
-        operand: (writeback
-          register: (macro_argument))
-        operand: (register_list
-          element: (macro_argument))))))
+        operand: (register)))))

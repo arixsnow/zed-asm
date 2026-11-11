@@ -23,7 +23,7 @@ mov x0, cpsr
     operand: (identifier)))
 
 ================================================================================
-L names are local in operands, except register, condition, shift and role words
+L names are local in operands, except register, condition and shift words
 ================================================================================
 
 mov x0, LR
@@ -76,7 +76,7 @@ Lskip = 4
     operand: (local_identifier))
   (instruction
     mnemonic: (mnemonic)
-    operand: (identifier))
+    operand: (local_identifier))
   (instruction
     mnemonic: (mnemonic)
     operand: (local_identifier))
@@ -88,6 +88,38 @@ Lskip = 4
   (assignment
     name: (local_identifier)
     value: (integer)))
+
+================================================================================
+Condition and shift words that start with L are local names outside their slots
+================================================================================
+
+b LT
+b LSL
+mov x0, LSL
+add x0, x1, x2, LSL #2
+
+--------------------------------------------------------------------------------
+
+(source_file
+  (instruction
+    mnemonic: (mnemonic)
+    operand: (local_identifier))
+  (instruction
+    mnemonic: (mnemonic)
+    operand: (local_identifier))
+  (instruction
+    mnemonic: (mnemonic)
+    operand: (register)
+    operand: (local_identifier))
+  (instruction
+    mnemonic: (mnemonic)
+    operand: (register)
+    operand: (register)
+    operand: (register)
+    operand: (shift
+      operator: (shift_operator)
+      amount: (immediate
+        value: (integer)))))
 
 ================================================================================
 Linker optimization hints
@@ -118,7 +150,7 @@ Linker optimization hints
     argument: (local_identifier)))
 
 ================================================================================
-Upper-case mnemonics that start with L are mnemonics
+Upper-case mnemonics that start with L are mnemonics, other L words macro calls
 ================================================================================
 
 LDP x0, x1, [sp]
@@ -152,9 +184,10 @@ Lmacro x0
     operand: (register)
     operand: (immediate
       value: (integer)))
-  (instruction
-    mnemonic: (mnemonic)
-    operand: (register)))
+  (macro_call
+    function: (identifier)
+    arguments: (argument_list
+      argument: (register))))
 
 ================================================================================
 NEON alias words are not directives in Apple assembly
@@ -165,7 +198,9 @@ sum .dn d0
 --------------------------------------------------------------------------------
 
 (source_file
-  (instruction
-    mnemonic: (mnemonic)
-    operand: (identifier)
-    operand: (register)))
+  (macro_call
+    function: (identifier)
+    arguments: (argument_list
+      argument: (argument
+        (identifier)
+        (register)))))

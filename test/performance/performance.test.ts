@@ -103,6 +103,16 @@ const HOSTILE: Record<string, (size: number) => string | Uint8Array> = {
       5,
     ),
   'valid code': (size) => VALID.repeat(Math.ceil(size / VALID.length)),
+  'unclosed NASM conditionals': (size) => '%if 1\n'.repeat(size / 6),
+  'long NASM define value': (size) => `%define X ${'a'.repeat(size)}\nnop\n`,
+  'many macro-local labels': (size) => `%macro m 0\n${'%%x:\n'.repeat(size / 5)}%endmacro\n`,
+  'glued name on one line': (size) => `x${'%+y'.repeat(size / 3)}:\n`,
+  'spaced glues on one line': (size) => `x${' %+ y'.repeat(size / 6)}:\n`,
+  'long call statement': (size) => `g(${'a, '.repeat(size / 3)}a)\n`,
+  'nested macro argument groups': (size) =>
+    `m ${'('.repeat(size / 5)}a${', a)'.repeat(size / 5)}\n`,
+  'nested macro argument braces': (size) => `m ${'{'.repeat(size / 2)}a${'}'.repeat(size / 2)}\n`,
+  'words before an operand': (size) => `mov eax, ${'W '.repeat(size / 2)}ebx\n`,
 };
 
 function write(name: string, content: string | Uint8Array): string {

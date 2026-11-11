@@ -12,7 +12,8 @@
       ],
       "highlights": "../languages/asm/highlights.scm",
       "external-files": [
-        "common/scanner.h"
+        "common/scanner.h",
+        "common/words.h"
       ]
     },
     {
@@ -23,7 +24,8 @@
       "file-types": [],
       "highlights": "../languages/arm/highlights.scm",
       "external-files": [
-        "common/scanner.h"
+        "common/scanner.h",
+        "common/words.h"
       ]
     },
     {
@@ -34,7 +36,8 @@
       "file-types": [],
       "highlights": "../languages/arm-apple/highlights.scm",
       "external-files": [
-        "common/scanner.h"
+        "common/scanner.h",
+        "common/words.h"
       ]
     },
     {
@@ -45,7 +48,8 @@
       "file-types": [],
       "highlights": "../languages/x86-gas/highlights.scm",
       "external-files": [
-        "common/scanner.h"
+        "common/scanner.h",
+        "common/words.h"
       ]
     },
     {
@@ -61,7 +65,8 @@
       ],
       "highlights": "../languages/x86-nasm/highlights.scm",
       "external-files": [
-        "common/scanner.h"
+        "common/scanner.h",
+        "common/words.h"
       ]
     }
   ],

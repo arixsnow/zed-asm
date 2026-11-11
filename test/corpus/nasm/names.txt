@@ -1,0 +1,250 @@
+================================================================================
+Macro tokens name defines, assignments and string results
+================================================================================
+
+%define %$x 1
+%define %%t %1
+%define %1 2
+%define a%1 2
+%assign %$x %$x + 1
+%xdefine %$sign 0x80
+%substr %$abc %$abc 2, -1
+%define %[a] 2
+
+--------------------------------------------------------------------------------
+
+(source_file
+  (preproc_define
+    directive: (preproc_directive)
+    name: (context_local)
+    value: (preproc_argument))
+  (preproc_define
+    directive: (preproc_directive)
+    name: (macro_local)
+    value: (preproc_argument))
+  (preproc_define
+    directive: (preproc_directive)
+    name: (macro_argument)
+    value: (preproc_argument))
+  (preproc_define
+    directive: (preproc_directive)
+    name: (concatenation
+      (identifier)
+      (macro_argument))
+    value: (preproc_argument))
+  (preproc_define
+    directive: (preproc_directive)
+    name: (context_local)
+    value: (binary_expression
+      left: (context_local)
+      right: (integer)))
+  (preproc_define
+    directive: (preproc_directive)
+    name: (context_local)
+    value: (preproc_argument))
+  (preproc_define
+    directive: (preproc_directive)
+    name: (context_local)
+    value: (preproc_argument))
+  (preproc_define
+    directive: (preproc_directive)
+    name: (macro_expansion)
+    value: (preproc_argument)))
+
+================================================================================
+Macro tokens and glued names label lines
+================================================================================
+
+%1:
+%{1}x: jmp %1x
+a%1: db 0
+%%top_%$strucname:
+.count_%+1:
+_test_ %+ %1 %+ _ %+ %4:
+%%l %+ %%n:
+
+--------------------------------------------------------------------------------
+
+(source_file
+  (label
+    name: (macro_argument))
+  (label
+    name: (concatenation
+      (macro_expansion)
+      (identifier)))
+  (instruction
+    mnemonic: (mnemonic)
+    operand: (concatenation
+      (macro_argument)
+      (identifier)))
+  (label
+    name: (concatenation
+      (identifier)
+      (macro_argument)))
+  (directive
+    name: (directive_name)
+    argument: (integer))
+  (label
+    name: (concatenation
+      (macro_local)
+      (context_local)))
+  (label
+    name: (concatenation
+      (local_identifier)
+      (macro_argument)))
+  (label
+    name: (concatenation
+      (identifier)
+      (macro_argument)
+      (identifier)
+      (macro_argument)))
+  (label
+    name: (concatenation
+      (macro_local)
+      (macro_local))))
+
+================================================================================
+A macro token before an instruction or data is a label
+================================================================================
+
+%%a nop
+%1 db 1
+%%a equ 2
+%00 equ 3
+%1: equ 4
+
+--------------------------------------------------------------------------------
+
+(source_file
+  (label
+    name: (macro_local))
+  (instruction
+    mnemonic: (mnemonic))
+  (label
+    name: (macro_argument))
+  (directive
+    name: (directive_name)
+    argument: (integer))
+  (assignment
+    name: (macro_local)
+    value: (integer))
+  (assignment
+    name: (macro_argument)
+    value: (integer))
+  (assignment
+    name: (macro_argument)
+    value: (integer)))
+
+================================================================================
+Macro tokens name macros, structures and declared symbols
+================================================================================
+
+%macro %1 0
+%endmacro
+%macro a%1 0
+%endmacro
+struc %%s
+endstruc
+global %1
+[extern %1]
+istruc %1
+iend
+
+--------------------------------------------------------------------------------
+
+(source_file
+  (macro_definition
+    name: (macro_argument)
+    parameters: (parameter_count)
+    body: (body))
+  (macro_definition
+    name: (concatenation
+      (identifier)
+      (macro_argument))
+    parameters: (parameter_count)
+    body: (body))
+  (structure
+    name: (macro_local)
+    body: (structure_body))
+  (directive
+    name: (directive_name)
+    argument: (macro_argument))
+  (directive
+    name: (directive_name)
+    argument: (macro_argument))
+  (structure_instance
+    name: (macro_argument)
+    body: (body)))
+
+================================================================================
+Dollar-escaped names, and a lone dot or dollar name is a label
+================================================================================
+
+global $foo, $$foo, $$$foo, $3
+$$foo:
+mov eax, $$foo
+.end
+$foo
+
+--------------------------------------------------------------------------------
+
+(source_file
+  (directive
+    name: (directive_name)
+    argument: (identifier)
+    argument: (identifier)
+    argument: (identifier)
+    argument: (identifier))
+  (label_block
+    label: (label
+      name: (identifier))
+    (instruction
+      mnemonic: (mnemonic)
+      operand: (register)
+      operand: (identifier))
+    (label
+      name: (local_identifier)))
+  (label_block
+    label: (label
+      name: (identifier))))
+
+================================================================================
+Single-line macro parameters take nasm's modifiers
+================================================================================
+
+%define tonum(=x) x
+%define what(&x, &&y, !z, w+) x
+%define hex(=v/x) v
+%define mixed2(a, =b, ) (a + b)
+
+--------------------------------------------------------------------------------
+
+(source_file
+  (preproc_define
+    directive: (preproc_directive)
+    name: (identifier)
+    parameters: (preproc_params
+      (identifier))
+    value: (preproc_argument))
+  (preproc_define
+    directive: (preproc_directive)
+    name: (identifier)
+    parameters: (preproc_params
+      (identifier)
+      (identifier)
+      (identifier)
+      (identifier))
+    value: (preproc_argument))
+  (preproc_define
+    directive: (preproc_directive)
+    name: (identifier)
+    parameters: (preproc_params
+      (identifier))
+    value: (preproc_argument))
+  (preproc_define
+    directive: (preproc_directive)
+    name: (identifier)
+    parameters: (preproc_params
+      (identifier)
+      (identifier))
+    value: (preproc_argument)))

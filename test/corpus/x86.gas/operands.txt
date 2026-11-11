@@ -38,6 +38,7 @@ Symbol types after @
 ================================================================================
 
 .type data, @object
+.section .c,"a",@0x70000001
 
 --------------------------------------------------------------------------------
 
@@ -46,7 +47,13 @@ Symbol types after @
     name: (directive_name)
     argument: (identifier)
     argument: (symbol_type
-      (identifier))))
+      (identifier)))
+  (directive
+    name: (directive_name)
+    argument: (identifier)
+    argument: (string)
+    argument: (symbol_type
+      (integer))))
 
 ================================================================================
 An immediate and a register being typed keep to their own line
@@ -93,3 +100,44 @@ A relocation inside parentheses keeps its specifier
           symbol: (identifier)
           specifier: (identifier))
         right: (integer)))))
+
+================================================================================
+Numeric label references in jumps
+================================================================================
+
+1:
+    jmp 1b
+    jne 1f
+
+--------------------------------------------------------------------------------
+
+(source_file
+  (label
+    name: (numeric_label))
+  (instruction
+    mnemonic: (mnemonic)
+    operand: (numeric_label))
+  (instruction
+    mnemonic: (mnemonic)
+    operand: (numeric_label)))
+
+================================================================================
+A % after a complete value is the remainder operator, even before a register name
+================================================================================
+
+eax = 4
+movl $9 %eax, %ebx
+
+--------------------------------------------------------------------------------
+
+(source_file
+  (assignment
+    name: (identifier)
+    value: (integer))
+  (instruction
+    mnemonic: (mnemonic)
+    operand: (immediate
+      value: (binary_expression
+        left: (integer)
+        right: (identifier)))
+    operand: (register)))

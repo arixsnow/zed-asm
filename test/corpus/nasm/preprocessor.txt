@@ -1,0 +1,562 @@
+================================================================================
+One-line preprocessor directives
+================================================================================
+
+%define SIZE 16
+%define MAX(a, b) ((a) > (b) ? (a) : (b))
+%assign N SIZE * 2
+%include "macros.inc"
+%error "unsupported"
+%defstr GREETING hello world
+%undef SIZE
+%unmacro prologue 1-2
+
+--------------------------------------------------------------------------------
+
+(source_file
+  (preproc_define
+    directive: (preproc_directive)
+    name: (identifier)
+    value: (preproc_argument))
+  (preproc_define
+    directive: (preproc_directive)
+    name: (identifier)
+    parameters: (preproc_params
+      (identifier)
+      (identifier))
+    value: (preproc_argument))
+  (preproc_define
+    directive: (preproc_directive)
+    name: (identifier)
+    value: (binary_expression
+      left: (identifier)
+      right: (integer)))
+  (preproc_line
+    directive: (preproc_directive)
+    argument: (string))
+  (preproc_line
+    directive: (preproc_directive)
+    argument: (preproc_argument))
+  (preproc_define
+    directive: (preproc_directive)
+    name: (identifier)
+    value: (preproc_argument))
+  (preproc_line
+    directive: (preproc_directive)
+    argument: (preproc_argument))
+  (preproc_line
+    directive: (preproc_directive)
+    name: (identifier)
+    parameters: (parameter_count)))
+
+================================================================================
+A raw value ends at a semicolon comment, and a blank before the parenthesis makes it a value
+================================================================================
+
+%define A 1 ; note
+%define B (x) x
+%DEFINE C
+%define D 10 // 3 /* x */
+
+--------------------------------------------------------------------------------
+
+(source_file
+  (preproc_define
+    directive: (preproc_directive)
+    name: (identifier)
+    value: (preproc_argument))
+  (line_comment)
+  (preproc_define
+    directive: (preproc_directive)
+    name: (identifier)
+    value: (preproc_argument))
+  (preproc_define
+    directive: (preproc_directive)
+    name: (identifier))
+  (preproc_define
+    directive: (preproc_directive)
+    name: (identifier)
+    value: (preproc_argument)))
+
+================================================================================
+Macro, conditional and repeat blocks
+================================================================================
+
+%macro prologue 1
+    push rbp
+    sub rsp, %1
+%endmacro
+%if SIZE > 8
+    times 4 nop
+%elif SIZE > 4
+    nop
+%else
+    int3
+%endif
+%rep 3
+    inc eax
+%endrep
+
+--------------------------------------------------------------------------------
+
+(source_file
+  (macro_definition
+    name: (identifier)
+    parameters: (parameter_count)
+    body: (body
+      (instruction
+        mnemonic: (mnemonic)
+        operand: (register))
+      (instruction
+        mnemonic: (mnemonic)
+        operand: (register)
+        operand: (macro_argument))))
+  (conditional
+    condition: (binary_expression
+      left: (identifier)
+      right: (integer))
+    body: (body
+      (times
+        count: (integer)
+        statement: (instruction
+          mnemonic: (mnemonic))))
+    (elseif_clause
+      condition: (binary_expression
+        left: (identifier)
+        right: (integer))
+      body: (body
+        (instruction
+          mnemonic: (mnemonic))))
+    (else_clause
+      body: (body
+        (instruction
+          mnemonic: (mnemonic)))))
+  (repeat_block
+    count: (integer)
+    body: (body
+      (instruction
+        mnemonic: (mnemonic)
+        operand: (register)))))
+
+================================================================================
+Macro headers take a parameter count and raw defaults
+================================================================================
+
+%macro copy 1-3 rax, rbx
+%endmacro
+%imacro varargs 0-*.nolist
+%endmacro
+%macro greedy 1+
+%endmacro
+
+--------------------------------------------------------------------------------
+
+(source_file
+  (macro_definition
+    name: (identifier)
+    parameters: (parameter_count)
+    default: (preproc_argument)
+    body: (body))
+  (macro_definition
+    name: (identifier)
+    parameters: (parameter_count)
+    body: (body))
+  (macro_definition
+    name: (identifier)
+    parameters: (parameter_count)
+    body: (body)))
+
+================================================================================
+A list word glued to a parameter count is part of it, in any case
+================================================================================
+
+%macro a 1.NOLIST
+%endmacro
+%macro b 1-2+.NoList
+%endmacro
+%macro c 1 .nolist
+%endmacro
+%macro d 1.nolistx
+%endmacro
+
+--------------------------------------------------------------------------------
+
+(source_file
+  (macro_definition
+    name: (identifier)
+    parameters: (parameter_count)
+    body: (body))
+  (macro_definition
+    name: (identifier)
+    parameters: (parameter_count)
+    body: (body))
+  (macro_definition
+    name: (identifier)
+    parameters: (parameter_count)
+    default: (preproc_argument)
+    body: (body))
+  (macro_definition
+    name: (identifier)
+    parameters: (parameter_count)
+    default: (preproc_argument)
+    body: (body)))
+
+================================================================================
+A list word before a repeat count is not the count
+================================================================================
+
+%rep .nolist 2
+%endrep
+%rep .NOLIST n
+%endrep
+%rep .nolistx
+%endrep
+
+--------------------------------------------------------------------------------
+
+(source_file
+  (repeat_block
+    count: (integer)
+    body: (body))
+  (repeat_block
+    count: (identifier)
+    body: (body))
+  (repeat_block
+    count: (local_identifier)
+    body: (body)))
+
+================================================================================
+Conditions on names, strings and environment references
+================================================================================
+
+%ifenv HOME PATH
+%endif
+%ifnenv "HOME"
+%endif
+%ifenv %!HOME
+%endif
+%ifdefalias a b
+%endif
+%iffile "a"
+%endif
+%ifusing "a"
+%endif
+%ifdirective %if
+%endif
+%ifdifi a
+%endif
+
+--------------------------------------------------------------------------------
+
+(source_file
+  (conditional
+    condition: (identifier)
+    condition: (identifier)
+    body: (body))
+  (conditional
+    condition: (string)
+    body: (body))
+  (conditional
+    condition: (macro_expansion)
+    body: (body))
+  (conditional
+    condition: (identifier)
+    condition: (identifier)
+    body: (body))
+  (conditional
+    condition: (string)
+    body: (body))
+  (conditional
+    condition: (string)
+    body: (body))
+  (conditional
+    condition: (preproc_argument)
+    body: (body))
+  (conditional
+    condition: (preproc_argument)
+    body: (body)))
+
+================================================================================
+Conditions read as GAS conditions, macro references and raw tokens
+================================================================================
+
+%ifdef A B
+%elifmacro m 1-2
+%elifidn %1, rax
+%else trailing
+%endif A
+
+--------------------------------------------------------------------------------
+
+(source_file
+  (conditional
+    condition: (identifier)
+    condition: (identifier)
+    body: (body)
+    (elseif_clause
+      condition: (identifier)
+      parameters: (parameter_count)
+      body: (body))
+    (elseif_clause
+      condition: (preproc_argument)
+      body: (body))
+    (else_clause
+      (preproc_argument)
+      body: (body))
+    (preproc_argument)))
+
+================================================================================
+Text after a complete condition, count or macro reference is raw
+================================================================================
+
+%rep 3 junk
+%endrep
+%if A # c
+%elifmacro m 1-2 x
+%endif
+%ifmacro m 1 "a;b" ; note
+%endif
+%unmacro m 1 junk
+%if A + 1 ; c
+%endif
+
+--------------------------------------------------------------------------------
+
+(source_file
+  (repeat_block
+    count: (integer)
+    (preproc_argument)
+    body: (body))
+  (conditional
+    condition: (identifier)
+    (preproc_argument)
+    body: (body)
+    (elseif_clause
+      condition: (identifier)
+      parameters: (parameter_count)
+      (preproc_argument)
+      body: (body)))
+  (conditional
+    condition: (identifier)
+    parameters: (parameter_count)
+    (preproc_argument)
+    (line_comment)
+    body: (body))
+  (preproc_line
+    directive: (preproc_directive)
+    name: (identifier)
+    parameters: (parameter_count)
+    (preproc_argument))
+  (conditional
+    condition: (binary_expression
+      left: (identifier)
+      right: (integer))
+    (line_comment)
+    body: (body)))
+
+================================================================================
+Clauses may come in any order
+================================================================================
+
+%if 1
+%else
+%else
+%endif
+
+--------------------------------------------------------------------------------
+
+(source_file
+  (conditional
+    condition: (integer)
+    body: (body)
+    (else_clause
+      body: (body))
+    (else_clause
+      body: (body))))
+
+================================================================================
+Macro-local, context-local and glued tokens
+================================================================================
+
+%macro loop_to 1
+%%top: dec ecx
+    jnz %%top
+    j%+1 %$done
+%endmacro done
+
+--------------------------------------------------------------------------------
+
+(source_file
+  (macro_definition
+    name: (identifier)
+    parameters: (parameter_count)
+    body: (body
+      (label
+        name: (macro_local))
+      (instruction
+        mnemonic: (mnemonic)
+        operand: (register))
+      (instruction
+        mnemonic: (mnemonic)
+        operand: (macro_local))
+      (instruction
+        mnemonic: (concatenation
+          (identifier)
+          (macro_argument))
+        operand: (context_local)))
+    (preproc_argument)))
+
+================================================================================
+Macro arguments and expansions in operands
+================================================================================
+
+mov eax, %1 + %0
+db %{1:3}
+mov ebx, %[x]
+mov ecx, %!HOME
+lea edx, [foo %+ bar]
+
+--------------------------------------------------------------------------------
+
+(source_file
+  (instruction
+    mnemonic: (mnemonic)
+    operand: (register)
+    operand: (binary_expression
+      left: (macro_argument)
+      right: (macro_argument)))
+  (directive
+    name: (directive_name)
+    argument: (macro_expansion))
+  (instruction
+    mnemonic: (mnemonic)
+    operand: (register)
+    operand: (macro_expansion))
+  (instruction
+    mnemonic: (mnemonic)
+    operand: (register)
+    operand: (macro_expansion))
+  (instruction
+    mnemonic: (mnemonic)
+    operand: (register)
+    operand: (memory_operand
+      address: (concatenation
+        (identifier)
+        (identifier)))))
+
+================================================================================
+Macros named like directives and mnemonics
+================================================================================
+
+%macro align 1
+nop
+%endmacro
+align 4
+%macro mov 2
+%endmacro
+mov eax, 1
+
+--------------------------------------------------------------------------------
+
+(source_file
+  (macro_definition
+    name: (identifier)
+    parameters: (parameter_count)
+    body: (body
+      (instruction
+        mnemonic: (mnemonic))))
+  (directive
+    name: (directive_name)
+    argument: (integer))
+  (macro_definition
+    name: (identifier)
+    parameters: (parameter_count)
+    body: (body))
+  (instruction
+    mnemonic: (mnemonic)
+    operand: (register)
+    operand: (integer)))
+
+================================================================================
+An open macro holds every line to the end of the file
+================================================================================
+
+%macro m 0
+nop
+ret
+
+--------------------------------------------------------------------------------
+
+(source_file
+  (macro_definition
+    name: (identifier)
+    parameters: (parameter_count)
+    body: (unclosed_body
+      (instruction
+        mnemonic: (mnemonic))
+      (instruction
+        mnemonic: (mnemonic)))))
+
+================================================================================
+An open conditional holds every line to the end of the file
+================================================================================
+
+%if 1
+nop
+ret
+
+--------------------------------------------------------------------------------
+
+(source_file
+  (conditional
+    condition: (integer)
+    body: (unclosed_body
+      (instruction
+        mnemonic: (mnemonic))
+      (instruction
+        mnemonic: (mnemonic)))))
+
+================================================================================
+An open repeat holds every line to the end of the file
+================================================================================
+
+%rep 3
+nop
+ret
+
+--------------------------------------------------------------------------------
+
+(source_file
+  (repeat_block
+    count: (integer)
+    body: (unclosed_body
+      (instruction
+        mnemonic: (mnemonic))
+      (instruction
+        mnemonic: (mnemonic)))))
+
+================================================================================
+%ifdirective takes a raw directive name, and %endm closes a macro
+================================================================================
+
+%ifdirective section
+nop
+%endif
+%macro m 0
+nop
+%endm
+
+--------------------------------------------------------------------------------
+
+(source_file
+  (conditional
+    condition: (preproc_argument)
+    body: (body
+      (instruction
+        mnemonic: (mnemonic))))
+  (macro_definition
+    name: (identifier)
+    parameters: (parameter_count)
+    body: (body
+      (instruction
+        mnemonic: (mnemonic)))))

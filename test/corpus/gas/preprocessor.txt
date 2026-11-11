@@ -47,7 +47,7 @@ Preprocessor lines own their trailing comments
     (preproc_comment))
   (preproc_line
     directive: (preproc_directive)
-    argument: (preproc_argument))
+    argument: (string))
   (preproc_define
     directive: (preproc_directive)
     name: (identifier)
@@ -294,3 +294,87 @@ After an include directive, angle brackets hold one header name
     name: (identifier)
     value: (preproc_argument)
     (preproc_comment)))
+
+================================================================================
+Directives beyond the C standard
+================================================================================
+
+#ident "a"
+#sccs "b"
+#assert machine(x)
+#unassert machine(x)
+#embed <a//b.h> limit(3)
+#__public_macro N
+#__private_macro N
+
+--------------------------------------------------------------------------------
+
+(source_file
+  (preproc_line
+    directive: (preproc_directive)
+    argument: (preproc_argument))
+  (preproc_line
+    directive: (preproc_directive)
+    argument: (preproc_argument))
+  (preproc_line
+    directive: (preproc_directive)
+    argument: (preproc_argument))
+  (preproc_line
+    directive: (preproc_directive)
+    argument: (preproc_argument))
+  (preproc_line
+    directive: (preproc_directive)
+    argument: (preproc_argument)
+    argument: (preproc_argument))
+  (preproc_line
+    directive: (preproc_directive)
+    argument: (preproc_argument))
+  (preproc_line
+    directive: (preproc_directive)
+    argument: (preproc_argument)))
+
+================================================================================
+A directive word ends where a C identifier ends
+================================================================================
+
+#endif.x
+#else$x
+#if(1)
+#endif1
+#define_x
+#DEFINE N 1
+
+--------------------------------------------------------------------------------
+
+(source_file
+  (preproc_line
+    directive: (preproc_directive)
+    argument: (preproc_argument))
+  (preproc_line
+    directive: (preproc_directive)
+    argument: (preproc_argument))
+  (preproc_line
+    directive: (preproc_directive)
+    condition: (preproc_condition))
+  (line_comment)
+  (line_comment)
+  (line_comment))
+
+================================================================================
+Words only clang's module modes or internal buffers read as directives
+================================================================================
+
+#__include_macros "a.h"
+#__preprocessed_import a
+#__preprocessed_module a
+#module a
+#defined a
+
+--------------------------------------------------------------------------------
+
+(source_file
+  (line_comment)
+  (line_comment)
+  (line_comment)
+  (line_comment)
+  (line_comment))

@@ -56,7 +56,7 @@ CFI directives read register names as registers
     name: (directive_name)))
 
 ================================================================================
-A directive name that only starts with a CFI register directive is its own directive
+A dot-word that only starts with a CFI register directive is a macro call
 ================================================================================
 
 .cfi_offsets x0
@@ -65,9 +65,10 @@ A directive name that only starts with a CFI register directive is its own direc
 --------------------------------------------------------------------------------
 
 (source_file
-  (directive
-    name: (directive_name)
-    argument: (identifier))
+  (macro_call
+    function: (identifier)
+    arguments: (argument_list
+      argument: (register)))
   (directive
     name: (directive_name)
     argument: (integer)))

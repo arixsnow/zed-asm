@@ -2,14 +2,12 @@
 
 import { test } from 'bun:test';
 import assert from 'node:assert/strict';
-import { readFileSync } from 'node:fs';
-import { join } from 'node:path';
 
-import { ROOT } from '../../scripts/lib/files.ts';
+import { statementWords, tokenNames } from '../../scripts/lib/indent.ts';
+import { commonSources } from '../../scripts/lib/tables.ts';
 import { manifest } from '../../scripts/lib/manifest.ts';
 import { readGrammar } from '../lib/grammar-sets.ts';
 
-const KEYWORD_LEXER = /static bool ts_lex_keywords\([^)]*\) \{([\s\S]*?)\n\}\n/;
 const WRAPPERS = new Set(['TOKEN', 'IMMEDIATE_TOKEN', 'PREC', 'PREC_LEFT', 'PREC_RIGHT']);
 
 interface Rule {
@@ -26,19 +24,44 @@ function caseInsensitiveWord(rule: Rule): boolean {
   return inner.type === 'PATTERN' && (inner.flags ?? '').includes('i');
 }
 
-test('every case-insensitive word is a keyword of the identifier token, so it never splits a longer word', () => {
-  const missing: string[] = [];
+test('no grammar lexes a word table: the scanner reads every listed word whole', () => {
+  const lexed: string[] = [];
   for (const { grammar } of manifest.languages) {
-    const words = Object.entries(readGrammar(grammar).rules as Record<string, Rule>)
-      .filter(([, rule]) => caseInsensitiveWord(rule))
-      .map(([name]) => name);
-    const parser = readFileSync(join(ROOT, 'tree-sitter', grammar, 'src', 'parser.c'), 'utf8');
-    const keywords = KEYWORD_LEXER.exec(parser)?.[1] ?? '';
-    for (const name of words) {
-      if (!new RegExp(`\\bsym_${name}\\b`).test(keywords)) {
-        missing.push(`${grammar}: ${name}`);
+    const json = readGrammar(grammar) as unknown as { word?: string; rules: Record<string, Rule> };
+    if (json.word !== undefined) {
+      lexed.push(`${grammar}: word token ${json.word}`);
+    }
+    for (const [name, rule] of Object.entries(json.rules)) {
+      if (caseInsensitiveWord(rule)) {
+        lexed.push(`${grammar}: ${name}`);
       }
     }
   }
-  assert.deepStrictEqual(missing, []);
+  assert.deepStrictEqual(lexed, []);
+});
+
+test("every directive shape in a dialect's tables is a token its grammar reads", () => {
+  const sources = commonSources();
+  const scanner = sources.scanner;
+  const tokens = tokenNames(scanner);
+  const unread: string[] = [];
+  for (const { grammar, dialect } of manifest.languages) {
+    const json = readGrammar(grammar) as unknown as {
+      externals: { name: string }[];
+      rules: unknown;
+    };
+    assert.deepStrictEqual(
+      json.externals.length,
+      tokens.length,
+      `${grammar}: one external per token`,
+    );
+    const rules = JSON.stringify(json.rules);
+    for (const { name, symbol } of statementWords(sources, dialect)) {
+      const external = json.externals[tokens.indexOf(symbol)]?.name;
+      if (external === undefined || !rules.includes(`"name":"${external}"`)) {
+        unread.push(`${grammar}: ${name} ${symbol}`);
+      }
+    }
+  }
+  assert.deepStrictEqual(unread, []);
 });

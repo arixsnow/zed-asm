@@ -1,9 +1,12 @@
+# SPDX-License-Identifier: MIT
+
 ARG BUN_VERSION=1.4.3
 ARG BUN_DIGEST=sha256:1aaa515018b0b37d95dbdebd55d1b7f37ad258a6289ba63e4bc3b9c9e3038697
+ARG FEDORA_VERSION=45
 
 FROM docker.io/oven/bun:${BUN_VERSION}-distroless@${BUN_DIGEST} AS bun
 
-FROM registry.fedoraproject.org/fedora:44 AS tree-sitter
+FROM registry.fedoraproject.org/fedora:${FEDORA_VERSION} AS tree-sitter
 
 RUN dnf -y install --setopt=install_weak_deps=False cargo gcc \
     && dnf clean all
@@ -11,7 +14,7 @@ RUN dnf -y install --setopt=install_weak_deps=False cargo gcc \
 ARG TREE_SITTER_VERSION=0.27.0
 RUN cargo install --locked tree-sitter-cli --version "${TREE_SITTER_VERSION}" --root /opt/tree-sitter
 
-FROM registry.fedoraproject.org/fedora:44 AS dprint
+FROM registry.fedoraproject.org/fedora:${FEDORA_VERSION} AS dprint
 
 RUN dnf -y install --setopt=install_weak_deps=False cargo gcc \
     && dnf clean all
@@ -19,7 +22,7 @@ RUN dnf -y install --setopt=install_weak_deps=False cargo gcc \
 ARG DPRINT_VERSION=0.63.0
 RUN cargo install --locked dprint --version "${DPRINT_VERSION}" --root /opt/dprint
 
-FROM registry.fedoraproject.org/fedora:44 AS dev
+FROM registry.fedoraproject.org/fedora:${FEDORA_VERSION} AS dev
 
 RUN dnf -y install --setopt=install_weak_deps=False \
         gcc \
@@ -28,6 +31,8 @@ RUN dnf -y install --setopt=install_weak_deps=False \
         glibc-devel \
         clang \
         clang-tools-extra \
+        lld \
+        wasi-libc-devel \
         binutils \
         binutils-aarch64-linux-gnu \
         arm-none-eabi-binutils-cs \
@@ -36,6 +41,10 @@ RUN dnf -y install --setopt=install_weak_deps=False \
         nasm \
         yasm \
         ShellCheck \
+        perl-interpreter \
+        python3 \
+        cmake \
+        ninja-build \
     && dnf clean all
 
 COPY --from=tree-sitter /opt/tree-sitter/bin/tree-sitter /usr/local/bin/tree-sitter
@@ -88,13 +97,11 @@ RUN dnf -y install --setopt=install_weak_deps=False \
         alsa-lib \
         dbus-daemon \
         git \
-        lld \
-        wasi-libc-devel \
         tar \
         gzip \
     && dnf clean all
 
-ARG ZED_REFRESH=
+ARG ZED_REFRESH=0
 RUN mkdir /opt/zed \
     && curl -f https://zed.dev/install.sh | HOME=/opt/zed sh
 

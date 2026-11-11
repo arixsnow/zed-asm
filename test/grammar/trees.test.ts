@@ -51,7 +51,7 @@ function parse(grammar: string, source: string): Parse {
 
 const ROOT_NODE = /^\(source_file \[\d+, \d+\] - \[(\d+), (\d+)\]/;
 const BLOCK_NODE =
-  /\((macro_definition|conditional|repeat_block) \[(\d+), \d+\] - \[(\d+), (\d+)\]/g;
+  /\((macro_definition|conditional|repeat_block|structure|structure_instance) \[(\d+), \d+\] - \[(\d+), (\d+)\]/g;
 
 function blocksOpenToEnd(grammar: string, source: string): string[] {
   const tree = treeText(parseFiles(grammar, 'trees', [source]).output).trim();
@@ -110,4 +110,18 @@ test('every fixture parses cleanly, closes every block it opens, and parses the 
       }
     }
   }
+});
+
+test('a raw %define value ends before a CRLF line end', () => {
+  const tree = treeText(parseFiles('asm_x86_nasm', 'trees', ['%define X 1\r\nnop\r\n']).output);
+  assert.match(tree, /value: \(preproc_argument \[0, 10\] - \[0, 11\]\)/);
+});
+
+test('a NASM line join needs the newline right after the backslash, CRLF included', () => {
+  const [joined, spaced] = treeText(
+    parseFiles('asm_x86_nasm', 'trees', ['db 1, \\\r\n2\r\n', '%define Y 1 \\ \nnop\n']).output,
+  ).split(/^(?=\(source_file )/m).filter((tree) => tree.startsWith('(source_file '));
+  assert.match(joined, /\(directive \[0, 0\] - \[1, 1\]/);
+  assert.match(spaced, /value: \(preproc_argument \[0, 10\] - \[0, 13\]\)/);
+  assert.match(spaced, /\(instruction \[1, 0\] - \[1, 3\]/);
 });

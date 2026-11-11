@@ -1,3 +1,5 @@
+; SPDX-License-Identifier: MIT
+
 (block_comment) @comment
 
 (preproc_comment) @comment
@@ -15,8 +17,6 @@
 
 (preproc_params
   (identifier) @variable.parameter)
-
-(escape_sequence) @string.escape
 
 (char) @string
 

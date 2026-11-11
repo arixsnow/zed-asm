@@ -1,30 +1,49 @@
 // SPDX-License-Identifier: MIT
 
-const { operandList } = require('../core.js');
-
-const SYMBOL_TYPES = [
-  'function',
-  'object',
-  'tls_object',
-  'common',
-  'notype',
-  'gnu_indirect_function',
-  'gnu_unique_object',
-  'progbits',
-  'nobits',
-  'note',
-  'init_array',
-  'fini_array',
-  'preinit_array',
-];
+const { commaList, operatorToken, precedence } = require('../core.js');
 
 const COMMA_SEPARATED_LISTS = ['ARM_APPLE'];
 const DARWIN_LOCALS = ['ARM_APPLE'];
 
-function listRest(ctx, item, missing, juxtaposed) {
-  const afterComma = seq(',', choice(item, missing));
-  return repeat(
-    COMMA_SEPARATED_LISTS.includes(ctx.dialect) ? afterComma : choice(afterComma, juxtaposed),
+function operandList($, name) {
+  return commaList($, field(name, $._operand));
+}
+
+function instructionOperands($) {
+  return seq(
+    field('operand', $._instruction_operand),
+    repeat(seq(',', choice(field('operand', $._instruction_operand), $._missing_operand))),
+  );
+}
+
+function delimited(ctx, $, item, joined) {
+  if (!COMMA_SEPARATED_LISTS.includes(ctx.dialect)) {
+    return item;
+  }
+  return choice(item, alias(joined, $.argument));
+}
+
+function listRest(ctx, $, name, item, joined, missing) {
+  const separator = COMMA_SEPARATED_LISTS.includes(ctx.dialect) ? ',' : choice(',', $._blank);
+  return repeat(seq(separator, choice(field(name, delimited(ctx, $, item, joined)), missing)));
+}
+
+function argumentGroup($, item) {
+  return prec.dynamic(
+    -1,
+    seq(
+      '(',
+      field('argument', item),
+      repeat(seq(choice(',', $._blank), field('argument', item))),
+      choice(')', $._unclosed_arguments),
+    ),
+  );
+}
+
+function macroArgumentList(ctx, $, item, joined) {
+  return seq(
+    field('argument', delimited(ctx, $, item, joined)),
+    listRest(ctx, $, 'argument', item, joined, $._missing_operand),
   );
 }
 
@@ -43,26 +62,55 @@ function preprocRest($, ...parts) {
 
 module.exports = (ctx) => {
   const dotLocals = !DARWIN_LOCALS.includes(ctx.dialect);
+  const levels = precedence(ctx);
   return {
     rules: {
+      binary_expression: ($) =>
+        choice(
+          ...[...levels.operators].map(([operator, level]) =>
+            prec.left(
+              level,
+              seq(
+                field('left', $._expression),
+                field('operator', operatorToken($, operator)),
+                field('right', $._expression),
+              ),
+            )
+          ),
+        ),
+      unary_expression: ($) =>
+        prec(
+          levels.unary,
+          seq(field('operator', choice('-', '+', '~', '!')), field('argument', $._expression)),
+        ),
+      parenthesized_expression: ($) => seq('(', $._expression, choice(')', $._unclosed)),
+
       directive: ($) =>
         choice(
           seq(
-            field(
-              'name',
-              choice(
-                alias($._dot_identifier, $.directive_name),
-                alias($._sized_data_directive, $.directive_name),
-              ),
-            ),
+            field('name', alias($._generic_directive, $.directive_name)),
             optional(operandList($, 'argument')),
           ),
           seq(
             field('name', alias($._blank_separated_directive, $.directive_name)),
             repeat(field('argument', choice($._symbol, $.integer, $.unary_expression, $.string))),
           ),
+          seq(
+            field('name', alias($._float_data_directive, $.directive_name)),
+            optional(commaList($, field('argument', $._float_value))),
+          ),
+          seq(
+            field('name', alias($._float_space_directive, $.directive_name)),
+            optional(
+              seq(
+                field('argument', $._value),
+                optional(seq(',', choice(field('argument', $._float_value), $._missing_argument))),
+              ),
+            ),
+          ),
         ),
-      _sized_data_directive: () => token(ctx.lexical.sizedDataDirective),
+      _float_value: ($) => choice($._value, alias($._dot_float, $.float)),
+      _dot_float: () => token(prec(1, ctx.lexical.dotFloat)),
 
       assignment: ($) =>
         prec(
@@ -74,106 +122,24 @@ module.exports = (ctx) => {
           ),
         ),
 
-      _body_items: ($) =>
-        seq(choice($._newline, $._separator, $._end), repeat(choice($._item, $.label_block))),
-      body: ($) => $._body_items,
-      unclosed_body: ($) => $._body_items,
-      macro_definition: ($) =>
-        seq($._macro_header, field('body', $.body), alias($._macro_close, '.endm')),
-      _unclosed_macro: ($) => seq($._macro_header, field('body', $.unclosed_body)),
-      _macro_header: ($) =>
-        seq(
-          alias($._macro_open, '.macro'),
-          choice(field('name', $.identifier), $._missing_identifier),
-          optional(
-            seq(
-              field('parameter', $.parameter),
-              listRest(
-                ctx,
-                field('parameter', $.parameter),
-                $._missing_identifier,
-                field('parameter', $.parameter),
-              ),
-            ),
-          ),
-        ),
+      _definition_name: ($) =>
+        choice($.identifier, alias($._dot_identifier, $.identifier), $.macro_argument),
       parameter: ($) =>
         seq(
-          field('name', $.identifier),
+          field('name', $._definition_name),
+          optional(seq(':', choice(field('qualifier', $.identifier), $._missing_identifier))),
           optional(
-            choice(
-              seq(':', choice(field('qualifier', $.identifier), $._missing_identifier)),
-              seq('=', choice(field('default', $._value), $._missing_argument)),
-            ),
-          ),
-        ),
-
-      conditional: ($) =>
-        seq(
-          $._conditional_header,
-          field('body', $.body),
-          repeat($.elseif_clause),
-          optional($.else_clause),
-          alias($._conditional_close, '.endif'),
-        ),
-      _unclosed_conditional: ($) =>
-        seq(
-          $._conditional_header,
-          choice(
-            field('body', $.unclosed_body),
             seq(
-              field('body', $.body),
-              repeat($.elseif_clause),
+              '=',
               choice(
-                alias($._unclosed_elseif_clause, $.elseif_clause),
-                alias($._unclosed_else_clause, $.else_clause),
+                field('default', delimited(ctx, $, $._call_value, $._joined_call_values)),
+                $._missing_operand,
               ),
-            ),
-          ),
-        ),
-      _conditional_header: ($) =>
-        seq(alias($._if_open, '.if'), optional(operandList($, 'condition'))),
-      elseif_clause: ($) => seq($._elseif_header, field('body', $.body)),
-      _unclosed_elseif_clause: ($) => seq($._elseif_header, field('body', $.unclosed_body)),
-      _elseif_header: ($) =>
-        seq(alias($._elseif, '.elseif'), optional(operandList($, 'condition'))),
-      else_clause: ($) => seq(alias($._else, '.else'), field('body', $.body)),
-      _unclosed_else_clause: ($) => seq(alias($._else, '.else'), field('body', $.unclosed_body)),
-
-      repeat_block: ($) =>
-        seq($._repeat_header, field('body', $.body), alias($._repeat_close, '.endr')),
-      _unclosed_repeat: ($) => seq($._repeat_header, field('body', $.unclosed_body)),
-      _repeat_header: ($) =>
-        choice(
-          seq(alias($._rept_open, '.rept'), optional(field('count', $._expression))),
-          seq(
-            choice(alias($._irp_open, '.irp'), alias($._irpc_open, '.irpc')),
-            choice(field('parameter', $.identifier), $._missing_identifier),
-            listRest(
-              ctx,
-              field('value', $._value),
-              $._missing_argument,
-              seq($._blank, choice(field('value', $._value), $._missing_argument)),
             ),
           ),
         ),
 
       macro_argument: () => ctx.lexical.macroArgument,
-      concatenation: ($) => seq($._glue_head, $._glued_pieces),
-      _glued_pieces: ($) =>
-        repeat1(
-          choice(
-            alias($._glued_argument, $.macro_argument),
-            alias($._glued_separator, '\\()'),
-            alias($._glued_text, $.identifier),
-          ),
-        ),
-      keyword_argument: ($) =>
-        seq(
-          field('name', $.identifier),
-          '=',
-          choice(field('value', $._value), $._missing_argument),
-        ),
 
       numeric_label: () => ctx.lexical.numericLabel,
       float: () => ctx.lexical.float,
@@ -182,7 +148,9 @@ module.exports = (ctx) => {
         choice(
           seq(
             field('directive', alias($._preproc_include, $.preproc_directive)),
-            optional(field('argument', alias($._header_name, $.preproc_argument))),
+            optional(
+              field('argument', choice(alias($._header_name, $.preproc_argument), $.string)),
+            ),
             ...preprocRest($, field('argument', $.preproc_argument)),
           ),
           seq(
@@ -206,26 +174,10 @@ module.exports = (ctx) => {
             seq(...preprocRest($)),
           ),
         ),
-      preproc_params: ($) =>
-        seq(
-          alias($._preproc_params_open, '('),
-          optional(seq($._preproc_parameter, repeat(seq(',', $._preproc_parameter)))),
-          ')',
-        ),
-      _preproc_parameter: ($) =>
-        choice(seq(alias($._preproc_name, $.identifier), optional('...')), '...'),
-      _preproc_name: () => /[A-Za-z_$][A-Za-z0-9_$]*/,
+      _preproc_name: () => /[A-Za-z_][A-Za-z0-9_]*/,
 
       block_comment: () => token(seq('/*', /[^*]*\*+([^/*][^*]*\*+)*/, '/')),
 
-      string: ($) =>
-        seq(
-          '"',
-          repeat(choice($._string_content, $.escape_sequence)),
-          choice(token.immediate('"'), $._unclosed),
-        ),
-      escape_sequence: () =>
-        token.immediate(seq('\\', choice(/[0-7]{1,3}/, /[xX][0-9a-fA-F]+/, /[^0-7xX\n]/))),
       char: () =>
         token(seq("'", optional(choice(/[^\\\n]/, seq('\\', optional(/./)))), optional("'"))),
 
@@ -237,12 +189,6 @@ module.exports = (ctx) => {
             optional(field('specifier', alias($._relocation_specifier, $.identifier))),
           ),
         ),
-      macro_call: ($) => seq(field('function', $.identifier), field('arguments', $.argument_list)),
-      _macro_label: ($) =>
-        seq(
-          field('function', alias($._macro_label_name, $.identifier)),
-          field('arguments', $.argument_list),
-        ),
       argument_list: ($) =>
         seq(
           $._call_arguments,
@@ -251,37 +197,83 @@ module.exports = (ctx) => {
           repeat(seq(',', optional(field('argument', $._macro_argument)))),
           choice(')', $._unclosed_arguments),
         ),
-      _statement_arguments: ($) =>
-        prec.dynamic(
-          -1,
-          seq(
-            '(',
-            field('argument', $._macro_argument),
-            repeat(seq(',', field('argument', $._macro_argument))),
-            choice(')', $._unclosed_arguments),
-          ),
-        ),
+      _call_argument: ($) => choice($._call_value, $.keyword_argument),
+      _call_value: ($) => choice($._instruction_operand, alias($._argument_group, $.argument_list)),
+      ...(COMMA_SEPARATED_LISTS.includes(ctx.dialect)
+        ? {
+          _joined_call_values: ($) =>
+            seq(
+              $._call_value,
+              repeat1(seq($._blank, choice($._call_value, $._missing_operand))),
+            ),
+        }
+        : {}),
+      _argument_group: ($) => argumentGroup($, $._macro_argument),
       location_counter: () => '.',
-      _section_type_word: () => /(4|8|16)byte_literals/,
-      _percent_name: () => token(prec(-1, seq('%', optional(/[A-Za-z_][A-Za-z0-9_]*/)))),
-      _symbol_type_name: () => token(prec(2, seq('%', choice(...SYMBOL_TYPES)))),
+      _percent_name: () => token(prec(-1, seq('%', optional(/[A-Za-z0-9_]+/)))),
       ...(dotLocals
         ? { _local_identifier: () => token(prec(1, ctx.lexical.localIdentifier)) }
         : {}),
     },
     choices: {
-      _item: [
+      _call_name: [($) => $.identifier],
+      _macro_arguments: [
+        ($) => macroArgumentList(ctx, $, $._call_argument, $._joined_call_values),
+      ],
+      _macro_header: [
         ($) =>
           seq(
-            choice(
-              alias($._unclosed_macro, $.macro_definition),
-              alias($._unclosed_conditional, $.conditional),
-              alias($._unclosed_repeat, $.repeat_block),
+            alias($._macro_open, '.macro'),
+            choice(field('name', $._definition_name), $._missing_name),
+            optional(
+              seq(
+                field('parameter', $.parameter),
+                repeat(
+                  choice(
+                    seq(',', choice(field('parameter', $.parameter), $._missing_name)),
+                    field('parameter', $.parameter),
+                  ),
+                ),
+              ),
             ),
-            $._block_end,
           ),
       ],
-      symbol_type: [($) => $._symbol_type_name, ($) => $._percent_name],
+      _macro_end: [($) => alias($._macro_close, '.endm')],
+      _conditional_header: [
+        ($) => seq(alias($._if_open, '.if'), optional(operandList($, 'condition'))),
+      ],
+      _elseif_header: [
+        ($) => seq(alias($._elseif, '.elseif'), optional(operandList($, 'condition'))),
+      ],
+      _else_header: [($) => alias($._else, '.else')],
+      _conditional_clauses: [
+        ($) => seq(repeat1($.elseif_clause), optional($.else_clause)),
+        ($) => $.else_clause,
+      ],
+      _open_clauses: [($) => repeat1($.elseif_clause)],
+      _conditional_end: [($) => alias($._conditional_close, '.endif')],
+      _repeat_header: [
+        ($) => seq(alias($._rept_open, '.rept'), optional(field('count', $._expression))),
+        ($) =>
+          seq(
+            choice(alias($._irp_open, '.irp'), alias($._irpc_open, '.irpc')),
+            choice(field('parameter', $._definition_name), $._missing_name),
+            listRest(ctx, $, 'value', $._call_value, $._joined_call_values, $._missing_operand),
+          ),
+      ],
+      _repeat_end: [($) => alias($._repeat_close, '.endr')],
+      _glued_piece: [
+        ($) => alias($._glued_argument, $.macro_argument),
+        ($) => alias($._glued_separator, '\\()'),
+        ($) => alias($._glued_text, $.identifier),
+      ],
+      _preproc_parameter: [
+        ($) => choice(seq(alias($._preproc_name, $.identifier), optional('...')), '...'),
+      ],
+      _preproc_parameter_list: [
+        ($) => seq($._preproc_parameter, repeat(seq(',', $._preproc_parameter))),
+      ],
+      symbol_type: [($) => $._percent_name],
       _line_content: [($) => $.preproc_line, ($) => $.preproc_define],
       _symbol: [
         ($) => alias($._dot_identifier, $.identifier),
@@ -293,28 +285,35 @@ module.exports = (ctx) => {
         ($) => seq(field('name', alias($._numeric_label_name, $.numeric_label)), ':'),
         ($) => seq(field('name', choice($.macro_argument, $.concatenation)), ':'),
       ],
-      _statement: [
-        ($) => $.directive,
-        ($) => $.assignment,
-        ($) => $.macro_definition,
-        ($) => $.conditional,
-        ($) => $.repeat_block,
-      ],
+      _statement: [($) => $.directive, ($) => $.assignment],
       _defined_name: [
         ($) => $._symbol,
         ($) => alias($.string, $.identifier),
         ($) => $.location_counter,
       ],
       _glue_head: [($) => $._symbol, ($) => $.macro_argument],
+      _keyword_name: [($) => $.identifier],
+      _keyword_value: [
+        ($) => field('value', delimited(ctx, $, $._call_value, $._joined_call_values)),
+        ($) => $._missing_operand,
+      ],
       _value: [
+        ($) => $._expression,
         ($) => prec(1, $.string),
         ($) => $.symbol_type,
         ($) => alias($._section_type_word, $.identifier),
       ],
-      _operand: [($) => $.keyword_argument],
-      _operands: [($) => field('operand', alias($._statement_arguments, $.argument_list))],
+      _operand: [($) => $._value, ($) => $.keyword_argument],
+      _instruction_operand: [($) => $._value],
+      _operands: [($) => instructionOperands($)],
       _macro_argument: [($) => $._expression, ($) => prec(1, $.string)],
       _expression: [
+        ($) => $._symbol,
+        ($) => $.integer,
+        ($) => $.unary_expression,
+        ($) => $.binary_expression,
+        ($) => $.parenthesized_expression,
+        ($) => $._missing_expression,
         ($) => $.macro_call,
         ($) => alias($.string, $.identifier),
         ($) => $.char,
@@ -330,3 +329,6 @@ module.exports = (ctx) => {
     conflicts: [($) => [$.parenthesized_expression, $._macro_argument]],
   };
 };
+
+module.exports.argumentGroup = argumentGroup;
+module.exports.macroArgumentList = macroArgumentList;

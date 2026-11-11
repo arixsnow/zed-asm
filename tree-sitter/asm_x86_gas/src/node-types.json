@@ -8,6 +8,10 @@
         "required": false,
         "types": [
           {
+            "type": "argument_list",
+            "named": true
+          },
+          {
             "type": "binary_expression",
             "named": true
           },
@@ -20,6 +24,14 @@
             "named": true
           },
           {
+            "type": "decorated_operand",
+            "named": true
+          },
+          {
+            "type": "decorator",
+            "named": true
+          },
+          {
             "type": "float",
             "named": true
           },
@@ -28,7 +40,19 @@
             "named": true
           },
           {
+            "type": "immediate",
+            "named": true
+          },
+          {
+            "type": "indirect",
+            "named": true
+          },
+          {
             "type": "integer",
+            "named": true
+          },
+          {
+            "type": "keyword_argument",
             "named": true
           },
           {
@@ -73,6 +97,10 @@
           },
           {
             "type": "string",
+            "named": true
+          },
+          {
+            "type": "symbol_type",
             "named": true
           },
           {
@@ -455,6 +483,10 @@
         },
         {
           "type": "label_block",
+          "named": true
+        },
+        {
+          "type": "macro_call",
           "named": true
         },
         {
@@ -1119,10 +1151,6 @@
         "required": false,
         "types": [
           {
-            "type": "argument_list",
-            "named": true
-          },
-          {
             "type": "binary_expression",
             "named": true
           },
@@ -1160,10 +1188,6 @@
           },
           {
             "type": "integer",
-            "named": true
-          },
-          {
-            "type": "keyword_argument",
             "named": true
           },
           {
@@ -1255,6 +1279,10 @@
         "required": false,
         "types": [
           {
+            "type": "argument_list",
+            "named": true
+          },
+          {
             "type": "binary_expression",
             "named": true
           },
@@ -1267,6 +1295,14 @@
             "named": true
           },
           {
+            "type": "decorated_operand",
+            "named": true
+          },
+          {
+            "type": "decorator",
+            "named": true
+          },
+          {
             "type": "float",
             "named": true
           },
@@ -1276,6 +1312,10 @@
           },
           {
             "type": "immediate",
+            "named": true
+          },
+          {
+            "type": "indirect",
             "named": true
           },
           {
@@ -1296,6 +1336,10 @@
           },
           {
             "type": "macro_call",
+            "named": true
+          },
+          {
+            "type": "memory_operand",
             "named": true
           },
           {
@@ -1406,6 +1450,10 @@
           "named": true
         },
         {
+          "type": "macro_call",
+          "named": true
+        },
+        {
           "type": "macro_definition",
           "named": true
         },
@@ -1430,7 +1478,7 @@
     "fields": {
       "arguments": {
         "multiple": false,
-        "required": true,
+        "required": false,
         "types": [
           {
             "type": "argument_list",
@@ -1474,6 +1522,10 @@
         "types": [
           {
             "type": "identifier",
+            "named": true
+          },
+          {
+            "type": "macro_argument",
             "named": true
           }
         ]
@@ -1770,6 +1822,10 @@
         "required": false,
         "types": [
           {
+            "type": "argument_list",
+            "named": true
+          },
+          {
             "type": "binary_expression",
             "named": true
           },
@@ -1782,6 +1838,14 @@
             "named": true
           },
           {
+            "type": "decorated_operand",
+            "named": true
+          },
+          {
+            "type": "decorator",
+            "named": true
+          },
+          {
             "type": "float",
             "named": true
           },
@@ -1791,6 +1855,10 @@
           },
           {
             "type": "immediate",
+            "named": true
+          },
+          {
+            "type": "indirect",
             "named": true
           },
           {
@@ -1811,6 +1879,10 @@
           },
           {
             "type": "macro_call",
+            "named": true
+          },
+          {
+            "type": "memory_operand",
             "named": true
           },
           {
@@ -1849,6 +1921,10 @@
         "types": [
           {
             "type": "identifier",
+            "named": true
+          },
+          {
+            "type": "macro_argument",
             "named": true
           }
         ]
@@ -2014,6 +2090,10 @@
         "types": [
           {
             "type": "preproc_argument",
+            "named": true
+          },
+          {
+            "type": "string",
             "named": true
           }
         ]
@@ -2182,6 +2262,10 @@
           {
             "type": "identifier",
             "named": true
+          },
+          {
+            "type": "macro_argument",
+            "named": true
           }
         ]
       },
@@ -2189,6 +2273,10 @@
         "multiple": true,
         "required": false,
         "types": [
+          {
+            "type": "argument_list",
+            "named": true
+          },
           {
             "type": "binary_expression",
             "named": true
@@ -2202,6 +2290,14 @@
             "named": true
           },
           {
+            "type": "decorated_operand",
+            "named": true
+          },
+          {
+            "type": "decorator",
+            "named": true
+          },
+          {
             "type": "float",
             "named": true
           },
@@ -2211,6 +2307,10 @@
           },
           {
             "type": "immediate",
+            "named": true
+          },
+          {
+            "type": "indirect",
             "named": true
           },
           {
@@ -2231,6 +2331,10 @@
           },
           {
             "type": "macro_call",
+            "named": true
+          },
+          {
+            "type": "memory_operand",
             "named": true
           },
           {
@@ -2364,10 +2468,6 @@
             "named": true
           },
           {
-            "type": "flat",
-            "named": false
-          },
-          {
             "type": "float",
             "named": true
           },
@@ -2465,6 +2565,10 @@
           "named": true
         },
         {
+          "type": "macro_call",
+          "named": true
+        },
+        {
           "type": "macro_definition",
           "named": true
         },
@@ -2508,6 +2612,10 @@
       "types": [
         {
           "type": "identifier",
+          "named": true
+        },
+        {
+          "type": "integer",
           "named": true
         }
       ]
@@ -2750,6 +2858,10 @@
           "named": true
         },
         {
+          "type": "macro_call",
+          "named": true
+        },
+        {
           "type": "macro_definition",
           "named": true
         },
@@ -2948,10 +3060,6 @@
   {
     "type": "escape_sequence",
     "named": true
-  },
-  {
-    "type": "flat",
-    "named": false
   },
   {
     "type": "float",

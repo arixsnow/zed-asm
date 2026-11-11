@@ -49,3 +49,28 @@ Hexadecimal and binary integers without a point stay integers
     name: (directive_name)
     argument: (integer)
     argument: (integer)))
+
+================================================================================
+A dot float is a float where the assembler reads floats, a symbol elsewhere
+================================================================================
+
+.double .5, 1.5
+.dcb.d 2, .5
+.quad .5, .0b, 1.5
+
+--------------------------------------------------------------------------------
+
+(source_file
+  (directive
+    name: (directive_name)
+    argument: (float)
+    argument: (float))
+  (directive
+    name: (directive_name)
+    argument: (integer)
+    argument: (float))
+  (directive
+    name: (directive_name)
+    argument: (identifier)
+    argument: (identifier)
+    argument: (float)))

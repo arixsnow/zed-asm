@@ -1,0 +1,83 @@
+================================================================================
+A word in no instruction or directive table is a macro call
+================================================================================
+
+prologue
+m 1, 2
+m 1 2
+m a, b c
+movx eax
+
+--------------------------------------------------------------------------------
+
+(source_file
+  (macro_call
+    function: (identifier))
+  (macro_call
+    function: (identifier)
+    arguments: (argument_list
+      argument: (integer)
+      argument: (integer)))
+  (macro_call
+    function: (identifier)
+    arguments: (argument_list
+      argument: (argument
+        (integer)
+        (integer))))
+  (macro_call
+    function: (identifier)
+    arguments: (argument_list
+      argument: (identifier)
+      argument: (argument
+        (identifier)
+        (identifier))))
+  (macro_call
+    function: (identifier)
+    arguments: (argument_list
+      argument: (register))))
+
+================================================================================
+A word before an instruction or pseudo-instruction is a label
+================================================================================
+
+foo mov eax, 1
+bar db 1
+
+--------------------------------------------------------------------------------
+
+(source_file
+  (label_block
+    label: (label
+      name: (identifier))
+    (instruction
+      mnemonic: (mnemonic)
+      operand: (register)
+      operand: (integer)))
+  (label_block
+    label: (label
+      name: (identifier))
+    (directive
+      name: (directive_name)
+      argument: (integer))))
+
+================================================================================
+A macro call being typed keeps to its own line
+================================================================================
+
+m a,
+m (b
+nop
+
+--------------------------------------------------------------------------------
+
+(source_file
+  (macro_call
+    function: (identifier)
+    arguments: (argument_list
+      argument: (identifier)))
+  (macro_call
+    function: (identifier)
+    arguments: (argument_list
+      argument: (identifier)))
+  (instruction
+    mnemonic: (mnemonic)))

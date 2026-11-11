@@ -43,3 +43,16 @@ test('the dev and Zed containers run without a network', () => {
     assert.deepStrictEqual(network, ['--network=none'], launcher);
   }
 });
+
+test('the dev container mounts the upstream sources read-only and never relabels them', () => {
+  const text = readFileSync(join(ROOT, 'scripts', 'dev'), 'utf8');
+  const mounts = [
+    ...text.matchAll(/(--security-opt label=disable )?--volume "[^"]*:\/sources:([^"]*)"/g),
+  ];
+  assert.deepStrictEqual(mounts.length, 1, 'scripts/dev mounts /sources once');
+  const [[, unlabeled, list]] = mounts;
+  const options = list.split(',');
+  assert.ok(options.includes('ro'), 'the /sources mount is read-only');
+  assert.ok(!options.includes('z') && !options.includes('Z'), 'the /sources tree is not relabeled');
+  assert.ok(unlabeled !== undefined, 'the --sources container runs without label separation');
+});

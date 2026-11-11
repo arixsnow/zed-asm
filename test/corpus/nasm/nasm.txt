@@ -7,11 +7,31 @@ db 'single', "double", `back\n`
 --------------------------------------------------------------------------------
 
 (source_file
-  (instruction
-    mnemonic: (mnemonic)
-    operand: (string)
-    operand: (string)
-    operand: (string)))
+  (directive
+    name: (directive_name)
+    argument: (string)
+    argument: (string)
+    argument: (string
+      (escape_sequence))))
+
+================================================================================
+Only backquote strings have escapes, and each ends where nasm ends it
+================================================================================
+
+db `\x414\1234\u263a\e`, 'a\n', "b\t"
+
+--------------------------------------------------------------------------------
+
+(source_file
+  (directive
+    name: (directive_name)
+    argument: (string
+      (escape_sequence)
+      (escape_sequence)
+      (escape_sequence)
+      (escape_sequence))
+    argument: (string)
+    argument: (string)))
 
 ================================================================================
 NASM integer suffixes
@@ -25,11 +45,11 @@ mov ebx, 1010b
 (source_file
   (instruction
     mnemonic: (mnemonic)
-    operand: (identifier)
+    operand: (register)
     operand: (integer))
   (instruction
     mnemonic: (mnemonic)
-    operand: (identifier)
+    operand: (register)
     operand: (integer)))
 
 ================================================================================
@@ -41,10 +61,10 @@ db "; not a comment", '; nor this'
 --------------------------------------------------------------------------------
 
 (source_file
-  (instruction
-    mnemonic: (mnemonic)
-    operand: (string)
-    operand: (string)))
+  (directive
+    name: (directive_name)
+    argument: (string)
+    argument: (string)))
 
 ================================================================================
 Every dot name is a local label
@@ -74,14 +94,128 @@ nop
 --------------------------------------------------------------------------------
 
 (source_file
-  (instruction
-    mnemonic: (mnemonic)
-    operand: (string))
-  (instruction
-    mnemonic: (mnemonic)
-    operand: (string))
-  (instruction
-    mnemonic: (mnemonic)
-    operand: (string))
+  (directive
+    name: (directive_name)
+    argument: (string))
+  (directive
+    name: (directive_name)
+    argument: (string))
+  (directive
+    name: (directive_name)
+    argument: (string))
   (instruction
     mnemonic: (mnemonic)))
+
+================================================================================
+A backslash at the end of a line joins the next line
+================================================================================
+
+db 1, \
+2
+mov al, \
+1
+; note \
+mov eax, 1
+db 'a\
+b', `c\
+d`
+%define X 1 + \
+2
+\
+%if 1
+%endif
+
+--------------------------------------------------------------------------------
+
+(source_file
+  (directive
+    name: (directive_name)
+    argument: (integer)
+    argument: (integer))
+  (instruction
+    mnemonic: (mnemonic)
+    operand: (register)
+    operand: (integer))
+  (line_comment)
+  (directive
+    name: (directive_name)
+    argument: (string)
+    argument: (string))
+  (preproc_define
+    directive: (preproc_directive)
+    name: (identifier)
+    value: (preproc_argument))
+  (conditional
+    condition: (integer)
+    body: (body)))
+
+================================================================================
+A join inside a token splices it, as nasm reads it
+================================================================================
+
+d\
+b 4
+mo\
+v e\
+ax, 1 <\
+< 2
+dd 0x1\
+2, 1.\
+5
+%mac\
+ro m 1
+%%\
+l: j%\
++1 %%l
+%end\
+macro
+l\
+bl: nop
+%def\
+ine X 1
+vaddps zmm0{k\
+1}, zmm1, zmm2
+
+--------------------------------------------------------------------------------
+
+(source_file
+  (directive
+    name: (directive_name)
+    argument: (integer))
+  (instruction
+    mnemonic: (mnemonic)
+    operand: (register)
+    operand: (binary_expression
+      left: (integer)
+      right: (integer)))
+  (directive
+    name: (directive_name)
+    argument: (integer)
+    argument: (float))
+  (macro_definition
+    name: (identifier)
+    parameters: (parameter_count)
+    body: (body
+      (label
+        name: (macro_local))
+      (instruction
+        mnemonic: (concatenation
+          (identifier)
+          (macro_argument))
+        operand: (macro_local))))
+  (label_block
+    label: (label
+      name: (identifier))
+    (instruction
+      mnemonic: (mnemonic))
+    (preproc_define
+      directive: (preproc_directive)
+      name: (identifier)
+      value: (preproc_argument))
+    (instruction
+      mnemonic: (mnemonic)
+      operand: (decorated_operand
+        operand: (register)
+        decorator: (decorator))
+      operand: (register)
+      operand: (register))))

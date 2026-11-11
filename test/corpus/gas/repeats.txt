@@ -40,3 +40,20 @@ Repeat blocks with a count, a list of values and a string of characters
   (repeat_block
     count: (integer)
     body: (body)))
+
+================================================================================
+LLVM's .rep is a repeat block
+================================================================================
+
+.rep 2
+nop
+.endr
+
+--------------------------------------------------------------------------------
+
+(source_file
+  (repeat_block
+    count: (integer)
+    body: (body
+      (instruction
+        mnemonic: (mnemonic)))))

@@ -290,14 +290,17 @@ ldr zt0, [x0]
       operand: (register))))
 
 ================================================================================
-System register encodings and coprocessor names are registers, named system registers are symbols
+System registers, encodings and control registers are registers in their operand slots
 ================================================================================
 
 mrs x0, s3_0_c1_c0_0
 MRS X0, S3_0_C1_C0_0
 mrs x0, sctlr_el1
-mrs x0, nzcv
+msr DAIFSet, #2
+msr tpidr_el0, x1
+mrrs x0, x1, ttbr0_el1
 sys #0, c7, c5, #0
+sysl x0, #0, C7, c05, #0
 
 --------------------------------------------------------------------------------
 
@@ -313,6 +316,62 @@ sys #0, c7, c5, #0
   (instruction
     mnemonic: (mnemonic)
     operand: (register)
+    operand: (register))
+  (instruction
+    mnemonic: (mnemonic)
+    operand: (register)
+    operand: (immediate
+      value: (integer)))
+  (instruction
+    mnemonic: (mnemonic)
+    operand: (register)
+    operand: (register))
+  (instruction
+    mnemonic: (mnemonic)
+    operand: (register)
+    operand: (register)
+    operand: (register))
+  (instruction
+    mnemonic: (mnemonic)
+    operand: (immediate
+      value: (integer))
+    operand: (register)
+    operand: (register)
+    operand: (immediate
+      value: (integer)))
+  (instruction
+    mnemonic: (mnemonic)
+    operand: (register)
+    operand: (immediate
+      value: (integer))
+    operand: (register)
+    operand: (register)
+    operand: (immediate
+      value: (integer))))
+
+================================================================================
+System register names outside their slots are symbols
+================================================================================
+
+mov x0, sctlr_el1
+b tpidr_el0
+mrs x0, sctlr_el9
+mrs x0, s4_0_c1_c0_0
+sys #0, c16, c5, #0
+
+--------------------------------------------------------------------------------
+
+(source_file
+  (instruction
+    mnemonic: (mnemonic)
+    operand: (register)
+    operand: (identifier))
+  (instruction
+    mnemonic: (mnemonic)
+    operand: (identifier))
+  (instruction
+    mnemonic: (mnemonic)
+    operand: (register)
     operand: (identifier))
   (instruction
     mnemonic: (mnemonic)
@@ -322,7 +381,7 @@ sys #0, c7, c5, #0
     mnemonic: (mnemonic)
     operand: (immediate
       value: (integer))
-    operand: (register)
+    operand: (identifier)
     operand: (register)
     operand: (immediate
       value: (integer))))
@@ -334,7 +393,7 @@ Words outside the register ranges are symbols
 mov x0, x32
 mov x0, v32
 mov x0, p16
-mov x0, pn7
+mov x0, pn16
 mov x0, x0foo
 mov x0, xr
 
@@ -372,8 +431,6 @@ Register names in directive arguments and assignments are symbols
 
 .quad x0, lr
 x0 = 4
-.irp r, x0, x1
-.endr
 
 --------------------------------------------------------------------------------
 
@@ -384,11 +441,22 @@ x0 = 4
     argument: (identifier))
   (assignment
     name: (identifier)
-    value: (integer))
+    value: (integer)))
+
+================================================================================
+Register names in .irp values are registers, as in macro arguments
+================================================================================
+
+.irp r, x0, x1
+.endr
+
+--------------------------------------------------------------------------------
+
+(source_file
   (repeat_block
     parameter: (identifier)
-    value: (identifier)
-    value: (identifier)
+    value: (register)
+    value: (register)
     body: (body)))
 
 ================================================================================
@@ -398,7 +466,7 @@ Register aliases, in any case, matched as whole words
 src .req x0
 DST .REQ x1
 b .req x2
-src .reqx x0
+src .reqx, x0
 src .req
 .unreq src
 
@@ -417,10 +485,11 @@ src .req
     name: (identifier)
     directive: (directive_name)
     register: (register))
-  (instruction
-    mnemonic: (mnemonic)
-    operand: (identifier)
-    operand: (register))
+  (macro_call
+    function: (identifier)
+    arguments: (argument_list
+      argument: (identifier)
+      argument: (register)))
   (register_alias
     name: (identifier)
     directive: (directive_name))

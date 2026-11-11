@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: MIT
+
 If:
   PathMatch: tree-sitter/common/scanner\.h
 CompileFlags:
@@ -8,3 +10,13 @@ CompileFlags:
     - -DASM_DIALECT_AUTO
     - -isystem
     - ../asm_auto/src
+---
+If:
+  PathMatch: test/c/words\.c
+CompileFlags:
+  Add:
+    - -std=c11
+    - -DASM_GRAMMAR_NAME=asm_auto
+    - -DASM_DIALECT_AUTO
+    - -isystem
+    - ../../tree-sitter/asm_auto/src

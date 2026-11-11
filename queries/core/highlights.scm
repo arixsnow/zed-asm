@@ -1,3 +1,5 @@
+; SPDX-License-Identifier: MIT
+
 (identifier) @constant
 
 (mnemonic) @keyword
@@ -10,6 +12,8 @@
 (integer) @number
 
 (string) @string
+
+(escape_sequence) @string.escape
 
 (line_comment) @comment
 

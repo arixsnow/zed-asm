@@ -81,33 +81,37 @@ Data directives whose names start with a digit
     argument: (integer)))
 
 ================================================================================
-A directive name that starts with a block or blank-separated word is its own directive
+A dot-word that only starts with a block or blank-separated word is a macro call
 ================================================================================
 
 .macros 1
 .ifx 1
 .irpz 1
-.loc_mark_labels 1
+.loc_label 1
 .filex 1
 
 --------------------------------------------------------------------------------
 
 (source_file
+  (macro_call
+    function: (identifier)
+    arguments: (argument_list
+      argument: (integer)))
+  (macro_call
+    function: (identifier)
+    arguments: (argument_list
+      argument: (integer)))
+  (macro_call
+    function: (identifier)
+    arguments: (argument_list
+      argument: (integer)))
   (directive
     name: (directive_name)
     argument: (integer))
-  (directive
-    name: (directive_name)
-    argument: (integer))
-  (directive
-    name: (directive_name)
-    argument: (integer))
-  (directive
-    name: (directive_name)
-    argument: (integer))
-  (directive
-    name: (directive_name)
-    argument: (integer)))
+  (macro_call
+    function: (identifier)
+    arguments: (argument_list
+      argument: (integer))))
 
 ================================================================================
 A .loc view may be reset with -0

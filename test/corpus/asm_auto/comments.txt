@@ -159,6 +159,6 @@ repx; nop
   (instruction
     mnemonic: (mnemonic))
   (line_comment)
-  (instruction
-    mnemonic: (mnemonic))
+  (macro_call
+    function: (identifier))
   (line_comment))

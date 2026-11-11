@@ -3,7 +3,6 @@ A name glued to parentheses is a C macro call
 ================================================================================
 
 X(loop):
-    jb X(tail)
     .quad PER_CPU_VAR(x + 8)
     .quad FOO()
     .quad (BAR (y, z))
@@ -13,12 +12,6 @@ X(loop):
 (source_file
   (label
     name: (macro_call
-      function: (identifier)
-      arguments: (argument_list
-        argument: (identifier))))
-  (instruction
-    mnemonic: (mnemonic)
-    operand: (macro_call
       function: (identifier)
       arguments: (argument_list
         argument: (identifier))))
@@ -45,33 +38,117 @@ X(loop):
           argument: (identifier))))))
 
 ================================================================================
-A statement's first word stays a mnemonic, with an argument list or a blank
+A statement's first word that names no instruction is a macro call, with an argument list or a blank
 ================================================================================
 
 _ASM_EXTABLE(1b, 3b)
 ENTRY_P2ALIGN (STRCHR, 5)
 ENTRY (memcpy)
-call HIDDEN_JUMPTARGET (f)
 
 --------------------------------------------------------------------------------
 
 (source_file
+  (macro_call
+    function: (identifier)
+    arguments: (argument_list
+      argument: (argument_list
+        argument: (numeric_label)
+        argument: (numeric_label))))
+  (macro_call
+    function: (identifier)
+    arguments: (argument_list
+      argument: (argument_list
+        argument: (identifier)
+        argument: (integer))))
+  (macro_call
+    function: (identifier)
+    arguments: (argument_list
+      argument: (parenthesized_expression
+        (identifier)))))
+
+================================================================================
+A parenthesized group is one macro argument, its items separated by commas or blanks
+================================================================================
+
+m (a, b)
+m (a b)
+m (1)
+
+--------------------------------------------------------------------------------
+
+(source_file
+  (macro_call
+    function: (identifier)
+    arguments: (argument_list
+      argument: (argument_list
+        argument: (identifier)
+        argument: (identifier))))
+  (macro_call
+    function: (identifier)
+    arguments: (argument_list
+      argument: (argument_list
+        argument: (identifier)
+        argument: (identifier))))
+  (macro_call
+    function: (identifier)
+    arguments: (argument_list
+      argument: (parenthesized_expression
+        (integer)))))
+
+================================================================================
+A macro call being typed keeps to its own line
+================================================================================
+
+m (a,
+m b=
+m c,
+nop
+
+--------------------------------------------------------------------------------
+
+(source_file
+  (macro_call
+    function: (identifier)
+    arguments: (argument_list
+      argument: (argument_list
+        argument: (identifier))))
+  (macro_call
+    function: (identifier)
+    arguments: (argument_list
+      argument: (keyword_argument
+        name: (identifier))))
+  (macro_call
+    function: (identifier)
+    arguments: (argument_list
+      argument: (identifier)))
   (instruction
-    mnemonic: (mnemonic)
-    operand: (argument_list
-      argument: (numeric_label)
-      argument: (numeric_label)))
-  (instruction
-    mnemonic: (mnemonic)
-    operand: (argument_list
-      argument: (identifier)
-      argument: (integer)))
-  (instruction
-    mnemonic: (mnemonic)
-    operand: (parenthesized_expression
-      (identifier)))
-  (instruction
-    mnemonic: (mnemonic)
-    operand: (identifier)
-    operand: (parenthesized_expression
-      (identifier))))
+    mnemonic: (mnemonic)))
+
+================================================================================
+A macro named with a dot, its dotted parameters and their references
+================================================================================
+
+.macro .mym .a, b
+.byte \.a, \b
+.endm
+.mym 1, 2
+
+--------------------------------------------------------------------------------
+
+(source_file
+  (macro_definition
+    name: (identifier)
+    parameter: (parameter
+      name: (identifier))
+    parameter: (parameter
+      name: (identifier))
+    body: (body
+      (directive
+        name: (directive_name)
+        argument: (macro_argument)
+        argument: (macro_argument))))
+  (macro_call
+    function: (identifier)
+    arguments: (argument_list
+      argument: (integer)
+      argument: (integer))))

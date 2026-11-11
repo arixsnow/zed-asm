@@ -2,8 +2,7 @@
 
 import { test } from 'bun:test';
 import assert from 'node:assert/strict';
-import { readFileSync } from 'node:fs';
-import { join } from 'node:path';
+import { createRequire } from 'node:module';
 
 import {
   extensionConfig,
@@ -14,12 +13,21 @@ import {
   sourcesOf,
   toToml,
 } from '../../scripts/build.ts';
-import { blockIndentPattern, statementLexing, statementWords } from '../../scripts/lib/indent.ts';
-import { ROOT } from '../../scripts/lib/files.ts';
+import {
+  blockIndentPattern,
+  increaseIndentPattern,
+  labelIndentPattern,
+  statementLexing,
+  statementWords,
+} from '../../scripts/lib/indent.ts';
 import { type Language, manifest, parseAuthor } from '../../scripts/lib/manifest.ts';
+import { commonSources } from '../../scripts/lib/tables.ts';
 import { assertThrowsIncluding } from '../lib/assert.ts';
 
-const outputs = renderAll(manifest, () => undefined);
+const lexical = createRequire(import.meta.url)('../../tree-sitter/common/lexical.js');
+
+const SOURCES = commonSources();
+const outputs = renderAll(manifest, () => undefined, SOURCES);
 
 function rendered(path: string): string {
   const text = outputs.get(path);
@@ -63,7 +71,7 @@ test('every generated TOML file parses back to the data it was written from', ()
   for (const language of manifest.languages) {
     assert.deepStrictEqual(
       Bun.TOML.parse(rendered(`languages/${language.dir}/config.toml`)),
-      asData(languageConfig(language, manifest)),
+      asData(languageConfig(language, manifest, SOURCES)),
       language.dir,
     );
   }
@@ -162,10 +170,10 @@ test('the .inc suffix is not claimed', () => {
 });
 
 test('label indent pattern matches labels, including tab-indented ones, and nothing else', () => {
-  for (const syntax of ['gas', 'nasm']) {
-    const pattern = new RegExp(manifest.syntaxes[syntax].labelPattern);
-    for (const line of ['main:', '    .Lloop:', '\tstart:', 'loop: dec rcx']) {
-      assert.match(line, pattern, `${syntax}: ${line}`);
+  for (const language of manifest.languages) {
+    const pattern = new RegExp(labelIndentPattern(language, manifest.blocks, SOURCES), 'u');
+    for (const line of ['main:', '    .Lloop:', '\tstart:', 'loop: dec rcx', 'x :']) {
+      assert.match(line, pattern, `${language.grammar}: ${line}`);
     }
     for (
       const line of [
@@ -177,10 +185,25 @@ test('label indent pattern matches labels, including tab-indented ones, and noth
         '#define X 1',
       ]
     ) {
-      assert.doesNotMatch(line, pattern, `${syntax}: ${line}`);
+      assert.doesNotMatch(line, pattern, `${language.grammar}: ${line}`);
     }
   }
-  assert.match('1:', new RegExp(manifest.syntaxes.gas.labelPattern));
+});
+
+test('the label pattern takes each syntax and dialect its own label forms', () => {
+  const matches = (grammar: string, line: string) =>
+    new RegExp(labelIndentPattern(byGrammar(grammar), manifest.blocks, SOURCES), 'u').test(line);
+  for (const line of ['1:', '"a b":', 'L(loop):', '\\name\\()_end:']) {
+    assert.ok(matches('asm_x86_gas', line), line);
+  }
+  assert.ok(matches('asm_arm', '1$:'));
+  assert.ok(!matches('asm_arm_apple', '1$:'));
+  for (const line of ['%%top:', '%$done:', '@x:', '$eax:', '..@x:']) {
+    assert.ok(matches('asm_x86_nasm', line), line);
+  }
+  for (const line of ['$:', '?:', '%%%x:', '1:']) {
+    assert.ok(!matches('asm_x86_nasm', line), line);
+  }
 });
 
 test('each generated scanner selects its own grammar name and dialect', () => {
@@ -201,57 +224,108 @@ test('the tree-sitter metadata takes its license and authors from the manifest',
   );
 });
 
-const SCANNER = readFileSync(join(ROOT, 'tree-sitter', 'common', 'scanner.h'), 'utf8');
+const SCANNER = SOURCES.scanner;
 
-test('GNU-syntax languages add block openers to the label indent pattern; NASM keeps labels only', () => {
+test('every language adds its block openers to the label indent pattern and leaves outdents to the tree', () => {
   for (const language of manifest.languages) {
-    const syntax = manifest.syntaxes[language.syntax];
-    const { increase_indent_pattern: increase, decrease_indent_pattern: decrease } = languageConfig(
-      language,
-      manifest,
+    const config = languageConfig(language, manifest, SOURCES);
+    assert.deepStrictEqual(
+      config.increase_indent_pattern,
+      `${labelIndentPattern(language, manifest.blocks, SOURCES)}|${
+        blockIndentPattern(language, manifest.blocks, SOURCES)
+      }`,
     );
-    assert.deepStrictEqual(decrease, syntax.labelPattern, language.name);
-    if (language.syntax === 'nasm') {
-      assert.deepStrictEqual(increase, syntax.labelPattern);
-    } else {
-      assert.deepStrictEqual(
-        increase,
-        `${syntax.labelPattern}|${blockIndentPattern(language, syntax)}`,
-      );
-    }
+    assert.ok(!('decrease_indent_pattern' in config), language.name);
   }
 });
 
-test("the indent pattern reads each dialect's ; # and @ rules and the closers from scanner.h", () => {
+test('a block kind belongs to its syntax, and no blocks leave labels alone', () => {
+  const nasm = byGrammar('asm_x86_nasm');
+  const irp = [{ openers: ['IRP_OPEN'], clauses: [], closer: 'REPEAT_CLOSE', syntax: 'gas' }];
+  assert.deepStrictEqual(blockIndentPattern(nasm, irp, SOURCES), null);
+  assert.notDeepStrictEqual(blockIndentPattern(byGrammar('asm_x86_gas'), irp, SOURCES), null);
+  assert.deepStrictEqual(blockIndentPattern(nasm, [], SOURCES), null);
+  assert.deepStrictEqual(
+    increaseIndentPattern(nasm, [], SOURCES),
+    labelIndentPattern(nasm, [], SOURCES),
+  );
+});
+
+test('a block kind of a syntax with no words in one of its dialects fails the build', () => {
+  assertThrowsIncluding(
+    () =>
+      blockIndentPattern(
+        byGrammar('asm_x86_nasm'),
+        [{ openers: ['IRP_OPEN'], clauses: [], closer: 'REPEAT_CLOSE' }],
+        SOURCES,
+      ),
+    'keywords.h has no IRP_OPEN word for ASM_DIALECT_X86_NASM',
+  );
+});
+
+test("the tooling reads each dialect's quote, comment, join and block rules from scanner.h", () => {
+  const gnu = {
+    gnuSyntax: true,
+    backquoteStrings: false,
+    percentMacros: false,
+    lineJoins: false,
+    spacedJoins: true,
+    reservedNames: false,
+    namedStatements: false,
+  };
   assert.deepStrictEqual(statementLexing(SCANNER), {
-    AUTO: { semicolons: 'HEURISTIC', hashImmediates: true, hashNeedsValue: true, atComments: true },
-    ARM: { semicolons: 'SEPARATES', hashImmediates: true, hashNeedsValue: false, atComments: true },
+    AUTO: {
+      ...gnu,
+      semicolons: 'HEURISTIC',
+      hashImmediates: true,
+      hashNeedsValue: true,
+      atComments: true,
+    },
+    ARM: {
+      ...gnu,
+      semicolons: 'SEPARATES',
+      hashImmediates: true,
+      hashNeedsValue: false,
+      atComments: true,
+    },
     ARM_APPLE: {
+      ...gnu,
       semicolons: 'COMMENTS',
       hashImmediates: true,
       hashNeedsValue: false,
       atComments: false,
     },
     X86_GAS: {
+      ...gnu,
       semicolons: 'SEPARATES',
       hashImmediates: false,
       hashNeedsValue: false,
       atComments: false,
     },
     X86_NASM: {
+      gnuSyntax: false,
+      backquoteStrings: true,
+      percentMacros: true,
+      lineJoins: true,
+      spacedJoins: false,
+      reservedNames: true,
+      namedStatements: true,
       semicolons: 'COMMENTS',
       hashImmediates: false,
       hashNeedsValue: false,
       atComments: false,
     },
   });
-  const words = statementWords(SCANNER);
+  const words = statementWords(SOURCES, 'X86_GAS');
   const named = (...symbols: string[]) =>
     words.filter(({ symbol }) => symbols.includes(symbol)).map(({ name }) => name);
   assert.deepStrictEqual(named('MACRO_OPEN', 'REPT_OPEN', 'IRP_OPEN', 'IRPC_OPEN'), [
+    '.irep',
+    '.irepc',
     '.irp',
     '.irpc',
     '.macro',
+    '.rep',
     '.rept',
   ]);
   assert.deepStrictEqual(named('IF_OPEN'), [
@@ -272,69 +346,71 @@ test("the indent pattern reads each dialect's ; # and @ rules and the closers fr
     '.ifnes',
     '.ifnotdef',
   ]);
-  assert.deepStrictEqual(named('ELSEIF', 'ELSE'), ['.else', '.elseif']);
+  assert.deepStrictEqual(named('ELSEIF', 'ELSE'), ['.else', '.elsec', '.elseif']);
   assert.deepStrictEqual(named('MACRO_CLOSE', 'CONDITIONAL_CLOSE', 'REPEAT_CLOSE'), [
+    '.endc',
     '.endif',
     '.endm',
     '.endmacro',
     '.endr',
   ]);
+  const nasm = statementWords(SOURCES, 'X86_NASM');
+  const nasmNamed = (...symbols: string[]) =>
+    nasm.filter(({ symbol }) => symbols.includes(symbol)).map(({ name }) => name);
+  assert.deepStrictEqual(nasmNamed('MACRO_OPEN', 'REPT_OPEN'), [
+    '%imacro',
+    '%irmacro',
+    '%macro',
+    '%rep',
+    '%rmacro',
+  ]);
+  assert.deepStrictEqual(nasmNamed('ELSE'), ['%else']);
+  assert.deepStrictEqual(nasmNamed('MACRO_CLOSE', 'CONDITIONAL_CLOSE', 'REPEAT_CLOSE'), [
+    '%endif',
+    '%endm',
+    '%endmacro',
+    '%endrep',
+  ]);
 });
 
-const BISECTED_TABLES = [
-  'ASM_STATEMENT_WORDS',
-  'ASM_SUFFIX_RELOCATION_NAMES',
-  'ASM_RELOCATION_NAMES',
-  'ASM_X86_REGISTER_NAMES',
-  'ASM_X86_INTEL_WORDS',
-  'ASM_X86_PSEUDO_PREFIXES',
-];
-
-function tableNames(scanner: string, table: string): string[] {
-  const body = new RegExp(`#define ${table}\\(X\\)((?:[^\\n]*\\\\\\n)+[^\\n]*)`).exec(scanner);
-  if (body === null) {
-    throw new Error(`scanner.h has no ${table} table`);
-  }
-  return [...body[1].matchAll(/X\("([^"]+)"/g)].map(([, name]) => name);
-}
-
-test('the scanner keeps every table it bisects sorted, as its binary search needs', () => {
-  for (const table of BISECTED_TABLES) {
-    const names = tableNames(SCANNER, table);
-    assert.notDeepStrictEqual(names, [], table);
+test('a syntax joins lines in the grammar exactly where its dialects join them in the scanner', () => {
+  const lexing = statementLexing(SCANNER);
+  for (const language of manifest.languages) {
     assert.deepStrictEqual(
-      names,
-      [...names].sort((left, right) => left < right ? -1 : left > right ? 1 : 0),
+      lexical[language.syntax].lineJoins === true,
+      lexing[language.dialect].lineJoins,
+      language.grammar,
     );
-    assert.deepStrictEqual(new Set(names).size, names.length, table);
   }
 });
 
 test('a block that names an unknown opener or closer fails with a clear message', () => {
   const language = byGrammar('asm_arm');
-  const syntax = manifest.syntaxes.gas;
   assertThrowsIncluding(
     () =>
-      blockIndentPattern(language, {
-        ...syntax,
-        blocks: [{ openers: ['NOPE'], clauses: [], closer: 'MACRO_CLOSE' }],
-      }),
+      blockIndentPattern(
+        language,
+        [{ openers: ['NOPE'], clauses: [], closer: 'MACRO_CLOSE' }],
+        SOURCES,
+      ),
     'scanner.h has no block opener for NOPE',
   );
   assertThrowsIncluding(
     () =>
-      blockIndentPattern(language, {
-        ...syntax,
-        blocks: [{ openers: ['MACRO_OPEN'], clauses: ['NOPE'], closer: 'MACRO_CLOSE' }],
-      }),
+      blockIndentPattern(
+        language,
+        [{ openers: ['MACRO_OPEN'], clauses: ['NOPE'], closer: 'MACRO_CLOSE' }],
+        SOURCES,
+      ),
     'scanner.h has no block clause for NOPE',
   );
   assertThrowsIncluding(
     () =>
-      blockIndentPattern(language, {
-        ...syntax,
-        blocks: [{ openers: ['MACRO_OPEN'], clauses: [], closer: 'NOPE' }],
-      }),
+      blockIndentPattern(
+        language,
+        [{ openers: ['MACRO_OPEN'], clauses: [], closer: 'NOPE' }],
+        SOURCES,
+      ),
     'scanner.h has no block closer for NOPE',
   );
 });

@@ -31,6 +31,24 @@ function section(parser: string, pattern: RegExp, what: string): string {
   return match[1];
 }
 
+function aliasContent(rule: Rule | undefined, value: string): Rule | null {
+  if (rule === undefined) {
+    return null;
+  }
+  if (rule.type === 'ALIAS' && rule.value === value && rule.content !== undefined) {
+    return rule.content;
+  }
+  for (
+    const child of [...(rule.members ?? []), ...(rule.content === undefined ? [] : [rule.content])]
+  ) {
+    const found = aliasContent(child, value);
+    if (found !== null) {
+      return found;
+    }
+  }
+  return null;
+}
+
 function unescape(text: string): string {
   return text.replace(/\\(.)/g, (_, character: string) => character === 'n' ? '\n' : character);
 }
@@ -164,6 +182,14 @@ export class ParseTable {
     const symbol = [...this.#ids].find(([, value]) => value === id)?.[0] ?? '';
     if (symbol.startsWith('anon_sym_')) {
       return { type: 'STRING', value: this.#names.get(id) ?? '' };
+    }
+    const auxiliary = /^aux_sym_(.+)_token\d+$/.exec(symbol);
+    if (auxiliary !== null) {
+      const content = aliasContent(this.grammar.rules[auxiliary[1]], this.#names.get(id) ?? '');
+      if (content === null) {
+        throw new Error(`${this.grammarName}: token ${symbol} has no alias in grammar.json`);
+      }
+      return content;
     }
     const name = symbol.replace(/^sym_/, '');
     const rule = this.grammar.rules[name];

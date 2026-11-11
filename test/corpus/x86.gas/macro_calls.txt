@@ -4,6 +4,7 @@ C macro calls in x86 operands, and memory operands that look like calls
 
 L(start):
     jmp L(less_vec)
+    call HIDDEN_JUMPTARGET (f)
     vmovdqu VMM(0), (%rdi)
     movq PER_CPU_VAR(pcpu_hot + 8), %rax
     movq $FOO(1), %rax
@@ -16,6 +17,12 @@ L(start):
 (source_file
   (label
     name: (macro_call
+      function: (identifier)
+      arguments: (argument_list
+        argument: (identifier))))
+  (instruction
+    mnemonic: (mnemonic)
+    operand: (macro_call
       function: (identifier)
       arguments: (argument_list
         argument: (identifier))))
@@ -125,21 +132,23 @@ Registers and immediates as macro defaults and keyword arguments
         value: (unary_expression
           argument: (identifier))))
     body: (body))
-  (instruction
-    mnemonic: (mnemonic)
-    operand: (keyword_argument
-      name: (identifier)
-      value: (register))
-    operand: (keyword_argument
-      name: (identifier)
-      value: (register))
-    operand: (keyword_argument
-      name: (identifier)
-      value: (immediate
-        value: (unary_expression
-          argument: (identifier)))))
-  (instruction
-    mnemonic: (mnemonic)
-    operand: (identifier)
-    operand: (immediate
-      value: (integer))))
+  (macro_call
+    function: (identifier)
+    arguments: (argument_list
+      argument: (keyword_argument
+        name: (identifier)
+        value: (register))
+      argument: (keyword_argument
+        name: (identifier)
+        value: (register))
+      argument: (keyword_argument
+        name: (identifier)
+        value: (immediate
+          value: (unary_expression
+            argument: (identifier))))))
+  (macro_call
+    function: (identifier)
+    arguments: (argument_list
+      argument: (identifier)
+      argument: (immediate
+        value: (integer)))))

@@ -11,6 +11,8 @@
 
 (string) @string
 
+(escape_sequence) @string.escape
+
 (line_comment) @comment
 
 [
@@ -64,8 +66,6 @@
 
 (preproc_params
   (identifier) @variable.parameter)
-
-(escape_sequence) @string.escape
 
 (char) @string
 

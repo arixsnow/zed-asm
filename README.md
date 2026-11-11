@@ -33,32 +33,33 @@ For a single file, put a modeline on its first line: `// -*- mode: arm -*-`, or 
 If the older `assembly` extension is installed, uninstall it so the two do not both claim `.s`
 files.
 
-This is an early release. Syntax that is not parsed yet, such as NASM directives and the `%`
-preprocessor, shows up as an error, but an error never spreads past its own line, so the rest of the
-file keeps its colors and its outline. The roadmap lists what comes next.
+This is an early release. Code the grammars do not read yet shows up as an error, but an error never
+spreads past its own line, so the rest of the file keeps its colors and its outline. The roadmap
+lists what comes next.
 
 ## Roadmap
 
-| Milestone       | Status        | What it adds                                                                                                                                                                                                                                                                                                                                                        |
-| --------------- | ------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Foundation      | done          | five languages for ARM and x86; comments, `#` immediates and `@` relocations read per dialect; C preprocessor lines; highlighting; comment continuation; label indentation; typing never breaks later lines                                                                                                                                                         |
-| Structure       | done          | outline and breadcrumbs of functions with their local labels, macros and named constants; vim text objects for functions, macros and comments; indentation of `.macro`, `.if` and `.rept` blocks as you type; numeric labels `1:` and `b 1b`; full GNU directive forms; C colors in `#if` conditions                                                                |
-| ARM             | done          | registers of every family, SVE, SME and MVE included; memory operands like `[x1, #8]!`; register lists and lanes like `{v0.16b-v3.16b}` and `v1.s[2]`; `:lo12:` and `sym(GOT)` relocations; `=label` literals; condition codes; `.cfi_offset` and `.save` registers; `.req` aliases; Apple `L` labels in operands                                                   |
-| x86 GAS         | this release  | registers of every family, read by the `.intel_syntax` and `.att_syntax` mode; AT&T memory like `8(%rsp,%rax,4)` and `*` indirect jumps; Intel `dword ptr [rbx]`, `offset sym` and `4 shl 2`; prefixes like `rep movsb` and `{vex}`; AVX-512 decorators like `{k1}{z}`; quoted names like `"a b"`; C macro calls like `PER_CPU_VAR(x)` and `L(loop):` in `.S` files |
-| NASM            | next          | directives such as `section`, `bits` and `times`, the `%` preprocessor, `%macro`, `%if`, `%rep`, `struc` and `istruc` blocks, `$` and `$$`                                                                                                                                                                                                                          |
-| Hardening       | planned       | Linux, glibc and FFmpeg sources parse without errors; benchmark budgets checked in CI                                                                                                                                                                                                                                                                               |
-| Release         | planned       | the stable release: snippets, screenshots, a listing in the Zed extension registry                                                                                                                                                                                                                                                                                  |
-| RISC-V and MIPS | after release | a RISC-V and a MIPS language: registers like `x0`, `a0` and `$t0`, `%hi()` and `%lo()` relocations, memory operands like `8(sp)`; not part of Assembly, where `$t0` would read as an x86 immediate                                                                                                                                                                  |
+| Milestone       | Status        | What it adds                                                                                                                                                                                                                                                                                                                                                                                     |
+| --------------- | ------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| Foundation      | done          | five languages for ARM and x86; comments, `#` immediates and `@` relocations read per dialect; C preprocessor lines; highlighting; comment continuation; label indentation; typing never breaks later lines                                                                                                                                                                                      |
+| Structure       | done          | outline and breadcrumbs of functions with their local labels, macros and named constants; vim text objects for functions, macros and comments; indentation of `.macro`, `.if` and `.rept` blocks as you type; numeric labels `1:` and `b 1b`; full GNU directive forms; C colors in `#if` conditions                                                                                             |
+| ARM             | done          | registers of every family, SVE, SME and MVE included; memory operands like `[x1, #8]!`; register lists and lanes like `{v0.16b-v3.16b}` and `v1.s[2]`; `:lo12:` and `sym(GOT)` relocations; `=label` literals; condition codes; `.cfi_offset` and `.save` registers; `.req` aliases; Apple `L` labels in operands                                                                                |
+| x86 GAS         | done          | registers of every family, read by the `.intel_syntax` and `.att_syntax` mode; AT&T memory like `8(%rsp,%rax,4)` and `*` indirect jumps; Intel `dword ptr [rbx]`, `offset sym` and `4 shl 2`; prefixes like `rep movsb` and `{vex}`; AVX-512 decorators like `{k1}{z}`; quoted names like `"a b"`; C macro calls like `PER_CPU_VAR(x)` and `L(loop):` in `.S` files                              |
+| NASM            | this release  | directives such as `section`, `bits` and `times`; the `%` preprocessor with `%define` and `%assign`, and `%macro`, `%if` and `%rep` blocks; macro calls like `[GOTOFF(eax, PW_ONE)]`, local labels like `%%loop` and names glued with `%+`; `struc` and `istruc` blocks; memory like `[rbx+rcx*4+8]` and `wrt ..plt`; data lists like `db 2 dup (0)`; outline, breadcrumbs and block indentation |
+| Hardening       | next          | Linux, glibc and FFmpeg sources parse without errors; benchmark budgets checked in CI                                                                                                                                                                                                                                                                                                            |
+| Release         | planned       | the stable release: snippets, screenshots, a listing in the Zed extension registry                                                                                                                                                                                                                                                                                                               |
+| RISC-V and MIPS | after release | a RISC-V and a MIPS language: registers like `x0`, `a0` and `$t0`, `%hi()` and `%lo()` relocations, memory operands like `8(sp)`; not part of Assembly, where `$t0` would read as an x86 immediate                                                                                                                                                                                               |
 
 ## Development
 
 Everything runs in a Podman container built from `Containerfile`, so your machine only needs
 `podman` and `git`. The container pins tree-sitter 0.27.0, Bun 1.4.3, TypeScript 7.0.2, oxlint
-1.88.0, dprint 0.63.0 and its four plugins exactly. The C toolchain, the assemblers and ShellCheck
-come from Fedora 44's repositories as they are when the image is built. CI builds it fresh whenever
-the Containerfile changes and in the first run of each week, and reuses that image for the rest of
-the week; `scripts/dev` rebuilds it locally whenever the Containerfile changes. Only the build
-downloads anything: the container itself runs without a network.
+1.88.0, dprint 0.63.0 and its four plugins exactly. The C toolchain, the assemblers, ShellCheck,
+and the Perl, Python, CMake and Ninja that regenerating the keyword tables needs come from Fedora
+45's repositories as they are when the image is built. CI builds it fresh whenever the Containerfile
+changes and in the first run of each week, and reuses that image for the rest of the week;
+`scripts/dev` rebuilds it locally whenever the Containerfile changes. Only the build downloads
+anything: the container itself runs without a network.
 
 ```sh
 scripts/dev bun run test       # every check except the sanitizers
@@ -72,8 +73,10 @@ scripts/zed                    # the docs/qa.md checks in Zed, inside Podman
 ```
 
 The hand-written sources are `languages.config.cjs`, `queries/`, `tree-sitter/common/`, `scripts/`
-and `test/`. `extension.toml`, `languages/`, `tree-sitter/tree-sitter.json` and each grammar's
-`grammar.js` and `src/` are generated, and `bun run test` fails when any of them is out of date.
+and `test/`. `extension.toml`, `languages/`, `tree-sitter/tree-sitter.json`,
+`tree-sitter/common/words.h` and each grammar's `grammar.js` and `src/` are generated, and
+`bun run test` fails when any of them is out of date. `tree-sitter/common/keywords.h` is generated
+from the upstream sources (see Generated tables in the architecture doc).
 
 `scripts/zed` runs the editor checks from [docs/qa.md](docs/qa.md) in Zed inside Podman, on your
 uncommitted tree. To install a change in your own Zed, push it, run

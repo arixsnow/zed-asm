@@ -11,6 +11,8 @@
 
 (string) @string
 
+(escape_sequence) @string.escape
+
 (line_comment) @comment
 
 [
@@ -64,8 +66,6 @@
 
 (preproc_params
   (identifier) @variable.parameter)
-
-(escape_sequence) @string.escape
 
 (char) @string
 
@@ -162,9 +162,6 @@
 
 (unary_expression
   operator: (operator_word) @keyword
-  (#match? @keyword "^(?i:offset|short)$"))
-
-(segment_override
-  "flat" @keyword)
+  (#match? @keyword "^(?i:offset|imagerel|short)$"))
 
 (decorator) @attribute

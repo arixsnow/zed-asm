@@ -1,0 +1,467 @@
+================================================================================
+Mode directives in any case and in the bracket form
+================================================================================
+
+bits 64
+BITS 32
+[bits 16]
+use64
+default rel
+cpu x64
+
+--------------------------------------------------------------------------------
+
+(source_file
+  (directive
+    name: (directive_name)
+    argument: (integer))
+  (directive
+    name: (directive_name)
+    argument: (integer))
+  (directive
+    name: (directive_name)
+    argument: (integer))
+  (directive
+    name: (directive_name))
+  (directive
+    name: (directive_name)
+    argument: (identifier))
+  (directive
+    name: (directive_name)
+    argument: (identifier)))
+
+================================================================================
+Section names are names, and attributes may be keyword arguments
+================================================================================
+
+section .text
+section .data align=16 progbits
+segment .bss nobits align = 4
+section .rodata, align=4
+[section .rodata]
+
+--------------------------------------------------------------------------------
+
+(source_file
+  (directive
+    name: (directive_name)
+    argument: (identifier))
+  (directive
+    name: (directive_name)
+    argument: (identifier)
+    argument: (keyword_argument
+      name: (identifier)
+      value: (integer))
+    argument: (identifier))
+  (directive
+    name: (directive_name)
+    argument: (identifier)
+    argument: (identifier)
+    argument: (keyword_argument
+      name: (identifier)
+      value: (integer)))
+  (directive
+    name: (directive_name)
+    argument: (identifier)
+    argument: (keyword_argument
+      name: (identifier)
+      value: (integer)))
+  (directive
+    name: (directive_name)
+    argument: (identifier)))
+
+================================================================================
+Declarations with symbol types, sizes and alignments
+================================================================================
+
+global main:function hidden
+global d: data 4, e
+extern a, b
+common c 4:4, f 8
+
+--------------------------------------------------------------------------------
+
+(source_file
+  (directive
+    name: (directive_name)
+    argument: (identifier)
+    argument: (symbol_type
+      (identifier))
+    argument: (identifier))
+  (directive
+    name: (directive_name)
+    argument: (identifier)
+    argument: (symbol_type
+      (identifier))
+    argument: (integer)
+    argument: (identifier))
+  (directive
+    name: (directive_name)
+    argument: (identifier)
+    argument: (identifier))
+  (directive
+    name: (directive_name)
+    argument: (identifier)
+    argument: (integer)
+    argument: (integer)
+    argument: (identifier)
+    argument: (integer)))
+
+================================================================================
+Data, reserve and include directives
+================================================================================
+
+db 1, "ab", 'c'
+dq 1, 2
+resb 64
+incbin "f.bin", 4, 8
+
+--------------------------------------------------------------------------------
+
+(source_file
+  (directive
+    name: (directive_name)
+    argument: (integer)
+    argument: (string)
+    argument: (string))
+  (directive
+    name: (directive_name)
+    argument: (integer)
+    argument: (integer))
+  (directive
+    name: (directive_name)
+    argument: (integer))
+  (directive
+    name: (directive_name)
+    argument: (string)
+    argument: (integer)
+    argument: (integer)))
+
+================================================================================
+Every data and reserve width is a directive
+================================================================================
+
+db 1
+dw 1
+dd 1
+dq 1
+dt 1
+do 1
+dy 1
+dz 1
+resb 1
+resw 1
+resd 1
+resq 1
+rest 1
+reso 1
+resy 1
+resz 1
+
+--------------------------------------------------------------------------------
+
+(source_file
+  (directive
+    name: (directive_name)
+    argument: (integer))
+  (directive
+    name: (directive_name)
+    argument: (integer))
+  (directive
+    name: (directive_name)
+    argument: (integer))
+  (directive
+    name: (directive_name)
+    argument: (integer))
+  (directive
+    name: (directive_name)
+    argument: (integer))
+  (directive
+    name: (directive_name)
+    argument: (integer))
+  (directive
+    name: (directive_name)
+    argument: (integer))
+  (directive
+    name: (directive_name)
+    argument: (integer))
+  (directive
+    name: (directive_name)
+    argument: (integer))
+  (directive
+    name: (directive_name)
+    argument: (integer))
+  (directive
+    name: (directive_name)
+    argument: (integer))
+  (directive
+    name: (directive_name)
+    argument: (integer))
+  (directive
+    name: (directive_name)
+    argument: (integer))
+  (directive
+    name: (directive_name)
+    argument: (integer))
+  (directive
+    name: (directive_name)
+    argument: (integer))
+  (directive
+    name: (directive_name)
+    argument: (integer)))
+
+================================================================================
+dup repeats a value or a list
+================================================================================
+
+db 4 dup (0)
+db 2 dup (1, 2)
+db 4*2 DUP 0
+
+--------------------------------------------------------------------------------
+
+(source_file
+  (directive
+    name: (directive_name)
+    argument: (binary_expression
+      left: (integer)
+      operator: (operator_word)
+      right: (argument_list
+        argument: (integer))))
+  (directive
+    name: (directive_name)
+    argument: (binary_expression
+      left: (integer)
+      operator: (operator_word)
+      right: (argument_list
+        argument: (integer)
+        argument: (integer))))
+  (directive
+    name: (directive_name)
+    argument: (binary_expression
+      left: (binary_expression
+        left: (integer)
+        right: (integer))
+      operator: (operator_word)
+      right: (integer))))
+
+================================================================================
+align pads with an optional fill statement
+================================================================================
+
+align 16
+align 16, nop
+alignb 4, resb 1
+
+--------------------------------------------------------------------------------
+
+(source_file
+  (directive
+    name: (directive_name)
+    argument: (integer))
+  (directive
+    name: (directive_name)
+    argument: (integer)
+    statement: (instruction
+      mnemonic: (mnemonic)))
+  (directive
+    name: (directive_name)
+    argument: (integer)
+    statement: (directive
+      name: (directive_name)
+      argument: (integer))))
+
+================================================================================
+times repeats the statement after its count
+================================================================================
+
+times 4 db 0
+times 3 nop
+times 2 times 3 db 0
+
+--------------------------------------------------------------------------------
+
+(source_file
+  (times
+    count: (integer)
+    statement: (directive
+      name: (directive_name)
+      argument: (integer)))
+  (times
+    count: (integer)
+    statement: (instruction
+      mnemonic: (mnemonic)))
+  (times
+    count: (integer)
+    statement: (times
+      count: (integer)
+      statement: (directive
+        name: (directive_name)
+        argument: (integer)))))
+
+================================================================================
+equ assigns with or without a colon, and starts no label block
+================================================================================
+
+a:
+len equ 5
+size: equ len * 2
+.x: dd 0
+
+--------------------------------------------------------------------------------
+
+(source_file
+  (label_block
+    label: (label
+      name: (identifier))
+    (assignment
+      name: (identifier)
+      value: (integer))
+    (assignment
+      name: (identifier)
+      value: (binary_expression
+        left: (identifier)
+        right: (integer)))
+    (label
+      name: (local_identifier))
+    (directive
+      name: (directive_name)
+      argument: (integer))))
+
+================================================================================
+A word before a data or times word is a label without a colon
+================================================================================
+
+x db 1
+y times 2 db 0
+.z resb 4
+
+--------------------------------------------------------------------------------
+
+(source_file
+  (label_block
+    label: (label
+      name: (identifier))
+    (directive
+      name: (directive_name)
+      argument: (integer)))
+  (label_block
+    label: (label
+      name: (identifier))
+    (times
+      count: (integer)
+      statement: (directive
+        name: (directive_name)
+        argument: (integer)))
+    (label
+      name: (local_identifier))
+    (directive
+      name: (directive_name)
+      argument: (integer))))
+
+================================================================================
+Data and format words with a colon are labels
+================================================================================
+
+db: nop
+export: nop
+
+--------------------------------------------------------------------------------
+
+(source_file
+  (label_block
+    label: (label
+      name: (identifier))
+    (instruction
+      mnemonic: (mnemonic)))
+  (label_block
+    label: (label
+      name: (identifier))
+    (instruction
+      mnemonic: (mnemonic))))
+
+================================================================================
+Directive words are symbols in expressions
+================================================================================
+
+mov eax, section
+mov ebx, db + align
+
+--------------------------------------------------------------------------------
+
+(source_file
+  (instruction
+    mnemonic: (mnemonic)
+    operand: (register)
+    operand: (identifier))
+  (instruction
+    mnemonic: (mnemonic)
+    operand: (register)
+    operand: (binary_expression
+      left: (identifier)
+      right: (identifier))))
+
+================================================================================
+Format and bracket-only directives
+================================================================================
+
+org 0x7c00
+export main
+[warning -orphan-labels]
+[list -]
+
+--------------------------------------------------------------------------------
+
+(source_file
+  (directive
+    name: (directive_name)
+    argument: (integer))
+  (directive
+    name: (directive_name)
+    argument: (identifier))
+  (directive
+    name: (directive_name)
+    argument: (preproc_argument))
+  (directive
+    name: (directive_name)
+    argument: (preproc_argument)))
+
+================================================================================
+yasm's bracket align, and symbol types with any value
+================================================================================
+
+[align 4]
+global foo:(foo_end - foo)
+global hashtable:data (hashtable.end - hashtable)
+extern window:BYTE:010040H
+
+--------------------------------------------------------------------------------
+
+(source_file
+  (directive
+    name: (directive_name)
+    argument: (integer))
+  (directive
+    name: (directive_name)
+    argument: (identifier)
+    argument: (symbol_type
+      (parenthesized_expression
+        (binary_expression
+          left: (identifier)
+          right: (identifier)))))
+  (directive
+    name: (directive_name)
+    argument: (identifier)
+    argument: (symbol_type
+      (identifier))
+    argument: (parenthesized_expression
+      (binary_expression
+        left: (identifier)
+        right: (identifier))))
+  (directive
+    name: (directive_name)
+    argument: (identifier)
+    argument: (symbol_type
+      (identifier))
+    argument: (symbol_type
+      (integer))))

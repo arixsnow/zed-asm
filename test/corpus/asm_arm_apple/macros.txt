@@ -22,19 +22,107 @@ Positional macro arguments of Apple's assembler
         argument: (macro_argument)))))
 
 ================================================================================
-A blank-separated immediate is its own operand
+A macro argument runs to the next comma, blanks included
 ================================================================================
 
-m x0 #1
+m 1 2
+m 1 -2
+m a, b c
+m x0 #1, 3
+m a=x0 x1, b=2
 
 --------------------------------------------------------------------------------
 
 (source_file
-  (instruction
-    mnemonic: (mnemonic)
-    operand: (register)
-    operand: (immediate
-      value: (integer))))
+  (macro_call
+    function: (identifier)
+    arguments: (argument_list
+      argument: (argument
+        (integer)
+        (integer))))
+  (macro_call
+    function: (identifier)
+    arguments: (argument_list
+      argument: (binary_expression
+        left: (integer)
+        right: (integer))))
+  (macro_call
+    function: (identifier)
+    arguments: (argument_list
+      argument: (identifier)
+      argument: (argument
+        (identifier)
+        (identifier))))
+  (macro_call
+    function: (identifier)
+    arguments: (argument_list
+      argument: (argument
+        (register)
+        (immediate
+          value: (integer)))
+      argument: (integer)))
+  (macro_call
+    function: (identifier)
+    arguments: (argument_list
+      argument: (keyword_argument
+        name: (identifier)
+        value: (argument
+          (register)
+          (register)))
+      argument: (keyword_argument
+        name: (identifier)
+        value: (integer)))))
+
+================================================================================
+Macro parameters may be separated by blanks, and a default runs to the next comma
+================================================================================
+
+.macro m a b c:req
+.endm
+.macro n a=1 b, c
+.endm
+
+--------------------------------------------------------------------------------
+
+(source_file
+  (macro_definition
+    name: (identifier)
+    parameter: (parameter
+      name: (identifier))
+    parameter: (parameter
+      name: (identifier))
+    parameter: (parameter
+      name: (identifier)
+      qualifier: (identifier))
+    body: (body))
+  (macro_definition
+    name: (identifier)
+    parameter: (parameter
+      name: (identifier)
+      default: (argument
+        (integer)
+        (identifier)))
+    parameter: (parameter
+      name: (identifier))
+    body: (body)))
+
+================================================================================
+An .irp value runs to the next comma, blanks included
+================================================================================
+
+.irp r, x0 x1, x2
+.endr
+
+--------------------------------------------------------------------------------
+
+(source_file
+  (repeat_block
+    parameter: (identifier)
+    value: (argument
+      (register)
+      (register))
+    value: (register)
+    body: (body)))
 
 ================================================================================
 Positional arguments glued to the text after them

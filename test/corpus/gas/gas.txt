@@ -66,6 +66,10 @@ Symbol types after %
 ================================================================================
 
 .type main, %function
+.type main, %STT_FUNC
+.type main, %2
+.section .c,"a",%0x70000001
+.section .d,"a",%llvm_lto
 
 --------------------------------------------------------------------------------
 
@@ -73,20 +77,38 @@ Symbol types after %
   (directive
     name: (directive_name)
     argument: (identifier)
+    argument: (symbol_type))
+  (directive
+    name: (directive_name)
+    argument: (identifier)
+    argument: (symbol_type))
+  (directive
+    name: (directive_name)
+    argument: (identifier)
+    argument: (symbol_type))
+  (directive
+    name: (directive_name)
+    argument: (identifier)
+    argument: (string)
+    argument: (symbol_type))
+  (directive
+    name: (directive_name)
+    argument: (identifier)
+    argument: (string)
     argument: (symbol_type)))
 
 ================================================================================
 Relocation glued to a symbol
 ================================================================================
 
-bl puts@PLT
+.long puts@PLT
 
 --------------------------------------------------------------------------------
 
 (source_file
-  (instruction
-    mnemonic: (mnemonic)
-    operand: (relocation
+  (directive
+    name: (directive_name)
+    argument: (relocation
       symbol: (identifier)
       specifier: (identifier))))
 
@@ -95,7 +117,7 @@ Directive arguments and relocations being typed keep to their own line
 ================================================================================
 
 .type f,
-call puts@
+.long puts@
 ret
 
 --------------------------------------------------------------------------------
@@ -104,9 +126,9 @@ ret
   (directive
     name: (directive_name)
     argument: (identifier))
-  (instruction
-    mnemonic: (mnemonic)
-    operand: (relocation
+  (directive
+    name: (directive_name)
+    argument: (relocation
       symbol: (identifier)))
   (instruction
     mnemonic: (mnemonic)))

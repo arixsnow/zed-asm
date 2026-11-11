@@ -1,0 +1,723 @@
+================================================================================
+NASM registers are bare, in any case
+================================================================================
+
+mov eax, EBX
+movaps xmm0, Xmm31
+fld st0
+mov r16d, r31d
+
+--------------------------------------------------------------------------------
+
+(source_file
+  (instruction
+    mnemonic: (mnemonic)
+    operand: (register)
+    operand: (register))
+  (instruction
+    mnemonic: (mnemonic)
+    operand: (register)
+    operand: (register))
+  (instruction
+    mnemonic: (mnemonic)
+    operand: (register))
+  (instruction
+    mnemonic: (mnemonic)
+    operand: (register)
+    operand: (register)))
+
+================================================================================
+An instruction name before a segment register or prefix word stays an instruction
+================================================================================
+
+push cs
+mov ds, ax
+push: nop
+
+--------------------------------------------------------------------------------
+
+(source_file
+  (instruction
+    mnemonic: (mnemonic)
+    operand: (register))
+  (instruction
+    mnemonic: (mnemonic)
+    operand: (register)
+    operand: (register))
+  (label_block
+    label: (label
+      name: (identifier))
+    (instruction
+      mnemonic: (mnemonic))))
+
+================================================================================
+Names that are not NASM registers are symbols
+================================================================================
+
+lea rax, [rip+8]
+mov eax, eiz
+fld st
+mov eax, eflags
+mov eax, flat
+
+--------------------------------------------------------------------------------
+
+(source_file
+  (instruction
+    mnemonic: (mnemonic)
+    operand: (register)
+    operand: (memory_operand
+      address: (binary_expression
+        left: (identifier)
+        right: (integer))))
+  (instruction
+    mnemonic: (mnemonic)
+    operand: (register)
+    operand: (identifier))
+  (instruction
+    mnemonic: (mnemonic)
+    operand: (identifier))
+  (instruction
+    mnemonic: (mnemonic)
+    operand: (register)
+    operand: (identifier))
+  (instruction
+    mnemonic: (mnemonic)
+    operand: (register)
+    operand: (identifier)))
+
+================================================================================
+NASM memory operands
+================================================================================
+
+mov eax, [rbx+rcx*4+8]
+lea rdi, [msg]
+mov eax, [rel x]
+mov eax, [dword ebx]
+mov rax, [fs:0x28]
+mov eax, [nosplit eax*2]
+
+--------------------------------------------------------------------------------
+
+(source_file
+  (instruction
+    mnemonic: (mnemonic)
+    operand: (register)
+    operand: (memory_operand
+      address: (binary_expression
+        left: (binary_expression
+          left: (register)
+          right: (binary_expression
+            left: (register)
+            right: (integer)))
+        right: (integer))))
+  (instruction
+    mnemonic: (mnemonic)
+    operand: (register)
+    operand: (memory_operand
+      address: (identifier)))
+  (instruction
+    mnemonic: (mnemonic)
+    operand: (register)
+    operand: (memory_operand
+      modifier: (address_modifier)
+      address: (identifier)))
+  (instruction
+    mnemonic: (mnemonic)
+    operand: (register)
+    operand: (memory_operand
+      modifier: (address_modifier)
+      address: (register)))
+  (instruction
+    mnemonic: (mnemonic)
+    operand: (register)
+    operand: (memory_operand
+      address: (segment_override
+        segment: (register)
+        operand: (integer))))
+  (instruction
+    mnemonic: (mnemonic)
+    operand: (register)
+    operand: (memory_operand
+      modifier: (address_modifier)
+      address: (binary_expression
+        left: (register)
+        right: (integer)))))
+
+================================================================================
+NASM sizes, strict, distances, to and seg
+================================================================================
+
+mov dword [rbx], 1
+push strict dword 1
+push strict 1
+jmp short x
+fadd to st1
+mov ax, seg x
+
+--------------------------------------------------------------------------------
+
+(source_file
+  (instruction
+    mnemonic: (mnemonic)
+    operand: (typed_operand
+      type: (operand_type)
+      operand: (memory_operand
+        address: (register)))
+    operand: (integer))
+  (instruction
+    mnemonic: (mnemonic)
+    operand: (typed_operand
+      type: (operand_type)
+      operand: (integer)))
+  (instruction
+    mnemonic: (mnemonic)
+    operand: (typed_operand
+      type: (operand_type)
+      operand: (integer)))
+  (instruction
+    mnemonic: (mnemonic)
+    operand: (typed_operand
+      type: (operand_type)
+      operand: (identifier)))
+  (instruction
+    mnemonic: (mnemonic)
+    operand: (typed_operand
+      type: (operand_type)
+      operand: (register)))
+  (instruction
+    mnemonic: (mnemonic)
+    operand: (register)
+    operand: (unary_expression
+      operator: (operator_word)
+      argument: (identifier))))
+
+================================================================================
+nasm's long size and its string and integer functions are special operators
+================================================================================
+
+mov eax, long [rbx]
+dw __?utf16?__ 'ab', __?UTF16LE?__('a'), __utf32be__ "a"
+dd __?ilog2e?__ 64, __ilog2w__(16) + 1
+dd __float32__(1.5)
+
+--------------------------------------------------------------------------------
+
+(source_file
+  (instruction
+    mnemonic: (mnemonic)
+    operand: (register)
+    operand: (typed_operand
+      type: (operand_type)
+      operand: (memory_operand
+        address: (register))))
+  (directive
+    name: (directive_name)
+    argument: (unary_expression
+      operator: (operator_word)
+      argument: (string))
+    argument: (unary_expression
+      operator: (operator_word)
+      argument: (parenthesized_expression
+        (string)))
+    argument: (unary_expression
+      operator: (operator_word)
+      argument: (string)))
+  (directive
+    name: (directive_name)
+    argument: (unary_expression
+      operator: (operator_word)
+      argument: (integer))
+    argument: (binary_expression
+      left: (unary_expression
+        operator: (operator_word)
+        argument: (parenthesized_expression
+          (integer)))
+      right: (integer)))
+  (directive
+    name: (directive_name)
+    argument: (unary_expression
+      operator: (operator_word)
+      argument: (parenthesized_expression
+        (float)))))
+
+================================================================================
+ptr is no nasm keyword and can name a label
+================================================================================
+
+ptr: nop
+
+--------------------------------------------------------------------------------
+
+(source_file
+  (label_block
+    label: (label
+      name: (identifier))
+    (instruction
+      mnemonic: (mnemonic))))
+
+================================================================================
+& and __?masm_ptr?__ open a memory operand without brackets
+================================================================================
+
+mov eax, &x + 4
+mov eax, dword __?masm_ptr?__ x
+mov eax, &rel x
+mov eax, [__?masm_flat?__:x]
+mov eax, dword &x
+
+--------------------------------------------------------------------------------
+
+(source_file
+  (instruction
+    mnemonic: (mnemonic)
+    operand: (register)
+    operand: (memory_operand
+      address: (binary_expression
+        left: (identifier)
+        right: (integer))))
+  (instruction
+    mnemonic: (mnemonic)
+    operand: (register)
+    operand: (typed_operand
+      type: (operand_type)
+      operand: (memory_operand
+        address: (identifier))))
+  (instruction
+    mnemonic: (mnemonic)
+    operand: (register)
+    operand: (memory_operand
+      modifier: (address_modifier)
+      address: (identifier)))
+  (instruction
+    mnemonic: (mnemonic)
+    operand: (register)
+    operand: (memory_operand
+      address: (segment_override
+        segment: (register)
+        operand: (identifier))))
+  (instruction
+    mnemonic: (mnemonic)
+    operand: (register)
+    operand: (typed_operand
+      type: (operand_type)
+      operand: (memory_operand
+        address: (identifier)))))
+
+================================================================================
+NASM segment overrides, wrt and decorators
+================================================================================
+
+mov rax, fs:[0x28]
+call printf wrt ..plt
+mov rax, [rel f wrt ..gotpcrel]
+vaddps zmm0{k1}{z}, zmm1, [rax]{1to16}
+vaddps zmm0{K1}{Z}, zmm1, zmm2, {rn-sae}
+
+--------------------------------------------------------------------------------
+
+(source_file
+  (instruction
+    mnemonic: (mnemonic)
+    operand: (register)
+    operand: (segment_override
+      segment: (register)
+      operand: (memory_operand
+        address: (integer))))
+  (instruction
+    mnemonic: (mnemonic)
+    operand: (relocation
+      symbol: (identifier)
+      specifier: (special_symbol)))
+  (instruction
+    mnemonic: (mnemonic)
+    operand: (register)
+    operand: (memory_operand
+      modifier: (address_modifier)
+      address: (relocation
+        symbol: (identifier)
+        specifier: (special_symbol))))
+  (instruction
+    mnemonic: (mnemonic)
+    operand: (decorated_operand
+      operand: (register)
+      decorator: (decorator)
+      decorator: (decorator))
+    operand: (register)
+    operand: (decorated_operand
+      operand: (memory_operand
+        address: (register))
+      decorator: (decorator)))
+  (instruction
+    mnemonic: (mnemonic)
+    operand: (decorated_operand
+      operand: (register)
+      decorator: (decorator)
+      decorator: (decorator))
+    operand: (register)
+    operand: (register)
+    operand: (decorator)))
+
+================================================================================
+NASM prefixes and pseudo-prefixes
+================================================================================
+
+rep movsb
+LOCK add [rax], eax
+o64 movsq
+bnd jmp rax
+fs mov eax, [0]
+{vex} vpdpbusd xmm0, xmm1, xmm2
+{EVEX} vaddps xmm0, xmm1, xmm2
+
+--------------------------------------------------------------------------------
+
+(source_file
+  (instruction
+    prefix: (prefix)
+    mnemonic: (mnemonic))
+  (instruction
+    prefix: (prefix)
+    mnemonic: (mnemonic)
+    operand: (memory_operand
+      address: (register))
+    operand: (register))
+  (instruction
+    prefix: (prefix)
+    mnemonic: (mnemonic))
+  (instruction
+    prefix: (prefix)
+    mnemonic: (mnemonic)
+    operand: (register))
+  (instruction
+    prefix: (prefix)
+    mnemonic: (mnemonic)
+    operand: (register)
+    operand: (memory_operand
+      address: (integer)))
+  (instruction
+    prefix: (prefix)
+    mnemonic: (mnemonic)
+    operand: (register)
+    operand: (register)
+    operand: (register))
+  (instruction
+    prefix: (prefix)
+    mnemonic: (mnemonic)
+    operand: (register)
+    operand: (register)
+    operand: (register)))
+
+================================================================================
+Every prefix nasm's add_prefix takes, and a braces-only word written plain is a label
+================================================================================
+
+asp mov eax, [ebx]
+osp nop
+nobnd jmp rax
+strict mov eax, 1
+segr6 nop
+{zu} imul eax, ebx, 1
+rex nop
+
+--------------------------------------------------------------------------------
+
+(source_file
+  (instruction
+    prefix: (prefix)
+    mnemonic: (mnemonic)
+    operand: (register)
+    operand: (memory_operand
+      address: (register)))
+  (instruction
+    prefix: (prefix)
+    mnemonic: (mnemonic))
+  (instruction
+    prefix: (prefix)
+    mnemonic: (mnemonic)
+    operand: (register))
+  (instruction
+    prefix: (prefix)
+    mnemonic: (mnemonic)
+    operand: (register)
+    operand: (integer))
+  (instruction
+    prefix: (prefix)
+    mnemonic: (mnemonic))
+  (instruction
+    prefix: (prefix)
+    mnemonic: (mnemonic)
+    operand: (register)
+    operand: (register)
+    operand: (integer))
+  (label_block
+    label: (label
+      name: (identifier))
+    (instruction
+      mnemonic: (mnemonic))))
+
+================================================================================
+A name and a colon closing an operand is a segment with its operand missing
+================================================================================
+
+first:
+    nop main:
+    ret
+
+--------------------------------------------------------------------------------
+
+(source_file
+  (label_block
+    label: (label
+      name: (identifier))
+    (instruction
+      mnemonic: (mnemonic)
+      operand: (segment_override
+        segment: (identifier)))
+    (instruction
+      mnemonic: (mnemonic))))
+
+================================================================================
+Default flags lead an SCC instruction's operands
+================================================================================
+
+ccmpe {dfv=of,cf} rax, rbx
+ccmpe {dfv=} rax, rbx
+
+--------------------------------------------------------------------------------
+
+(source_file
+  (instruction
+    mnemonic: (mnemonic)
+    operand: (decorator)
+    operand: (register)
+    operand: (register))
+  (instruction
+    mnemonic: (mnemonic)
+    operand: (decorator)
+    operand: (register)
+    operand: (register)))
+
+================================================================================
+A name or macro token before an operand types it, as a macro-defined size does
+================================================================================
+
+movaps XMMWORD [rsp], xmm6
+movq mm0, MMWORD [rsp]
+mov eax, W ebx
+kmov %3 %1, %1
+mov eax, dword ptr foo
+mov rdx, offset foo
+mov eax, x[ebx]
+mov eax, 8 [ebx]
+
+--------------------------------------------------------------------------------
+
+(source_file
+  (instruction
+    mnemonic: (mnemonic)
+    operand: (typed_operand
+      type: (identifier)
+      operand: (memory_operand
+        address: (register)))
+    operand: (register))
+  (instruction
+    mnemonic: (mnemonic)
+    operand: (register)
+    operand: (typed_operand
+      type: (identifier)
+      operand: (memory_operand
+        address: (register))))
+  (instruction
+    mnemonic: (mnemonic)
+    operand: (register)
+    operand: (typed_operand
+      type: (identifier)
+      operand: (register)))
+  (instruction
+    mnemonic: (mnemonic)
+    operand: (typed_operand
+      type: (macro_argument)
+      operand: (macro_argument))
+    operand: (macro_argument))
+  (instruction
+    mnemonic: (mnemonic)
+    operand: (register)
+    operand: (typed_operand
+      type: (operand_type)
+      operand: (typed_operand
+        type: (identifier)
+        operand: (identifier))))
+  (instruction
+    mnemonic: (mnemonic)
+    operand: (register)
+    operand: (typed_operand
+      type: (identifier)
+      operand: (identifier)))
+  (instruction
+    mnemonic: (mnemonic)
+    operand: (register)
+    operand: (memory_operand
+      displacement: (identifier)
+      address: (register)))
+  (instruction
+    mnemonic: (mnemonic)
+    operand: (register)
+    operand: (memory_operand
+      displacement: (integer)
+      address: (register))))
+
+================================================================================
+A split memory operand takes its index after a comma
+================================================================================
+
+bndstx [rax+0x3, rbx], bnd0
+bndstx [, rcx*1], bnd2
+bndmk bnd1, [3, 1*r12]
+mov eax, [eax, ecx*4]
+
+--------------------------------------------------------------------------------
+
+(source_file
+  (instruction
+    mnemonic: (mnemonic)
+    operand: (memory_operand
+      address: (binary_expression
+        left: (register)
+        right: (integer))
+      index: (register))
+    operand: (register))
+  (instruction
+    mnemonic: (mnemonic)
+    operand: (memory_operand
+      index: (binary_expression
+        left: (register)
+        right: (integer)))
+    operand: (register))
+  (instruction
+    mnemonic: (mnemonic)
+    operand: (register)
+    operand: (memory_operand
+      address: (integer)
+      index: (binary_expression
+        left: (integer)
+        right: (register))))
+  (instruction
+    mnemonic: (mnemonic)
+    operand: (register)
+    operand: (memory_operand
+      address: (register)
+      index: (binary_expression
+        left: (register)
+        right: (integer)))))
+
+================================================================================
+Address-size prefixes in brackets, abs before an operand, wrt with any operand
+================================================================================
+
+mov eax, [a32 foo]
+mov rax, [a32 qword foo]
+jmp abs hello
+mov eax, [sym wrt rip]
+mov rbx, [x wrt ..gotpcrel wrt rip]
+mov ax, [var2 wrt bar]
+
+--------------------------------------------------------------------------------
+
+(source_file
+  (instruction
+    mnemonic: (mnemonic)
+    operand: (register)
+    operand: (memory_operand
+      modifier: (address_modifier
+        (prefix))
+      address: (identifier)))
+  (instruction
+    mnemonic: (mnemonic)
+    operand: (register)
+    operand: (memory_operand
+      modifier: (address_modifier
+        (prefix))
+      modifier: (address_modifier)
+      address: (identifier)))
+  (instruction
+    mnemonic: (mnemonic)
+    operand: (typed_operand
+      type: (operand_type)
+      operand: (identifier)))
+  (instruction
+    mnemonic: (mnemonic)
+    operand: (register)
+    operand: (memory_operand
+      address: (relocation
+        symbol: (identifier)
+        specifier: (identifier))))
+  (instruction
+    mnemonic: (mnemonic)
+    operand: (register)
+    operand: (memory_operand
+      address: (relocation
+        symbol: (relocation
+          symbol: (identifier)
+          specifier: (special_symbol))
+        specifier: (identifier))))
+  (instruction
+    mnemonic: (mnemonic)
+    operand: (register)
+    operand: (memory_operand
+      address: (relocation
+        symbol: (identifier)
+        specifier: (identifier)))))
+
+================================================================================
+Braced prefixes after a mnemonic, and brace constants as operands and values
+================================================================================
+
+add {nf} al, [rdx], cl
+add{evex} dword [rdx], 16
+ccmpl {dfv=of,cf} rdx, r30
+ccmpl ({dfv=of}|{dfv=cf}), rdx, r30
+ofcf1 equ {dfv=of,cf}
+cxx {%1 {dfv=%2}}
+
+--------------------------------------------------------------------------------
+
+(source_file
+  (instruction
+    mnemonic: (mnemonic)
+    prefix: (prefix)
+    operand: (register)
+    operand: (memory_operand
+      address: (register))
+    operand: (register))
+  (instruction
+    mnemonic: (mnemonic)
+    prefix: (prefix)
+    operand: (typed_operand
+      type: (operand_type)
+      operand: (memory_operand
+        address: (register)))
+    operand: (integer))
+  (instruction
+    mnemonic: (mnemonic)
+    operand: (decorator)
+    operand: (register)
+    operand: (register))
+  (instruction
+    mnemonic: (mnemonic)
+    operand: (parenthesized_expression
+      (binary_expression
+        left: (decorator)
+        right: (decorator)))
+    operand: (register)
+    operand: (register))
+  (assignment
+    name: (identifier)
+    value: (decorator))
+  (macro_call
+    function: (identifier)
+    arguments: (argument_list
+      argument: (argument_list
+        argument: (decorated_operand
+          operand: (macro_argument)
+          decorator: (decorator))))))

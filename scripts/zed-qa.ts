@@ -2,12 +2,21 @@
 
 import { type ChildProcess, spawn, spawnSync } from 'node:child_process';
 import { once } from 'node:events';
-import { copyFileSync, cpSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import {
+  copyFileSync,
+  cpSync,
+  existsSync,
+  mkdirSync,
+  readFileSync,
+  rmSync,
+  writeFileSync,
+} from 'node:fs';
 import { join } from 'node:path';
 
 import { emptyDir, ROOT } from './lib/files.ts';
 import { run, runOrThrow } from './lib/grammars.ts';
 import { manifest } from './lib/manifest.ts';
+import { foreignFunctions, wasmArgs } from './lib/wasm.ts';
 
 export const HOME = '/home/qa';
 const DISPLAY = ':99';
@@ -17,7 +26,6 @@ const WORK = join(HOME, 'work');
 const ZED_DATA = join(HOME, '.local', 'share', 'zed');
 const EXTENSION = join(ZED_DATA, 'extensions', 'installed', 'asm');
 const LOG = join(ZED_DATA, 'logs', 'Zed.log');
-const SYSROOT = '/usr/wasm32-wasi';
 const OPEN_DELAY = 2500;
 const TIMEOUT = 15000;
 
@@ -65,6 +73,18 @@ const FUNCTIONS = [
   '',
 ].join('\n');
 const MACRO = '    .macro m a\n    nop\n    .endm\n    nop\n';
+const NASM_OUTLINE = [
+  '%macro prologue 0',
+  '    push rbp',
+  '%endmacro',
+  '%define SIZE 16',
+  'struc point',
+  '    .x: resd 1',
+  'endstruc',
+  'start:',
+  '    ret',
+  '',
+].join('\n');
 
 function pickInOutline(query: string): Step[] {
   return [
@@ -366,7 +386,7 @@ export const CHECKS: Check[] = [
     steps: [{ keys: ['ctrl+End'] }, ...pickInOutline('text')],
     wants: 'no entry matches text, so the cursor stays at the end',
     expect: (text) =>
-      text === '    .text\n    .globl main\nmain:\n    ret\n    .data\nvalue:\n    .byte 1\nX',
+      text === '    .text\n    .globl main\nmain:\n    ret\n    .data\nvalue:\n    .byte 1\n    X',
   },
   {
     id: '19',
@@ -512,7 +532,7 @@ export const CHECKS: Check[] = [
     ].join('\n'),
     steps: [],
     look:
-      'DWORD PTR, OFFSET and FLAT have the keyword color, shl the operator color, eax and rbx the register color',
+      'DWORD PTR and OFFSET have the keyword color, shl the operator color, eax, rbx and the FLAT segment the register color',
   },
   {
     id: '28',
@@ -562,9 +582,146 @@ export const CHECKS: Check[] = [
     wants: 'the whole macro, from .macro to .endm',
     expect: (text) => text === '    .macro m a\n    nop\n    .endm\n',
   },
+  {
+    id: '30',
+    row: 30,
+    title: 'Opening x86 (NASM) code',
+    file: 'c30.asm',
+    text: [
+      'section .text',
+      'global start',
+      '%define SIZE 16',
+      '%macro prologue 1',
+      '    push rbp',
+      '%endmacro',
+      'struc point',
+      '    .x: resd 1',
+      'endstruc',
+      'start:',
+      '    prologue 1',
+      '    mov eax, dword [rbx + rcx*4 + 8]',
+      '    movaps XMMWORD [wk(2)], xmm6',
+      '    lea rax, [rel point]',
+      '    ret',
+      '',
+    ].join('\n'),
+    steps: [],
+    look:
+      'section, global, resd, %define, %macro and struc have the directive color; prologue and wk the function color; eax, rbx, rcx, rax and xmm6 the register color; dword, XMMWORD and rel the keyword color; point the type color',
+  },
+  {
+    id: '31a',
+    row: 31,
+    title: 'Typing a NASM macro',
+    file: 'c31a.asm',
+    text: '',
+    steps: typeLines('%macro m 1', 'nop', '%endmacro'),
+    wants: 'the body is indented and %endmacro lines up with %macro',
+    expect: (text) => text === '%macro m 1\n    nop\n%endmacro',
+  },
+  {
+    id: '31b',
+    row: 31,
+    title: 'Typing nested NASM conditionals',
+    file: 'c31b.asm',
+    text: '',
+    steps: typeLines('%if A', '%if B', 'nop', '%endif', '%else', 'nop', '%endif'),
+    wants: 'each body is indented and each clause and closer lines up with its %if',
+    expect: (text) => text === '%if A\n    %if B\n        nop\n    %endif\n%else\n    nop\n%endif',
+  },
+  {
+    id: '31c',
+    row: 31,
+    title: 'Typing a NASM repeat block',
+    file: 'c31c.asm',
+    text: '',
+    steps: typeLines('%rep 3', 'nop', '%endrep'),
+    wants: 'the body is indented and %endrep lines up with %rep',
+    expect: (text) => text === '%rep 3\n    nop\n%endrep',
+  },
+  {
+    id: '32',
+    row: 32,
+    title: 'Typing a structure with fields',
+    file: 'c32.asm',
+    text: '',
+    steps: typeLines('struc point', '.x: resd 1', '.y: resd 1', 'endstruc'),
+    wants: 'the fields stay at the body level and endstruc lines up with struc',
+    expect: (text) => text === 'struc point\n    .x: resd 1\n    .y: resd 1\nendstruc',
+  },
+  {
+    id: '33a',
+    row: 33,
+    title: 'Picking a NASM macro in the outline',
+    file: 'c33a.asm',
+    text: NASM_OUTLINE,
+    steps: pickInOutline('prologue'),
+    wants: 'the cursor jumps to %macro prologue',
+    expect: (text) => lines(text)[0] === 'X%macro prologue 0',
+  },
+  {
+    id: '33b',
+    row: 33,
+    title: 'Picking a %define in the outline',
+    file: 'c33b.asm',
+    text: NASM_OUTLINE,
+    steps: pickInOutline('SIZE'),
+    wants: 'the cursor jumps to %define SIZE',
+    expect: (text) => lines(text)[3] === 'X%define SIZE 16',
+  },
+  {
+    id: '33c',
+    row: 33,
+    title: 'Picking a structure in the outline',
+    file: 'c33c.asm',
+    text: NASM_OUTLINE,
+    steps: pickInOutline('point'),
+    wants: 'the cursor jumps to struc point',
+    expect: (text) => lines(text)[4] === 'Xstruc point',
+  },
+  {
+    id: '33d',
+    row: 33,
+    title: 'Picking a structure field in the outline',
+    file: 'c33d.asm',
+    text: NASM_OUTLINE,
+    steps: pickInOutline('.x'),
+    wants: 'the cursor jumps to the .x field',
+    expect: (text) => lines(text)[5] === '    X.x: resd 1',
+  },
+  {
+    id: '33e',
+    row: 33,
+    title: 'Picking a NASM label in the outline',
+    file: 'c33e.asm',
+    text: NASM_OUTLINE,
+    steps: pickInOutline('start'),
+    wants: 'the cursor jumps to start:',
+    expect: (text) => lines(text)[7] === 'Xstart:',
+  },
+  {
+    id: '34a',
+    row: 34,
+    title: 'Jumping from { to its } in a NASM brace argument',
+    file: 'c34a.asm',
+    text: 'm {1, 2}\n',
+    steps: [{ keys: ['ctrl+Home', 'Home', ...Array(3).fill('Right'), 'ctrl+m'] }, { type: 'X' }],
+    wants: 'the cursor jumps to the matching }',
+    expect: (text) => text === 'm {1, 2X}\n',
+  },
+  {
+    id: '34b',
+    row: 34,
+    title: 'Jumping from %( to its ) in a NASM data list',
+    file: 'c34b.asm',
+    text: 'db %(1, 2)\n',
+    steps: [{ keys: ['ctrl+Home', 'Home', ...Array(5).fill('Right'), 'ctrl+m'] }, { type: 'X' }],
+    wants: 'the cursor jumps to the matching )',
+    expect: (text) => text === 'db %(1, 2X)\n',
+  },
 ];
 
-export const LOG_ROW = 30;
+export const LOG_ROW = 35;
 export const LOG_PATTERN = /\basm\b|asm_(?:auto|arm|x86)|Assembly|grammar|quer(?:y|ies)/i;
 
 export interface Result {
@@ -574,41 +731,21 @@ export interface Result {
   detail: string;
 }
 
+export function formatResult({ id, title, status, detail }: Result, width: number): string {
+  return `${status}  ${id.padEnd(width)}  ${title}: ${detail}`;
+}
+
 export function formatReport(version: string, results: Result[]): string {
   const width = Math.max(...results.map(({ id }) => id.length));
-  const body = results.map(({ id, title, status, detail }) =>
-    `${status}  ${id.padEnd(width)}  ${title}: ${detail}`
-  );
-  return `${version}\n${body.join('\n')}\n`;
+  return `${version}\n${results.map((result) => formatResult(result, width)).join('\n')}\n`;
+}
+
+export function runOrder(checks: Check[]): Check[] {
+  return [...checks.filter(({ vim }) => vim !== true), ...checks.filter(({ vim }) => vim === true)];
 }
 
 export function logErrors(log: string): string[] {
   return log.split('\n').filter((line) => /\b(ERROR|WARN)\b/.test(line) && LOG_PATTERN.test(line));
-}
-
-export function wasmArgs(grammar: string, output: string): string[] {
-  const src = `tree-sitter/${grammar}/src`;
-  return [
-    '--target=wasm32-wasip1',
-    `--sysroot=${SYSROOT}`,
-    '-isystem',
-    join(SYSROOT, 'include', 'wasm32-wasi'),
-    '-o',
-    output,
-    '-fPIC',
-    '-shared',
-    '-Os',
-    `-Wl,--export=tree_sitter_${grammar}`,
-    '-Wl,--allow-undefined',
-    '-Wl,--no-entry',
-    '-nostdlib',
-    '-fno-exceptions',
-    '-fvisibility=hidden',
-    '-I',
-    src,
-    `${src}/parser.c`,
-    `${src}/scanner.c`,
-  ];
 }
 
 function sleep(milliseconds: number): Promise<void> {
@@ -645,7 +782,14 @@ async function stop(child: ChildProcess): Promise<void> {
 function installExtension() {
   mkdirSync(join(EXTENSION, 'grammars'), { recursive: true });
   for (const { grammar } of manifest.languages) {
-    runOrThrow('clang', wasmArgs(grammar, join(EXTENSION, 'grammars', `${grammar}.wasm`)));
+    const output = join(EXTENSION, 'grammars', `${grammar}.wasm`);
+    runOrThrow('clang', wasmArgs(grammar, output));
+    const foreign = foreignFunctions(readFileSync(output));
+    if (foreign.length > 0) {
+      throw new Error(
+        `${grammar}.wasm imports functions tree-sitter's wasm runtime lacks: ${foreign.join(', ')}`,
+      );
+    }
   }
   copyFileSync(join(ROOT, 'extension.toml'), join(EXTENSION, 'extension.toml'));
   cpSync(join(ROOT, 'languages'), join(EXTENSION, 'languages'), { recursive: true });
@@ -751,13 +895,26 @@ async function runCheck(check: Check): Promise<Result> {
   };
 }
 
+async function attempt(check: Check): Promise<Result> {
+  try {
+    return await runCheck(check);
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    const shot = savePng(check.id.padStart(3, '0'));
+    return { id: check.id, title: check.title, status: 'FAIL', detail: `${message} (${shot})` };
+  }
+}
+
 async function main() {
   emptyDir(OUT);
   mkdirSync(WORK, { recursive: true });
   mkdirSync(join(HOME, '.config', 'zed'), { recursive: true });
   writeSettings(SETTINGS);
+  console.log('building the grammars');
   installExtension();
   const version = runOrThrow('zed', ['--version']).split(/\s+/).slice(0, 2).join(' ');
+  const width = Math.max(...CHECKS.map(({ id }) => id.length), String(LOG_ROW).length);
+  console.log(`${version}, ${CHECKS.length + 1} checks`);
 
   const display = await background('Xvfb', [DISPLAY, '-screen', '0', SCREEN, '-nolisten', 'tcp']);
   await waitFor('the display', () => run('xdotool', ['getdisplaygeometry']).ok || undefined);
@@ -770,32 +927,41 @@ async function main() {
     );
     await sleep(OPEN_DELAY);
     let vim = false;
-    for (const check of CHECKS) {
+    for (const check of runOrder(CHECKS)) {
       if (check.vim === true && !vim) {
         writeSettings({ ...SETTINGS, vim_mode: true });
         await sleep(OPEN_DELAY);
         vim = true;
       }
-      results.push(await runCheck(check));
+      const result = await attempt(check);
+      results.push(result);
+      console.log(formatResult(result, width));
     }
-    const errors = logErrors(readFileSync(LOG, 'utf8'));
-    results.push({
-      id: String(LOG_ROW),
-      title: 'Reading the Zed log',
-      status: errors.length === 0 ? 'PASS' : 'FAIL',
-      detail: errors.length === 0
-        ? 'no errors about the asm grammars or queries'
-        : errors.join(' | '),
-    });
-    copyFileSync(LOG, join(OUT, 'Zed.log'));
   } finally {
     await stop(zed);
     await stop(display);
   }
+  const log = existsSync(LOG) ? readFileSync(LOG, 'utf8') : undefined;
+  if (log !== undefined) {
+    copyFileSync(LOG, join(OUT, 'Zed.log'));
+  }
+  const errors = log === undefined ? ['Zed wrote no log'] : logErrors(log);
+  const logResult: Result = {
+    id: String(LOG_ROW),
+    title: 'Reading the Zed log',
+    status: errors.length === 0 ? 'PASS' : 'FAIL',
+    detail: errors.length === 0
+      ? 'no errors about the asm grammars or queries'
+      : errors.join(' | '),
+  };
+  results.push(logResult);
+  console.log(formatResult(logResult, width));
 
-  const report = formatReport(version, results);
-  writeFileSync(join(OUT, 'report.txt'), report);
-  console.log(report);
+  writeFileSync(join(OUT, 'report.txt'), formatReport(version, results));
+  const count = (status: string) => results.filter((result) => result.status === status).length;
+  console.log(
+    `PASS ${count('PASS')}, FAIL ${count('FAIL')}, LOOK ${count('LOOK')}: .build/zed-qa/report.txt`,
+  );
   if (results.some(({ status }) => status === 'FAIL')) {
     process.exitCode = 1;
   }

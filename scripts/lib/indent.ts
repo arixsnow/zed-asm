@@ -1,15 +1,26 @@
 // SPDX-License-Identifier: MIT
 
-import { readFileSync } from 'node:fs';
 import { createRequire } from 'node:module';
-import { join } from 'node:path';
 
-import { ROOT } from './files.ts';
-import type { Language, Syntax } from './manifest.ts';
+import type { Block, Language } from './manifest.ts';
+import {
+  definedFlag,
+  dialectArchs,
+  dialectDefines,
+  type KeywordSources,
+  tableEntries,
+} from './tables.ts';
 
 export type Semicolons = 'SEPARATES' | 'COMMENTS' | 'HEURISTIC';
 
 export interface StatementLexing {
+  gnuSyntax: boolean;
+  backquoteStrings: boolean;
+  percentMacros: boolean;
+  lineJoins: boolean;
+  spacedJoins: boolean;
+  reservedNames: boolean;
+  namedStatements: boolean;
   semicolons: Semicolons;
   hashImmediates: boolean;
   hashNeedsValue: boolean;
@@ -17,33 +28,41 @@ export interface StatementLexing {
   atTypes: boolean;
 }
 
+export interface BlockWord {
+  pattern: RegExp;
+  startsLine: boolean;
+}
+
 export interface BlockKind {
-  openers: RegExp[];
-  clauses: RegExp[];
+  openers: BlockWord[];
+  clauses: BlockWord[];
   closers: string[];
 }
 
 export interface BlockPatternSource {
   blocks: BlockKind[];
   nameCharacter: RegExp;
+  labelName: string;
   lexing: StatementLexing;
 }
 
 export interface StatementWord {
   name: string;
   symbol: string;
+  flags: string;
 }
 
 const BLANKS = ' \\t\\f\\v\\r';
 const BLANK = `[${BLANKS}]`;
 const VALUE_START = "A-Za-z0-9_.(\\-+~!'\\\\:";
-const STRING = '"(?:[^"\\\\]|\\\\.)*(?:"|\\\\?$)';
 const CHARACTER = "'(?:\\\\.?|[^\\\\])?'?";
 const BLOCK_COMMENT = '/\\*(?:[^*]|\\*+[^*/])*\\*+/';
 const OPEN_BLOCK_COMMENT = '/\\*(?:[^*]|\\*+[^*/])*\\**';
 const LINE_COMMENT = '//.*';
 
-const lexical = createRequire(import.meta.url)('../../tree-sitter/common/lexical.js');
+const load = createRequire(import.meta.url);
+const lexical = load('../../tree-sitter/common/lexical.js');
+const { DOLLAR_LABELS } = load('../../tree-sitter/common/arch/arm.js');
 
 function classBody(pattern: RegExp): string {
   const source = pattern.source;
@@ -100,6 +119,19 @@ function caselessWord(word: string): RegExp {
   return new RegExp([...word].map((character) => `[${caseless(character)}]`).join(''));
 }
 
+function literal(character: string): string {
+  if (character.toLowerCase() !== character.toUpperCase()) {
+    return `[${caseless(character)}]`;
+  }
+  return /[\\^$.*+?()[\]{}|]/.test(character) ? `\\${character}` : character;
+}
+
+function quoted(quote: string, escapes: boolean): string {
+  return escapes
+    ? `${quote}(?:[^${quote}\\\\]|\\\\.)*(?:${quote}|\\\\?$)`
+    : `${quote}[^${quote}]*${quote}?`;
+}
+
 interface TrieNode {
   terminal: boolean;
   children: Map<string, TrieNode>;
@@ -144,13 +176,24 @@ function notWords(node: TrieNode, alphabet: string[], word: string): string {
 export function blockOpenerPattern(source: BlockPatternSource): string {
   const { lexing } = source;
   const name = classBody(source.nameCharacter);
-  const alphabet = [...expandClass(name), '\\'];
-  const wordClass = `${name}\\\\`;
+  const alphabet = [...expandClass(name), ...(lexing.gnuSyntax ? ['\\'] : [])];
+  const wordClass = lexing.gnuSyntax ? `${name}\\\\` : name;
   const word = `[${wordClass}]`;
-  const hashSpecial = !lexing.hashImmediates || lexing.hashNeedsValue;
-  const specials = `"';${hashSpecial ? '#' : ''}${lexing.atComments ? '@' : ''}`;
-  const tokens = [STRING, CHARACTER, BLOCK_COMMENT];
-  if (lexing.hashImmediates && lexing.hashNeedsValue) {
+  const hashComments = lexing.gnuSyntax && !lexing.hashImmediates;
+  const hashValues = lexing.gnuSyntax && lexing.hashImmediates && lexing.hashNeedsValue;
+  const quotes = ['"', "'", ...(lexing.backquoteStrings ? ['`'] : [])];
+  const specials = `${quotes.join('')};${hashComments || hashValues ? '#' : ''}${
+    lexing.atComments ? '@' : ''
+  }`;
+  const tokens = [
+    ...quotes.map((quote) =>
+      lexing.gnuSyntax && quote === "'"
+        ? CHARACTER
+        : quoted(quote, !lexing.backquoteStrings || quote === '`')
+    ),
+    ...(lexing.gnuSyntax ? [BLOCK_COMMENT] : []),
+  ];
+  if (hashValues) {
     tokens.push(`#(?:[${VALUE_START.replace("'", '')}]|${CHARACTER})`);
   }
   if (lexing.atComments && lexing.atTypes) {
@@ -162,10 +205,10 @@ export function blockOpenerPattern(source: BlockPatternSource): string {
   const code = `${either(...tokens, ...glued, `[^${specials}]`)}*`;
   const after = `(?:${either(...tokens, `[^${wordClass}${specials}]`)}${code})?`;
 
-  const tails = [LINE_COMMENT, `${OPEN_BLOCK_COMMENT}$`];
-  if (!lexing.hashImmediates) {
+  const tails = lexing.gnuSyntax ? [LINE_COMMENT, `${OPEN_BLOCK_COMMENT}$`] : [];
+  if (hashComments) {
     tails.push('#.*');
-  } else if (lexing.hashNeedsValue) {
+  } else if (hashValues) {
     tails.push(`#(?:[^${VALUE_START}].*)?$`);
   }
   if (lexing.semicolons === 'COMMENTS') {
@@ -174,44 +217,55 @@ export function blockOpenerPattern(source: BlockPatternSource): string {
   if (lexing.atComments) {
     tails.push(lexing.atTypes ? `${BLANK}@(?:[^A-Za-z_].*)?$` : `${BLANK}@.*`);
   }
-  const startTail = lexing.atComments ? '[#@].*' : '#.*';
+  const startTails = lexing.gnuSyntax ? [lexing.atComments ? '[#@].*' : '#.*'] : [];
   const tail = `(?:${tails.join('|')})?`;
   const semicolonComment = `;${BLANK}*(?:[^${BLANKS}.;][^;]*|\\.(?:[^A-Za-z_;][^;]*)?)?`;
   const comments = `(?:${semicolonComment})*`;
 
-  const label = `(?:${word}+${BLANK}*:${BLANK}*)`;
+  const label = `(?:(?:${source.labelName})${BLANK}*:${BLANK}*)`;
   const dotLabel = `(?:\\.[A-Za-z_]${word}*${BLANK}*:${BLANK}*)`;
   const dotStatement = `\\.[A-Za-z_]${code}`;
-  const nondotWord = `${
-    characterClass(alphabet.filter((character) => character !== '.'))
-  }${word}*${glue}`;
   const visibleNonColon = either(...tokens, `[^${wordClass}${specials}${BLANKS}:]`);
   const nextNonColon = either(...tokens, ...glued, `[^${specials}${BLANKS}:]`);
   const afterWord = `(?:(?:${visibleNonColon}|${BLANK}+${nextNonColon})${code}|${BLANK}+)?`;
   const kindPatterns = (kind: BlockKind) => {
-    const notCloser = notWords(
-      trieOf(kind.closers.map((closer) => closer.replace(/^\./, ''))),
-      alphabet,
-      word,
-    );
-    const firstWord =
-      `(?:${visibleNonColon}${code}|(?:${nondotWord}|\\.${notCloser})${afterWord}|${startTail})`;
+    const leads = [...new Set(kind.closers.map((closer) => closer[0].toLowerCase()))];
+    const notCloser = (lead: string) =>
+      notWords(
+        trieOf(
+          kind.closers.filter((closer) => closer[0].toLowerCase() === lead).map((closer) =>
+            closer.slice(1)
+          ),
+        ),
+        alphabet,
+        word,
+      );
+    const otherWord = `${
+      characterClass(alphabet.filter((character) => !leads.includes(character.toLowerCase())))
+    }${word}*${glue}`;
+    const firstWord = `(?:${visibleNonColon}${code}|(?:${
+      [otherWord, ...leads.map((lead) => `${literal(lead)}${notCloser(lead)}`)].join('|')
+    })${afterWord}${startTails.map((startTail) => `|${startTail}`).join('')})`;
     let rest = '';
     let clausePrefix = '';
     if (lexing.semicolons === 'SEPARATES') {
       rest = `(?:;${BLANK}*${label}*${firstWord}?)*`;
       clausePrefix = `(?:${label}*${firstWord}?;${BLANK}*)*${label}*`;
     } else if (lexing.semicolons === 'HEURISTIC') {
-      rest =
-        `(?:${comments};${BLANK}*(?:${dotLabel}${label}*${firstWord}?|\\.${notCloser}${afterWord}))*`;
+      const directive = `\\.${notCloser('.')}${afterWord}`;
+      rest = `(?:${comments};${BLANK}*(?:${dotLabel}${label}*${firstWord}?|${directive}))*`;
       clausePrefix =
-        `(?:${label}*${firstWord}?${comments};${BLANK}*(?:\\.${notCloser}${afterWord}${comments};${BLANK}*)*(?:${dotLabel}${label}*)?)?`;
+        `(?:${label}*${firstWord}?${comments};${BLANK}*(?:${directive}${comments};${BLANK}*)*(?:${dotLabel}${label}*)?)?`;
     }
-    const block = (patterns: RegExp[]) =>
-      `(?:${patterns.map((pattern) => pattern.source).join('|')})${after}${rest}`;
-    return {
-      opener: block(kind.openers),
-      clause: kind.clauses.length === 0 ? null : `${clausePrefix}${block(kind.clauses)}`,
+    const block = (words: BlockWord[]) =>
+      `(?:${words.map((entry) => entry.pattern.source).join('|')})${after}${rest}`;
+    return (startsLine: boolean) => {
+      const openers = kind.openers.filter((entry) => entry.startsLine === startsLine);
+      const clauses = kind.clauses.filter((entry) => entry.startsLine === startsLine);
+      return {
+        opener: openers.length === 0 ? [] : [block(openers)],
+        clause: clauses.length === 0 ? [] : [`${startsLine ? '' : clausePrefix}${block(clauses)}`],
+      };
     };
   };
 
@@ -223,37 +277,41 @@ export function blockOpenerPattern(source: BlockPatternSource): string {
       `(?:${code}${comments};${BLANK}*(?:${dotStatement}${comments};${BLANK}*)*(?:${dotLabel}${label}*)?)?`;
   }
   const kinds = source.blocks.map(kindPatterns);
-  const alternatives = [
-    `${prefix}(?:${kinds.map((kind) => kind.opener).join('|')})`,
-    ...kinds.flatMap((kind) => kind.clause === null ? [] : [kind.clause]),
+  const alternatives = (startsLine: boolean, openerPrefix: string) => {
+    const placed = kinds.map((kind) => kind(startsLine));
+    const openers = placed.flatMap(({ opener }) => opener);
+    return [
+      ...(openers.length === 0 ? [] : [`${openerPrefix}(?:${openers.join('|')})`]),
+      ...placed.flatMap(({ clause }) => clause),
+    ];
+  };
+  const anywhere = alternatives(false, prefix);
+  const lineStart = alternatives(true, '');
+  const groups = [
+    ...(anywhere.length === 0 ? [] : [`${label}*(?:${anywhere.join('|')})`]),
+    ...(lineStart.length === 0 ? [] : [`(?:${lineStart.join('|')})`]),
   ];
+  const body = groups.length === 1 ? groups[0] : `(?:${groups.join('|')})`;
   const ending = lexing.semicolons === 'HEURISTIC' ? `(?:(?:${semicolonComment})+|${tail})` : tail;
-  return `^${BLANK}*${label}*(?:${alternatives.join('|')})${ending}$`;
+  return `^${BLANK}*${body}${ending}$`;
 }
 
 export function statementLexing(scanner: string): Record<string, Omit<StatementLexing, 'atTypes'>> {
   const lexing: Record<string, Omit<StatementLexing, 'atTypes'>> = {};
-  const blocks = scanner.matchAll(
-    /(?:#ifdef |#elif defined\()ASM_DIALECT_([A-Z0-9_]+)\)?\n((?:#define [A-Z0-9_]+ [A-Z0-9_]+\n)+)/g,
-  );
-  for (const [, dialect, defines] of blocks) {
-    const values = new Map(
-      [...defines.matchAll(/#define ([A-Z0-9_]+) ([A-Z0-9_]+)/g)].map((
-        [, key, value],
-      ) => [key, value]),
-    );
-    const flag = (key: string) => {
-      const value = values.get(key);
-      if (value !== '0' && value !== '1') {
-        throw new Error(`scanner.h: ${key} for ASM_DIALECT_${dialect} must be 0 or 1`);
-      }
-      return value === '1';
-    };
+  for (const [dialect, values] of dialectDefines(scanner)) {
+    const flag = (key: string) => definedFlag(values, dialect, key);
     const semicolons = values.get('ASM_SEMICOLONS')?.replace(/^SEMICOLON_/, '');
     if (semicolons !== 'SEPARATES' && semicolons !== 'COMMENTS' && semicolons !== 'HEURISTIC') {
       throw new Error(`scanner.h: ASM_SEMICOLONS for ASM_DIALECT_${dialect} is not a known mode`);
     }
     lexing[dialect] = {
+      gnuSyntax: flag('ASM_GNU_SYNTAX'),
+      backquoteStrings: flag('ASM_BACKQUOTE_STRINGS'),
+      percentMacros: flag('ASM_PERCENT_MACROS'),
+      lineJoins: flag('ASM_LINE_JOINS'),
+      spacedJoins: flag('ASM_SPACED_JOINS'),
+      reservedNames: flag('ASM_RESERVED_NAMES'),
+      namedStatements: flag('ASM_NAMED_STATEMENTS'),
       semicolons,
       hashImmediates: flag('ASM_HASH_IMMEDIATES'),
       hashNeedsValue: flag('ASM_HASH_NEEDS_VALUE'),
@@ -263,15 +321,16 @@ export function statementLexing(scanner: string): Record<string, Omit<StatementL
   return lexing;
 }
 
-export function statementWords(scanner: string): StatementWord[] {
-  const table = /#define ASM_STATEMENT_WORDS\(X\)((?:[^\n]*\\\n)+[^\n]*)/.exec(scanner);
-  if (table === null) {
-    throw new Error('scanner.h: ASM_STATEMENT_WORDS table not found');
+export function statementWords(sources: KeywordSources, dialect: string): StatementWord[] {
+  const words = new Map<string, StatementWord>();
+  for (const arch of dialectArchs(sources.scanner, dialect)) {
+    for (const [name, symbol, flags] of tableEntries(sources, `ASM_${arch}_DIRECTIVES`)) {
+      if (!words.has(name)) {
+        words.set(name, { name, symbol, flags });
+      }
+    }
   }
-  return [...table[1].matchAll(/X\("([^"]+)", ([A-Z_]+)\)/g)].map(([, name, symbol]) => ({
-    name,
-    symbol,
-  }));
+  return [...words.values()].sort((a, b) => (a.name < b.name ? -1 : a.name > b.name ? 1 : 0));
 }
 
 export function implicitEnds(scanner: string): { closer: string; ends: string }[] {
@@ -285,48 +344,191 @@ export function implicitEnds(scanner: string): { closer: string; ends: string }[
   }));
 }
 
-export function blockIndentPattern(language: Language, syntax: Syntax): string | null {
-  if (syntax.blocks.length === 0) {
-    return null;
+export function tokenNames(scanner: string): string[] {
+  const body = /enum TokenType \{([^}]*)\};/.exec(scanner);
+  if (body === null) {
+    throw new Error('scanner.h: enum TokenType not found');
   }
-  const scanner = readFileSync(join(ROOT, 'tree-sitter', 'common', 'scanner.h'), 'utf8');
+  return [...body[1].matchAll(/([A-Z_]+),/g)].map(([, name]) => name);
+}
+
+export function reservedNames(
+  sources: KeywordSources,
+  language: Pick<Language, 'syntax' | 'dialect'>,
+  lexing: Pick<StatementLexing, 'reservedNames'>,
+): string[] {
+  const archs = dialectArchs(sources.scanner, language.dialect);
+  const names = statementWords(sources, language.dialect)
+    .filter(({ flags }) => flags.includes('WORD_RESERVED'))
+    .map(({ name }) => name);
+  for (const arch of archs) {
+    if (sources.tables.has(`ASM_${arch}_OPERAND_WORDS`)) {
+      names.push(
+        ...tableEntries(sources, `ASM_${arch}_OPERAND_WORDS`)
+          .filter((entry) => entry[2]?.includes('WORD_RESERVED'))
+          .map(([word]) => word),
+      );
+    }
+  }
+  if (lexing.reservedNames) {
+    for (const arch of archs) {
+      names.push(...tableEntries(sources, `ASM_${arch}_REGISTERS`).map(([word]) => word));
+      if (sources.tables.has(`ASM_${arch}_PREFIXES`)) {
+        names.push(
+          ...tableEntries(sources, `ASM_${arch}_PREFIXES`)
+            .filter(([, flags]) => flags.includes('PREFIX_PLAIN'))
+            .map(([word]) => word),
+        );
+      }
+    }
+  }
+  return [...new Set(names)];
+}
+
+function unreservedName(reserved: string[], first: string[], character: RegExp): string {
+  const alphabet = expandClass(classBody(character));
+  const word = `[${classBody(character)}]`;
+  const outside = reserved.filter((name) => !first.includes(name[0]));
+  if (outside.length > 0) {
+    throw new Error(
+      `words outside the start ${characterClass(first)}: ${outside.join(', ')}`,
+    );
+  }
+  const root = trieOf(reserved);
+  const taken = new Set([...root.children.keys()].flatMap((character) => [
+    character.toLowerCase(),
+    character.toUpperCase(),
+  ]));
+  const others = first.filter((character) => !taken.has(character));
+  const alternatives = others.length === 0 ? [] : [`${characterClass(others)}${word}*`];
+  for (const [character, child] of root.children) {
+    alternatives.push(`[${caseless(character)}]${notWords(child, alphabet, word)}`);
+  }
+  return `(?:${alternatives.join('|')})`;
+}
+
+function dialectLexing(scanner: string, language: Language): Omit<StatementLexing, 'atTypes'> {
   const lexing = statementLexing(scanner)[language.dialect];
   if (lexing === undefined) {
     throw new Error(`scanner.h has no settings for ASM_DIALECT_${language.dialect}`);
   }
-  const words = statementWords(scanner);
+  return lexing;
+}
+
+function syntaxBlocks(blocks: Block[], language: Language): Block[] {
+  return blocks.filter((block) => block.syntax === undefined || block.syntax === language.syntax);
+}
+
+function startsLine(lexing: Pick<StatementLexing, 'percentMacros'>, name: string): boolean {
+  return lexing.percentMacros && name.startsWith('%');
+}
+
+export function labelName(language: Language, sources: KeywordSources): string {
+  const syntax = lexical[language.syntax];
+  const reserved = reservedNames(sources, language, dialectLexing(sources.scanner, language));
+  return syntax.labelName({
+    dollarLabels: language.archs.includes('arm') && DOLLAR_LABELS.includes(language.dialect),
+    name: reserved.length === 0
+      ? undefined
+      : unreservedName(reserved, expandClass(classBody(syntax.nameStart)), syntax.nameCharacter),
+  }).source;
+}
+
+export function labelEndingWords(
+  language: Language,
+  blocks: Block[],
+  sources: KeywordSources,
+): string[] {
+  const lexing = dialectLexing(sources.scanner, language);
+  const ending = new Set(
+    syntaxBlocks(blocks, language).flatMap(({ closer, clauses }) => [closer, ...clauses]),
+  );
+  return statementWords(sources, language.dialect)
+    .filter(({ name, symbol, flags }) =>
+      (ending.has(symbol) && !startsLine(lexing, name)) ||
+      (lexing.namedStatements &&
+        (flags.includes('WORD_NAMES_LABEL') || flags.includes('WORD_NAMES_ASSIGNMENT')))
+    )
+    .map(({ name }) => name);
+}
+
+export function labelIndentPattern(
+  language: Language,
+  blocks: Block[],
+  sources: KeywordSources,
+): string {
+  const syntax = lexical[language.syntax];
+  const ending = labelEndingWords(language, blocks, sources);
+  const start = `^${BLANK}*(?:${labelName(language, sources)})${BLANK}*:`;
+  if (ending.length === 0) {
+    return start;
+  }
+  const first = [
+    ...new Set([...expandClass(classBody(syntax.nameStart)), ...ending.map((word) => word[0])]),
+  ];
+  const otherWord = unreservedName(ending, first, syntax.nameCharacter);
+  const notName = `[^${classBody(syntax.nameCharacter)}]`;
+  const notStart = `[^${characterClass(first).slice(1, -1)}${BLANKS}]`;
+  return `${start}${BLANK}*(?:$|${notStart}|${otherWord}(?:${notName}|$))`;
+}
+
+export function blockIndentPattern(
+  language: Language,
+  blocks: Block[],
+  sources: KeywordSources,
+): string | null {
+  const scanner = sources.scanner;
+  const lexing = dialectLexing(scanner, language);
+  const tokens = tokenNames(scanner);
+  const words = statementWords(sources, language.dialect);
   const ends = implicitEnds(scanner);
-  const patterns = (words: StatementWord[], kind: string, symbols: string[]) =>
+  const patterns = (kind: string, symbols: string[]) =>
     symbols.flatMap((symbol) => {
-      const named = words.filter((word) => word.symbol === symbol);
-      if (named.length === 0) {
+      if (!tokens.includes(symbol)) {
         throw new Error(`scanner.h has no block ${kind} for ${symbol}`);
       }
-      return named.map(({ name }) => caselessWord(name));
+      return words.filter((word) => word.symbol === symbol).map(({ name }) => ({
+        pattern: caselessWord(name),
+        startsLine: startsLine(lexing, name),
+      }));
     });
-  const kinds = syntax.blocks.map((block) => {
-    if (!words.some((word) => word.symbol === block.closer)) {
+  const kinds = syntaxBlocks(blocks, language).map((block) => {
+    if (!tokens.includes(block.closer)) {
       throw new Error(`scanner.h has no block closer for ${block.closer}`);
+    }
+    const openers = patterns('opener', block.openers);
+    if (openers.length === 0) {
+      throw new Error(
+        `keywords.h has no ${block.openers.join(', ')} word for ASM_DIALECT_${language.dialect}`,
+      );
     }
     const symbols = [
       block.closer,
       ...ends.filter((end) => end.ends === block.closer).map((end) => end.closer),
     ];
-    const names = words.filter((word) => symbols.includes(word.symbol)).map(({ name }) => name);
     return {
-      openers: patterns(words, 'opener', block.openers),
-      clauses: patterns(words, 'clause', block.clauses),
-      closers: names,
+      openers,
+      clauses: patterns('clause', block.clauses),
+      closers: words.filter((word) => symbols.includes(word.symbol)).map(({ name }) => name),
     };
   });
+  if (kinds.length === 0) {
+    return null;
+  }
   return blockOpenerPattern({
     blocks: kinds,
     nameCharacter: lexical[language.syntax].nameCharacter,
+    labelName: labelName(language, sources),
     lexing: { ...lexing, atTypes: language.archs.includes('x86') },
   });
 }
 
-export function increaseIndentPattern(language: Language, syntax: Syntax): string {
-  const blocks = blockIndentPattern(language, syntax);
-  return blocks === null ? syntax.labelPattern : `${syntax.labelPattern}|${blocks}`;
+export function increaseIndentPattern(
+  language: Language,
+  blocks: Block[],
+  sources: KeywordSources,
+): string {
+  const labels = labelIndentPattern(language, blocks, sources);
+  const opened = blockIndentPattern(language, blocks, sources);
+  return opened === null ? labels : `${labels}|${opened}`;
 }

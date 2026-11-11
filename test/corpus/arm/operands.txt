@@ -586,3 +586,71 @@ movz x0, #1, lsl #16
       operator: (shift_operator)
       amount: (immediate
         value: (integer)))))
+
+================================================================================
+C macro calls in ARM operands
+================================================================================
+
+    b X(tail)
+    bl HIDDEN_JUMPTARGET (f)
+    add x0, x1, #F(2)
+
+--------------------------------------------------------------------------------
+
+(source_file
+  (instruction
+    mnemonic: (mnemonic)
+    operand: (macro_call
+      function: (identifier)
+      arguments: (argument_list
+        argument: (identifier))))
+  (instruction
+    mnemonic: (mnemonic)
+    operand: (macro_call
+      function: (identifier)
+      arguments: (argument_list
+        argument: (identifier))))
+  (instruction
+    mnemonic: (mnemonic)
+    operand: (register)
+    operand: (register)
+    operand: (immediate
+      value: (macro_call
+        function: (identifier)
+        arguments: (argument_list
+          argument: (integer))))))
+
+================================================================================
+Numeric label references in branches
+================================================================================
+
+1:
+    b 1b
+    b.ne 1f
+
+--------------------------------------------------------------------------------
+
+(source_file
+  (label
+    name: (numeric_label))
+  (instruction
+    mnemonic: (mnemonic)
+    operand: (numeric_label))
+  (instruction
+    mnemonic: (mnemonic)
+    operand: (numeric_label)))
+
+================================================================================
+A dot float after a hash is a floating-point immediate
+================================================================================
+
+fmov d0, #.5
+
+--------------------------------------------------------------------------------
+
+(source_file
+  (instruction
+    mnemonic: (mnemonic)
+    operand: (register)
+    operand: (immediate
+      value: (float))))

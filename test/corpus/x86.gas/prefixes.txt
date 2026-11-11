@@ -56,6 +56,41 @@ data16 nop
     mnemonic: (mnemonic)))
 
 ================================================================================
+Prefix words of every GNU assembler
+================================================================================
+
+ht jne target
+rex64xz movl %eax, %ebx
+addr64 movsb
+{noimm8s} addl $1, %eax
+word movsb
+
+--------------------------------------------------------------------------------
+
+(source_file
+  (instruction
+    prefix: (prefix)
+    mnemonic: (mnemonic)
+    operand: (identifier))
+  (instruction
+    prefix: (prefix)
+    mnemonic: (mnemonic)
+    operand: (register)
+    operand: (register))
+  (instruction
+    prefix: (prefix)
+    mnemonic: (mnemonic))
+  (instruction
+    prefix: (prefix)
+    mnemonic: (mnemonic)
+    operand: (immediate
+      value: (integer))
+    operand: (register))
+  (instruction
+    prefix: (prefix)
+    mnemonic: (mnemonic)))
+
+================================================================================
 A prefix alone on a line applies to the next instruction
 ================================================================================
 
@@ -151,7 +186,7 @@ data16 {disp32} {load} lock ds addl $1, 8(%rax)
       base: (register))))
 
 ================================================================================
-Prefix words stay labels, assignments and operands
+Prefix words stay labels, assignments and operands, and a prefix with operands is a mnemonic
 ================================================================================
 
 lock:

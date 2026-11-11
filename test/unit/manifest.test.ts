@@ -19,6 +19,7 @@ import { assertThrowsIncluding } from '../lib/assert.ts';
 interface Editable {
   extension: Record<string, unknown>;
   syntaxes: Record<string, Record<string, unknown> & { brackets: Record<string, unknown>[] }>;
+  blocks?: Record<string, unknown>[];
   languages: Record<string, unknown>[];
 }
 
@@ -45,23 +46,20 @@ test('an invalid manifest fails with a message naming the field', () => {
       copy.extension.authors = ['nobody'];
     }, 'extension.authors[0] must look like "Name <email>" (got "nobody")'],
     [(copy) => {
-      copy.syntaxes.gas.labelPattern = '(';
-    }, 'syntaxes.gas.labelPattern must be a valid regular expression (got "(")'],
-    [(copy) => {
       delete copy.syntaxes.nasm.brackets[0].close;
     }, 'syntaxes.nasm.brackets[0].close must be a boolean'],
     [(copy) => {
-      copy.syntaxes.gas.blocks = [{ openers: [], clauses: [], closer: 'MACRO_CLOSE' }];
-    }, 'syntaxes.gas.blocks[0].openers must list at least one opener'],
+      copy.blocks = [{ openers: [], clauses: [], closer: 'MACRO_CLOSE' }];
+    }, 'blocks[0].openers must list at least one opener'],
     [(copy) => {
-      copy.syntaxes.gas.blocks = [{ openers: ['MACRO_OPEN'], clauses: [] }];
-    }, 'syntaxes.gas.blocks[0].closer must be a non-empty string'],
+      copy.blocks = [{ openers: ['MACRO_OPEN'], clauses: [] }];
+    }, 'blocks[0].closer must be a non-empty string'],
     [(copy) => {
-      copy.syntaxes.gas.blocks = [{ openers: ['MACRO_OPEN'], closer: 'MACRO_CLOSE' }];
-    }, 'syntaxes.gas.blocks[0].clauses must be an array'],
+      copy.blocks = [{ openers: ['MACRO_OPEN'], closer: 'MACRO_CLOSE' }];
+    }, 'blocks[0].clauses must be an array'],
     [(copy) => {
-      delete copy.syntaxes.nasm.blocks;
-    }, 'syntaxes.nasm.blocks must be an array'],
+      delete copy.blocks;
+    }, 'blocks must be an array'],
     [(copy) => {
       copy.languages = [];
     }, 'languages must list at least one language'],
@@ -127,5 +125,11 @@ test('the dialect list matches the scanner', () => {
 test('the architecture list matches the grammar modules', () => {
   const modules = readdirSync(join(ROOT, 'tree-sitter', 'common', 'arch'))
     .map((name) => name.replace(/\.js$/, ''));
-  assert.deepStrictEqual(modules.toSorted(), [...ARCHS].sort());
+  const plain = modules.filter((name) => !name.includes('.'));
+  assert.deepStrictEqual(plain.toSorted(), [...ARCHS].sort());
+  for (const name of modules.filter((module) => module.includes('.'))) {
+    const [arch, syntax] = name.split('.');
+    assert.ok(ARCHS.some((known) => known === arch), `${name}: unknown architecture`);
+    assert.ok(Object.hasOwn(manifest.syntaxes, syntax ?? ''), `${name}: unknown syntax`);
+  }
 });

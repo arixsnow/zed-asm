@@ -136,3 +136,45 @@ main :
       name: (numeric_label))
     (instruction
       mnemonic: (mnemonic))))
+
+================================================================================
+A global label right after a statement on the same line is an error
+================================================================================
+
+first:
+    nop main:
+    ret
+
+--------------------------------------------------------------------------------
+
+(source_file
+  (label_block
+    label: (label
+      name: (identifier))
+    (instruction
+      mnemonic: (mnemonic)
+      operand: (identifier))
+    (ERROR)
+    (instruction
+      mnemonic: (mnemonic))))
+
+================================================================================
+A dot followed by any name character starts a label
+================================================================================
+
+.0b:
+..b:
+.5:
+
+--------------------------------------------------------------------------------
+
+(source_file
+  (label_block
+    label: (label
+      name: (identifier)))
+  (label_block
+    label: (label
+      name: (identifier)))
+  (label_block
+    label: (label
+      name: (identifier))))

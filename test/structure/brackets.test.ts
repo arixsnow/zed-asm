@@ -35,6 +35,18 @@ const CASES: BracketCase[] = [
     pairs: ['[rbx+(8)]', '(8)', '(%rax)', '"a"'],
   },
   {
+    name: 'NASM brackets and parentheses',
+    grammars: ['asm_x86_nasm'],
+    source: 'mov eax, [rbx+(8)]\n',
+    pairs: ['[rbx+(8)]', '(8)'],
+  },
+  {
+    name: 'NASM braces, data lists and call arguments',
+    grammars: ['asm_x86_nasm'],
+    source: 'm {1, 2}\ndb %(1, 2)\nmov eax, f(1)\n',
+    pairs: ['{1, 2}', '%(1, 2)', '(1)'],
+  },
+  {
     name: 'parentheses',
     grammars: ['asm_x86_nasm'],
     source: 'mov eax, (1 + 2)\n',

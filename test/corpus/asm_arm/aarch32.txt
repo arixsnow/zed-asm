@@ -114,6 +114,55 @@ ldc p1, c2, [r0]
       operand: (register))))
 
 ================================================================================
+PSR fields, APSR bits and M-profile registers are registers in their slots only
+================================================================================
+
+msr apsr_gnzcvq, r0
+msr CPSR_fsxc, r0
+mrs r0, primask
+msr BASEPRI_MAX, r0
+vmrs APSR_cnzv, fpscr
+msr CPSR_FC, r0
+mov r0, primask
+mov r0, cpsr
+
+--------------------------------------------------------------------------------
+
+(source_file
+  (instruction
+    mnemonic: (mnemonic)
+    operand: (register)
+    operand: (register))
+  (instruction
+    mnemonic: (mnemonic)
+    operand: (register)
+    operand: (register))
+  (instruction
+    mnemonic: (mnemonic)
+    operand: (register)
+    operand: (register))
+  (instruction
+    mnemonic: (mnemonic)
+    operand: (register)
+    operand: (register))
+  (instruction
+    mnemonic: (mnemonic)
+    operand: (register)
+    operand: (register))
+  (instruction
+    mnemonic: (mnemonic)
+    operand: (identifier)
+    operand: (register))
+  (instruction
+    mnemonic: (mnemonic)
+    operand: (register)
+    operand: (identifier))
+  (instruction
+    mnemonic: (mnemonic)
+    operand: (register)
+    operand: (register)))
+
+================================================================================
 Banked registers of GNU as
 ================================================================================
 
@@ -767,6 +816,68 @@ Unwind directives read register lists and registers
     argument: (integer)))
 
 ================================================================================
+Group relocations, FDPIC suffixes and the case each assembler takes
+================================================================================
+
+add r0, pc, #:pc_g0_nc:sym
+ldr r1, [r0, #:SB_G1:sym]
+ldr x0, [x0, :gotpage_lo14:sym]
+.word sym(funcdesc)
+.word sym(GOTTPOFF_FDIC)
+.word sym(Got)
+.word sym(TlsDescSeq)
+
+--------------------------------------------------------------------------------
+
+(source_file
+  (instruction
+    mnemonic: (mnemonic)
+    operand: (register)
+    operand: (register)
+    operand: (immediate
+      value: (relocation
+        specifier: (identifier)
+        value: (identifier))))
+  (instruction
+    mnemonic: (mnemonic)
+    operand: (register)
+    operand: (memory_operand
+      operand: (register)
+      operand: (immediate
+        value: (relocation
+          specifier: (identifier)
+          value: (identifier)))))
+  (instruction
+    mnemonic: (mnemonic)
+    operand: (register)
+    operand: (memory_operand
+      operand: (register)
+      operand: (relocation
+        specifier: (identifier)
+        value: (identifier))))
+  (directive
+    name: (directive_name)
+    argument: (relocation
+      value: (identifier)
+      specifier: (identifier)))
+  (directive
+    name: (directive_name)
+    argument: (relocation
+      value: (identifier)
+      specifier: (identifier)))
+  (directive
+    name: (directive_name)
+    argument: (relocation
+      value: (identifier)
+      specifier: (identifier)))
+  (directive
+    name: (directive_name)
+    argument: (macro_call
+      function: (identifier)
+      arguments: (argument_list
+        argument: (identifier)))))
+
+================================================================================
 Relocation suffixes of AArch32 assembly
 ================================================================================
 
@@ -864,10 +975,11 @@ sum .DN d0
     register: (indexed_register
       register: (register)
       index: (integer)))
-  (instruction
-    mnemonic: (mnemonic)
-    operand: (identifier)
-    operand: (register)))
+  (macro_call
+    function: (identifier)
+    arguments: (argument_list
+      argument: (identifier)
+      argument: (register))))
 
 ================================================================================
 Registers with a NEON type in GNU as
@@ -954,3 +1066,81 @@ bfcsel 1f, r2, 3f, eq
     operand: (identifier)
     operand: (numeric_label)
     operand: (condition)))
+
+================================================================================
+A macro argument may stand where an A32 base register with writeback may
+================================================================================
+
+.macro pop base, a
+    ldm \base!, {\a}
+.endm
+
+--------------------------------------------------------------------------------
+
+(source_file
+  (macro_definition
+    name: (identifier)
+    parameter: (parameter
+      name: (identifier))
+    parameter: (parameter
+      name: (identifier))
+    body: (body
+      (instruction
+        mnemonic: (mnemonic)
+        operand: (writeback
+          register: (macro_argument))
+        operand: (register_list
+          element: (macro_argument))))))
+
+================================================================================
+Condition, flag, width and vector-predicate affixes form mnemonics, other words macro calls
+================================================================================
+
+addseq r0, r0, #1
+addeqs r0, r0, #1
+ldrbeq r0, [r1]
+ldreqb r0, [r1]
+add.w r0, r1, r2
+vaddt.i32 q0, q1, q2
+addx r0, r1
+
+--------------------------------------------------------------------------------
+
+(source_file
+  (instruction
+    mnemonic: (mnemonic)
+    operand: (register)
+    operand: (register)
+    operand: (immediate
+      value: (integer)))
+  (instruction
+    mnemonic: (mnemonic)
+    operand: (register)
+    operand: (register)
+    operand: (immediate
+      value: (integer)))
+  (instruction
+    mnemonic: (mnemonic)
+    operand: (register)
+    operand: (memory_operand
+      operand: (register)))
+  (instruction
+    mnemonic: (mnemonic)
+    operand: (register)
+    operand: (memory_operand
+      operand: (register)))
+  (instruction
+    mnemonic: (mnemonic)
+    operand: (register)
+    operand: (register)
+    operand: (register))
+  (instruction
+    mnemonic: (mnemonic)
+    operand: (register)
+    operand: (register)
+    operand: (register))
+  (macro_call
+    function: (identifier)
+    arguments: (argument_list
+      argument: (register)
+      argument: (register))))

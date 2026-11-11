@@ -134,6 +134,7 @@ interface AutocloseRegion {
 }
 
 const MAX_BYTES_TO_QUERY = 16 * 1024;
+const INDENT_CAPTURES = new Set(['indent', 'start', 'end', 'outdent']);
 const MODELED_KEYS = new Set([
   'line_comments',
   'block_comment',
@@ -244,7 +245,7 @@ export class ZedLanguage {
       throw new Error('the Zed model does not cover brackets with newline = true');
     }
     const unmodeled = captureNames(queries.indents).filter((name) =>
-      name !== 'indent' && !name.startsWith('_')
+      !INDENT_CAPTURES.has(name) && !name.startsWith('_')
     );
     if (unmodeled.length > 0) {
       throw new Error(`the Zed model does not cover @${unmodeled.join(', @')} in indents.scm`);
@@ -447,21 +448,50 @@ class Snapshot {
     const middle = Math.floor((range.start + range.end) / 2);
     const windowStart = Math.max(0, middle - MAX_BYTES_TO_QUERY / 2);
     const ranges: NodeRange[] = [];
+    const outdents: Point[] = [];
     for (
       const match of this.syntax.indents(range, {
         start: windowStart,
         end: windowStart + MAX_BYTES_TO_QUERY,
       })
     ) {
-      const indent = match.find((capture) => capture.name === 'indent');
-      if (indent === undefined || indent.start.row === indent.end.row) {
+      let start: Point | null = null;
+      let end: Point | null = null;
+      for (const capture of match) {
+        if (capture.name === 'indent') {
+          start ??= capture.start;
+          end ??= capture.end;
+        } else if (capture.name === 'start') {
+          start = capture.end;
+        } else if (capture.name === 'end') {
+          end = capture.start;
+        } else if (capture.name === 'outdent') {
+          outdents.push(capture.start);
+        }
+      }
+      if (start === null || end === null || start.row === end.row) {
         continue;
       }
-      const same = ranges.find((candidate) => comparePoints(candidate.start, indent.start) === 0);
-      if (same === undefined) {
-        ranges.push({ start: indent.start, end: indent.end });
-      } else if (comparePoints(indent.end, same.end) > 0) {
-        same.end = indent.end;
+      const rangeStart = start;
+      const index = ranges.findIndex((candidate) =>
+        comparePoints(candidate.start, rangeStart) >= 0
+      );
+      if (index === -1) {
+        ranges.push({ start, end });
+      } else if (comparePoints(ranges[index].start, start) === 0) {
+        if (comparePoints(end, ranges[index].end) > 0) {
+          ranges[index].end = end;
+        }
+      } else {
+        ranges.splice(index, 0, { start, end });
+      }
+    }
+    for (const position of outdents.toSorted(comparePoints)) {
+      const innermost = ranges.findLast((candidate) =>
+        comparePoints(candidate.start, position) <= 0 && comparePoints(position, candidate.end) < 0
+      );
+      if (innermost !== undefined) {
+        innermost.end = position;
       }
     }
 

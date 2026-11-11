@@ -199,7 +199,7 @@ call rax
     operand: (register)))
 
 ================================================================================
-Register names stay labels and mnemonics after .intel_syntax noprefix
+Register names stay labels and macro names after .intel_syntax noprefix
 ================================================================================
 
 .intel_syntax noprefix
@@ -216,8 +216,8 @@ rax:
   (label_block
     label: (label
       name: (identifier))
-    (instruction
-      mnemonic: (mnemonic))
+    (macro_call
+      function: (identifier))
     (instruction
       mnemonic: (mnemonic)
       operand: (register))))

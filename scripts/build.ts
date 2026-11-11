@@ -6,6 +6,8 @@ import { dirname, join } from 'node:path';
 import { emptyDir, filesUnder, ifExists, readTextIfExists, ROOT } from './lib/files.ts';
 import { increaseIndentPattern } from './lib/indent.ts';
 import { type Language, type Manifest, manifest, parseAuthor } from './lib/manifest.ts';
+import { commonSources, type KeywordSources } from './lib/tables.ts';
+import { wordsHeader } from './lib/words.ts';
 
 export const QUERY_KINDS = [
   'highlights',
@@ -21,6 +23,7 @@ export const QUERY_KINDS = [
 ] as const;
 
 const MANIFEST_FILE = 'languages.config.cjs';
+const FRAGMENT_LICENSE = /^; SPDX-License-Identifier: MIT\n\n/;
 const USAGE = 'usage: build.ts write | check | corpus | set-grammar-rev <40-character commit sha>';
 
 type ReadFragment = (source: string, kind: string) => string | undefined;
@@ -114,7 +117,8 @@ export function extensionConfig({ extension, languages }: Manifest): Record<stri
 
 export function languageConfig(
   language: Language,
-  { syntaxes, shared }: Pick<Manifest, 'syntaxes' | 'shared'>,
+  { syntaxes, blocks, shared }: Pick<Manifest, 'syntaxes' | 'blocks' | 'shared'>,
+  sources: KeywordSources,
 ): Record<string, unknown> {
   const syntax = syntaxes[language.syntax];
   return {
@@ -132,8 +136,7 @@ export function languageConfig(
     autoclose_before: shared.autoclose_before,
     brackets: syntax.brackets,
     word_characters: language.wordCharacters,
-    increase_indent_pattern: increaseIndentPattern(language, syntax),
-    decrease_indent_pattern: syntax.labelPattern,
+    increase_indent_pattern: increaseIndentPattern(language, blocks, sources),
     debuggers: shared.debuggers,
     overrides: syntax.overrides,
   };
@@ -153,7 +156,7 @@ function treeSitterConfig({ extension, languages }: Manifest): Record<string, un
       path: language.grammar,
       'file-types': language.pathSuffixes,
       highlights: `../languages/${language.dir}/highlights.scm`,
-      'external-files': ['common/scanner.h'],
+      'external-files': ['common/scanner.h', 'common/words.h'],
     })),
     metadata: {
       version: extension.version,
@@ -175,7 +178,7 @@ export function renderQueries(
   const files = new Map<string, string>();
   for (const kind of QUERY_KINDS) {
     const parts = sourcesOf(language)
-      .map((source) => readFragment(source, kind))
+      .map((source) => readFragment(source, kind)?.replace(FRAGMENT_LICENSE, ''))
       .filter((text): text is string => text !== undefined && text.trim() !== '');
     if (parts.length > 0) {
       files.set(`${kind}.scm`, `${parts.map((text) => text.trimEnd()).join('\n\n')}\n`);
@@ -197,10 +200,15 @@ export function renderCorpus(
   return files;
 }
 
-export function renderAll(manifest: Manifest, readFragment: ReadFragment): Map<string, string> {
+export function renderAll(
+  manifest: Manifest,
+  readFragment: ReadFragment,
+  sources: KeywordSources,
+): Map<string, string> {
   const outputs = new Map<string, string>([
     ['extension.toml', toToml(extensionConfig(manifest))],
     ['tree-sitter/tree-sitter.json', `${JSON.stringify(treeSitterConfig(manifest), null, 2)}\n`],
+    ['tree-sitter/common/words.h', wordsHeader(sources)],
   ]);
   for (const language of manifest.languages) {
     outputs.set(
@@ -213,7 +221,7 @@ export function renderAll(manifest: Manifest, readFragment: ReadFragment): Map<s
     );
     outputs.set(
       `languages/${language.dir}/config.toml`,
-      toToml(languageConfig(language, manifest)),
+      toToml(languageConfig(language, manifest, sources)),
     );
     for (const [file, text] of renderQueries(language, readFragment)) {
       outputs.set(`languages/${language.dir}/${file}`, text);
@@ -237,7 +245,7 @@ function readCorpus(source: string): [string, string][] {
 }
 
 function syncGenerated(manifest: Manifest, write: boolean): string[] {
-  const outputs = renderAll(manifest, readQueryFragment);
+  const outputs = renderAll(manifest, readQueryFragment, commonSources());
   const stale: string[] = [];
   for (const [path, text] of outputs) {
     const file = join(ROOT, path);

@@ -286,9 +286,42 @@ jmp short target
     operand: (unary_expression
       operator: (operator_word)
       argument: (segment_override
+        segment: (register)
         operand: (identifier))))
   (instruction
     mnemonic: (mnemonic)
+    operand: (unary_expression
+      operator: (operator_word)
+      argument: (identifier))))
+
+================================================================================
+clang's size words read only before ptr, and imagerel is an operator
+================================================================================
+
+.intel_syntax noprefix
+fld DOUBLE ptr [rbx]
+mov eax, float
+mov rax, imagerel sym
+
+--------------------------------------------------------------------------------
+
+(source_file
+  (directive
+    name: (directive_name)
+    argument: (identifier))
+  (instruction
+    mnemonic: (mnemonic)
+    operand: (typed_operand
+      type: (operand_type)
+      operand: (memory_operand
+        address: (register))))
+  (instruction
+    mnemonic: (mnemonic)
+    operand: (register)
+    operand: (identifier))
+  (instruction
+    mnemonic: (mnemonic)
+    operand: (register)
     operand: (unary_expression
       operator: (operator_word)
       argument: (identifier))))

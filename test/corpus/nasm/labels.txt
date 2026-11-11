@@ -18,7 +18,7 @@ start:
       name: (local_identifier))
     (instruction
       mnemonic: (mnemonic)
-      operand: (identifier))
+      operand: (register))
     (label
       name: (local_identifier))
     (instruction

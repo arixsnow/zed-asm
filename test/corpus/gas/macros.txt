@@ -2,7 +2,7 @@
 A macro definition with parameters, defaults and qualifiers
 ================================================================================
 
-.macro save a, b=1, c:req, rest:vararg
+.macro save a, b=1, c:req, rest:vararg=0
     mov \a, \b
     .byte \c, \rest
 .endm
@@ -22,7 +22,8 @@ A macro definition with parameters, defaults and qualifiers
       qualifier: (identifier))
     parameter: (parameter
       name: (identifier)
-      qualifier: (identifier))
+      qualifier: (identifier)
+      default: (integer))
     body: (body
       (instruction
         mnemonic: (mnemonic)
@@ -113,14 +114,15 @@ Keyword arguments in a macro call
 --------------------------------------------------------------------------------
 
 (source_file
-  (instruction
-    mnemonic: (mnemonic)
-    operand: (keyword_argument
-      name: (identifier)
-      value: (integer))
-    operand: (keyword_argument
-      name: (identifier)
-      value: (integer))))
+  (macro_call
+    function: (identifier)
+    arguments: (argument_list
+      argument: (keyword_argument
+        name: (identifier)
+        value: (integer))
+      argument: (keyword_argument
+        name: (identifier)
+        value: (integer)))))
 
 ================================================================================
 The macro words in any case, and .endmacro

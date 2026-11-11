@@ -1,5 +1,7 @@
+# SPDX-License-Identifier: MIT
+
 BasedOnStyle: LLVM
-Language: Cpp
+Language: C
 UseTab: Never
 IndentWidth: 2
 ContinuationIndentWidth: 4

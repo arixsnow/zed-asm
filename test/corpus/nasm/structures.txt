@@ -1,0 +1,552 @@
+================================================================================
+A structure owns its fields, and takes a name and an offset
+================================================================================
+
+struc point, 8
+    .x: resd 1
+    .y resd 1
+    alignb 4
+endstruc
+STRUC upper
+ENDSTRUC
+
+--------------------------------------------------------------------------------
+
+(source_file
+  (structure
+    name: (identifier)
+    offset: (integer)
+    body: (structure_body
+      (label
+        name: (local_identifier))
+      (directive
+        name: (directive_name)
+        argument: (integer))
+      (label
+        name: (local_identifier))
+      (directive
+        name: (directive_name)
+        argument: (integer))
+      (directive
+        name: (directive_name)
+        argument: (integer))))
+  (structure
+    name: (identifier)
+    body: (structure_body)))
+
+================================================================================
+A field with a global name is a plain label in the structure body
+================================================================================
+
+struc mytype
+mt_long: resd 1
+mt_word: resw 1
+mt_byte:
+    resb 1
+endstruc
+
+--------------------------------------------------------------------------------
+
+(source_file
+  (structure
+    name: (identifier)
+    body: (structure_body
+      (label
+        name: (identifier))
+      (directive
+        name: (directive_name)
+        argument: (integer))
+      (label
+        name: (identifier))
+      (directive
+        name: (directive_name)
+        argument: (integer))
+      (label
+        name: (identifier))
+      (directive
+        name: (directive_name)
+        argument: (integer)))))
+
+================================================================================
+The offset is an expression, and a trailing comma is accepted
+================================================================================
+
+struc a, -40
+endstruc
+struc b, 4 + 4
+endstruc
+struc c,
+endstruc
+
+--------------------------------------------------------------------------------
+
+(source_file
+  (structure
+    name: (identifier)
+    offset: (unary_expression
+      argument: (integer))
+    body: (structure_body))
+  (structure
+    name: (identifier)
+    offset: (binary_expression
+      left: (integer)
+      right: (integer))
+    body: (structure_body))
+  (structure
+    name: (identifier)
+    body: (structure_body)))
+
+================================================================================
+A structure name may be local or come from a macro
+================================================================================
+
+struc .a
+endstruc
+%macro m 1
+struc %1
+endstruc
+istruc %%b
+iend
+struc %$c
+endstruc
+struc %1_d
+endstruc
+%endmacro
+
+--------------------------------------------------------------------------------
+
+(source_file
+  (structure
+    name: (local_identifier)
+    body: (structure_body))
+  (macro_definition
+    name: (identifier)
+    parameters: (parameter_count)
+    body: (body
+      (structure
+        name: (macro_argument)
+        body: (structure_body))
+      (structure_instance
+        name: (macro_local)
+        body: (body))
+      (structure
+        name: (context_local)
+        body: (structure_body))
+      (structure
+        name: (concatenation
+          (macro_argument)
+          (identifier))
+        body: (structure_body)))))
+
+================================================================================
+An instance holds at lines, with or without data on them
+================================================================================
+
+p: istruc point
+    at point.x, dd 1
+    at point.y
+    dd 2
+    dd 3
+    at .z,
+iend
+ISTRUC upper
+    AT upper.x, DD 1
+IEND
+
+--------------------------------------------------------------------------------
+
+(source_file
+  (label_block
+    label: (label
+      name: (identifier))
+    (structure_instance
+      name: (identifier)
+      body: (body
+        (field_initializer
+          field: (identifier)
+          statement: (directive
+            name: (directive_name)
+            argument: (integer)))
+        (field_initializer
+          field: (identifier))
+        (directive
+          name: (directive_name)
+          argument: (integer))
+        (directive
+          name: (directive_name)
+          argument: (integer))
+        (field_initializer
+          field: (local_identifier))))
+    (structure_instance
+      name: (identifier)
+      body: (body
+        (field_initializer
+          field: (identifier)
+          statement: (directive
+            name: (directive_name)
+            argument: (integer)))))))
+
+================================================================================
+The data of an at line is a line of its own
+================================================================================
+
+istruc s
+    at s.a, dd 1, 2
+    at s.b, times 2 dd 0
+    at s.c, nop
+    at s.d, m 1, 2
+    at s.e, l: dd 1
+    at s.f, n dd 1
+    at s.g, section .data
+    at s.h, y equ 1
+    at s.i + 4, dd 1
+    at (s.j), dd 1
+iend
+
+--------------------------------------------------------------------------------
+
+(source_file
+  (structure_instance
+    name: (identifier)
+    body: (body
+      (field_initializer
+        field: (identifier)
+        statement: (directive
+          name: (directive_name)
+          argument: (integer)
+          argument: (integer)))
+      (field_initializer
+        field: (identifier)
+        statement: (times
+          count: (integer)
+          statement: (directive
+            name: (directive_name)
+            argument: (integer))))
+      (field_initializer
+        field: (identifier)
+        statement: (instruction
+          mnemonic: (mnemonic)))
+      (field_initializer
+        field: (identifier)
+        statement: (macro_call
+          function: (identifier)
+          arguments: (argument_list
+            argument: (integer)
+            argument: (integer))))
+      (field_initializer
+        field: (identifier)
+        (label
+          name: (identifier))
+        statement: (directive
+          name: (directive_name)
+          argument: (integer)))
+      (field_initializer
+        field: (identifier)
+        (label
+          name: (identifier))
+        statement: (directive
+          name: (directive_name)
+          argument: (integer)))
+      (field_initializer
+        field: (identifier)
+        statement: (directive
+          name: (directive_name)
+          argument: (identifier)))
+      (field_initializer
+        field: (identifier)
+        statement: (assignment
+          name: (identifier)
+          value: (integer)))
+      (field_initializer
+        field: (binary_expression
+          left: (identifier)
+          right: (integer))
+        statement: (directive
+          name: (directive_name)
+          argument: (integer)))
+      (field_initializer
+        field: (parenthesized_expression
+          (identifier))
+        statement: (directive
+          name: (directive_name)
+          argument: (integer))))))
+
+================================================================================
+A label may stand before each structure word
+================================================================================
+
+a struc s
+b: endstruc
+c istruc s
+d at s.x, dd 1
+e iend
+
+--------------------------------------------------------------------------------
+
+(source_file
+  (label_block
+    label: (label
+      name: (identifier))
+    (structure
+      name: (identifier)
+      body: (structure_body
+        (label
+          name: (identifier)))))
+  (label_block
+    label: (label
+      name: (identifier))
+    (structure_instance
+      name: (identifier)
+      body: (body
+        (label_block
+          label: (label
+            name: (identifier))
+          (field_initializer
+            field: (identifier)
+            statement: (directive
+              name: (directive_name)
+              argument: (integer))))
+        (label_block
+          label: (label
+            name: (identifier)))))))
+
+================================================================================
+Blocks nest, and an unclosed one ends where the file or its parent ends
+================================================================================
+
+struc a
+struc b
+endstruc
+%rep 2
+resb 1
+%endrep
+endstruc
+istruc c
+at c.x, istruc d
+iend
+iend
+at c.y, istruc open
+struc open
+.x: resd 1
+
+--------------------------------------------------------------------------------
+
+(source_file
+  (structure
+    name: (identifier)
+    body: (structure_body
+      (structure
+        name: (identifier)
+        body: (structure_body))
+      (repeat_block
+        count: (integer)
+        body: (body
+          (directive
+            name: (directive_name)
+            argument: (integer))))))
+  (structure_instance
+    name: (identifier)
+    body: (body
+      (field_initializer
+        field: (identifier)
+        statement: (structure_instance
+          name: (identifier)
+          body: (body)))))
+  (field_initializer
+    field: (identifier)
+    statement: (structure_instance
+      name: (identifier)
+      body: (unclosed_body
+        (structure
+          name: (identifier)
+          body: (structure_body
+            (label
+              name: (local_identifier))
+            (directive
+              name: (directive_name)
+              argument: (integer))))))))
+
+================================================================================
+A preprocessor closer ends a structure opened inside its block
+================================================================================
+
+%macro begin 1
+struc %1
+%endmacro
+%macro inst 1
+istruc %1
+%endmacro
+%rep 2
+struc a
+%endrep
+%if 1
+struc b
+%elif 2
+istruc c
+%elifmacro m
+struc d
+%else
+istruc e
+%endif
+
+--------------------------------------------------------------------------------
+
+(source_file
+  (macro_definition
+    name: (identifier)
+    parameters: (parameter_count)
+    body: (body
+      (structure
+        name: (macro_argument)
+        body: (structure_body))))
+  (macro_definition
+    name: (identifier)
+    parameters: (parameter_count)
+    body: (body
+      (structure_instance
+        name: (macro_argument)
+        body: (unclosed_body))))
+  (repeat_block
+    count: (integer)
+    body: (body
+      (structure
+        name: (identifier)
+        body: (structure_body))))
+  (conditional
+    condition: (integer)
+    body: (body
+      (structure
+        name: (identifier)
+        body: (structure_body)))
+    (elseif_clause
+      condition: (integer)
+      body: (body
+        (structure_instance
+          name: (identifier)
+          body: (unclosed_body))))
+    (elseif_clause
+      condition: (identifier)
+      body: (body
+        (structure
+          name: (identifier)
+          body: (structure_body))))
+    (else_clause
+      body: (body
+        (structure_instance
+          name: (identifier)
+          body: (unclosed_body))))))
+
+================================================================================
+A closer with no open structure is a directive, since a macro may hold it
+================================================================================
+
+%macro finish 0
+endstruc
+iend
+%endmacro
+struc a
+%if 1
+endstruc
+%else
+endstruc
+%endif
+.x: resd 1
+
+--------------------------------------------------------------------------------
+
+(source_file
+  (macro_definition
+    name: (identifier)
+    parameters: (parameter_count)
+    body: (body
+      (directive
+        name: (directive_name))
+      (directive
+        name: (directive_name))))
+  (structure
+    name: (identifier)
+    body: (structure_body
+      (conditional
+        condition: (integer)
+        body: (body
+          (directive
+            name: (directive_name)))
+        (else_clause
+          body: (body
+            (directive
+              name: (directive_name)))))
+      (label
+        name: (local_identifier))
+      (directive
+        name: (directive_name)
+        argument: (integer)))))
+
+================================================================================
+An at line reads anywhere, since a macro or a condition may hold it
+================================================================================
+
+%macro f 2
+at %1, dd %2
+%endmacro
+istruc s
+%if 1
+at s.x, dd 1
+%endif
+f s.y, 2
+iend
+
+--------------------------------------------------------------------------------
+
+(source_file
+  (macro_definition
+    name: (identifier)
+    parameters: (parameter_count)
+    body: (body
+      (field_initializer
+        field: (macro_argument)
+        statement: (directive
+          name: (directive_name)
+          argument: (macro_argument)))))
+  (structure_instance
+    name: (identifier)
+    body: (body
+      (conditional
+        condition: (integer)
+        body: (body
+          (field_initializer
+            field: (identifier)
+            statement: (directive
+              name: (directive_name)
+              argument: (integer)))))
+      (macro_call
+        function: (identifier)
+        arguments: (argument_list
+          argument: (identifier)
+          argument: (integer))))))
+
+================================================================================
+A standard macro that takes no parameters may name a label
+================================================================================
+
+iend: nop
+endstruc: nop
+use16: nop
+
+--------------------------------------------------------------------------------
+
+(source_file
+  (label_block
+    label: (label
+      name: (identifier))
+    (instruction
+      mnemonic: (mnemonic)))
+  (label_block
+    label: (label
+      name: (identifier))
+    (instruction
+      mnemonic: (mnemonic)))
+  (label_block
+    label: (label
+      name: (identifier))
+    (instruction
+      mnemonic: (mnemonic))))

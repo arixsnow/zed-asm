@@ -6,8 +6,7 @@ import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 
 import { ROOT } from '../../scripts/lib/files.ts';
-import { manifest } from '../../scripts/lib/manifest.ts';
-import { CHECKS, formatReport, LOG_ROW, logErrors, wasmArgs } from '../../scripts/zed-qa.ts';
+import { CHECKS, formatReport, LOG_ROW, logErrors, runOrder } from '../../scripts/zed-qa.ts';
 
 test('every row of docs/qa.md has an automated check', () => {
   const rows = readFileSync(join(ROOT, 'docs', 'qa.md'), 'utf8')
@@ -33,6 +32,17 @@ test('a check is either compared with an expected result or left for a look', ()
   }
 });
 
+test('vim checks run last, after every other check, which keep their order', () => {
+  const order = runOrder(CHECKS);
+  const firstVim = order.findIndex(({ vim }) => vim === true);
+  assert.ok(firstVim > 0);
+  assert.ok(order.slice(firstVim).every(({ vim }) => vim === true));
+  assert.deepStrictEqual(
+    order.slice(0, firstVim).map(({ id }) => id),
+    CHECKS.filter(({ vim }) => vim !== true).map(({ id }) => id),
+  );
+});
+
 test('the report names the Zed version and aligns the check ids', () => {
   assert.deepStrictEqual(
     formatReport('Zed 1.21.0', [
@@ -52,17 +62,4 @@ test('log lines count only when they are errors or warnings about the extension'
     '2026-09-26T14:47:17+00:00 ERROR [agent] fetch failed: dns error',
   ].join('\n');
   assert.deepStrictEqual(logErrors(log).length, 2);
-});
-
-test('grammars compile to wasm the way the tree-sitter CLI does', () => {
-  for (const { grammar } of manifest.languages) {
-    const args = wasmArgs(grammar, 'out.wasm');
-    for (
-      const flag of ['-shared', '-fPIC', '-nostdlib', '-Wl,--no-entry', '-Wl,--allow-undefined']
-    ) {
-      assert.ok(args.includes(flag), `${grammar} misses ${flag}`);
-    }
-    assert.ok(args.includes(`-Wl,--export=tree_sitter_${grammar}`), grammar);
-    assert.ok(args.includes(`tree-sitter/${grammar}/src/scanner.c`), grammar);
-  }
 });

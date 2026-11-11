@@ -34,7 +34,7 @@ nop #=== section ===
   (line_comment))
 
 ================================================================================
-A hash after a blank-separated operand is a comment
+A hash after a blank-separated macro argument is a comment
 ================================================================================
 
 m x0 #1
@@ -42,7 +42,8 @@ m x0 #1
 --------------------------------------------------------------------------------
 
 (source_file
-  (instruction
-    mnemonic: (mnemonic)
-    operand: (register))
+  (macro_call
+    function: (identifier)
+    arguments: (argument_list
+      argument: (register)))
   (line_comment))

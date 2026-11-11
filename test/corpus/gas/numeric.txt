@@ -3,8 +3,8 @@ Numeric labels and their backward and forward references
 ================================================================================
 
 1:
-    b 1b
-    b 1f
+    .long 1b
+    .long 1f
 10 :
 0:
     .long 10b - 0b
@@ -14,12 +14,12 @@ Numeric labels and their backward and forward references
 (source_file
   (label
     name: (numeric_label))
-  (instruction
-    mnemonic: (mnemonic)
-    operand: (numeric_label))
-  (instruction
-    mnemonic: (mnemonic)
-    operand: (numeric_label))
+  (directive
+    name: (directive_name)
+    argument: (numeric_label))
+  (directive
+    name: (directive_name)
+    argument: (numeric_label))
   (label
     name: (numeric_label))
   (label
@@ -35,7 +35,7 @@ A numeric label stays in the block of the global label above it
 ================================================================================
 
 main:
-1:  b 1b
+1:  .long 1b
 
 --------------------------------------------------------------------------------
 
@@ -45,9 +45,9 @@ main:
       name: (identifier))
     (label
       name: (numeric_label))
-    (instruction
-      mnemonic: (mnemonic)
-      operand: (numeric_label))))
+    (directive
+      name: (directive_name)
+      argument: (numeric_label))))
 
 ================================================================================
 Binary and hexadecimal integers are not label references
@@ -64,3 +64,20 @@ Binary and hexadecimal integers are not label references
     argument: (integer)
     argument: (numeric_label)
     argument: (numeric_label)))
+
+================================================================================
+An integer takes the U, L and LL suffixes clang ignores
+================================================================================
+
+    .quad 1UL, 0x10ull, 0b1L, 017u, 2ll
+
+--------------------------------------------------------------------------------
+
+(source_file
+  (directive
+    name: (directive_name)
+    argument: (integer)
+    argument: (integer)
+    argument: (integer)
+    argument: (integer)
+    argument: (integer)))

@@ -1,0 +1,418 @@
+================================================================================
+A function-like macro call reads in any expression, with or without a blank
+================================================================================
+
+mov eax, f(1)
+mov eax, f (1)
+mov eax, [GOTOFF(eax, PW_ONE)]
+movaps xmm0, XMMWORD [wk(2)]
+dd f(1) + g(2, 3), h()
+x equ DESCALE(1, 2)
+times f(4) nop
+call EXTN(jsimd_idct)
+
+--------------------------------------------------------------------------------
+
+(source_file
+  (instruction
+    mnemonic: (mnemonic)
+    operand: (register)
+    operand: (macro_call
+      function: (identifier)
+      arguments: (argument_list
+        argument: (integer))))
+  (instruction
+    mnemonic: (mnemonic)
+    operand: (register)
+    operand: (macro_call
+      function: (identifier)
+      arguments: (argument_list
+        argument: (integer))))
+  (instruction
+    mnemonic: (mnemonic)
+    operand: (register)
+    operand: (memory_operand
+      address: (macro_call
+        function: (identifier)
+        arguments: (argument_list
+          argument: (register)
+          argument: (identifier)))))
+  (instruction
+    mnemonic: (mnemonic)
+    operand: (register)
+    operand: (typed_operand
+      type: (identifier)
+      operand: (memory_operand
+        address: (macro_call
+          function: (identifier)
+          arguments: (argument_list
+            argument: (integer))))))
+  (directive
+    name: (directive_name)
+    argument: (binary_expression
+      left: (macro_call
+        function: (identifier)
+        arguments: (argument_list
+          argument: (integer)))
+      right: (macro_call
+        function: (identifier)
+        arguments: (argument_list
+          argument: (integer)
+          argument: (integer))))
+    argument: (macro_call
+      function: (identifier)
+      arguments: (argument_list)))
+  (assignment
+    name: (identifier)
+    value: (macro_call
+      function: (identifier)
+      arguments: (argument_list
+        argument: (integer)
+        argument: (integer))))
+  (times
+    count: (macro_call
+      function: (identifier)
+      arguments: (argument_list
+        argument: (integer)))
+    statement: (instruction
+      mnemonic: (mnemonic)))
+  (instruction
+    mnemonic: (mnemonic)
+    operand: (macro_call
+      function: (identifier)
+      arguments: (argument_list
+        argument: (identifier)))))
+
+================================================================================
+A statement call takes arguments in parentheses that end the line
+================================================================================
+
+g(1, 2)
+g (1, 2) ; c
+ERR(rdpid ax)
+m (1) + 2, 3
+
+--------------------------------------------------------------------------------
+
+(source_file
+  (macro_call
+    function: (identifier)
+    arguments: (argument_list
+      argument: (integer)
+      argument: (integer)))
+  (macro_call
+    function: (identifier)
+    arguments: (argument_list
+      argument: (integer)
+      argument: (integer)))
+  (line_comment)
+  (macro_call
+    function: (identifier)
+    arguments: (argument_list
+      argument: (argument
+        (identifier)
+        (register))))
+  (macro_call
+    function: (identifier)
+    arguments: (argument_list
+      argument: (binary_expression
+        left: (parenthesized_expression
+          (integer))
+        right: (integer))
+      argument: (integer))))
+
+================================================================================
+A macro call names a label, with or without a colon, and an equ
+================================================================================
+
+EXTN(jsimd_fdct):
+    ret
+f(y) nop
+f(y) db 1
+f(y) equ 2
+
+--------------------------------------------------------------------------------
+
+(source_file
+  (label
+    name: (macro_call
+      function: (identifier)
+      arguments: (argument_list
+        argument: (identifier))))
+  (instruction
+    mnemonic: (mnemonic))
+  (label
+    name: (macro_call
+      function: (identifier)
+      arguments: (argument_list
+        argument: (identifier))))
+  (instruction
+    mnemonic: (mnemonic))
+  (label
+    name: (macro_call
+      function: (identifier)
+      arguments: (argument_list
+        argument: (identifier))))
+  (directive
+    name: (directive_name)
+    argument: (integer))
+  (assignment
+    name: (macro_call
+      function: (identifier)
+      arguments: (argument_list
+        argument: (identifier)))
+    value: (integer)))
+
+================================================================================
+Braces protect commas, and parentheses holding a comma group a call argument
+================================================================================
+
+m {1, 2}, 3
+m {}
+testcase { 0x62, 0x01 }, { vaddpd zmm30{k1}{z}, zmm29, zmm28 }
+dd g((1, 2))
+dd g({1, 2})
+dd g((1))
+
+--------------------------------------------------------------------------------
+
+(source_file
+  (macro_call
+    function: (identifier)
+    arguments: (argument_list
+      argument: (argument_list
+        argument: (integer)
+        argument: (integer))
+      argument: (integer)))
+  (macro_call
+    function: (identifier)
+    arguments: (argument_list
+      argument: (argument_list)))
+  (macro_call
+    function: (identifier)
+    arguments: (argument_list
+      argument: (argument_list
+        argument: (integer)
+        argument: (integer))
+      argument: (argument_list
+        argument: (argument
+          (identifier)
+          (decorated_operand
+            operand: (register)
+            decorator: (decorator)
+            decorator: (decorator)))
+        argument: (register)
+        argument: (register))))
+  (directive
+    name: (directive_name)
+    argument: (macro_call
+      function: (identifier)
+      arguments: (argument_list
+        argument: (argument_list
+          argument: (integer)
+          argument: (integer)))))
+  (directive
+    name: (directive_name)
+    argument: (macro_call
+      function: (identifier)
+      arguments: (argument_list
+        argument: (argument_list
+          argument: (integer)
+          argument: (integer)))))
+  (directive
+    name: (directive_name)
+    argument: (macro_call
+      function: (identifier)
+      arguments: (argument_list
+        argument: (parenthesized_expression
+          (integer))))))
+
+================================================================================
+Preprocessor functions are macro calls
+================================================================================
+
+db %chr(40, 41)
+db %str(%1), %cond(y, "", " not")
+dq %limit("params")
+
+--------------------------------------------------------------------------------
+
+(source_file
+  (directive
+    name: (directive_name)
+    argument: (macro_call
+      function: (identifier)
+      arguments: (argument_list
+        argument: (integer)
+        argument: (integer))))
+  (directive
+    name: (directive_name)
+    argument: (macro_call
+      function: (identifier)
+      arguments: (argument_list
+        argument: (macro_argument)))
+    argument: (macro_call
+      function: (identifier)
+      arguments: (argument_list
+        argument: (identifier)
+        argument: (string)
+        argument: (string))))
+  (directive
+    name: (directive_name)
+    argument: (macro_call
+      function: (identifier)
+      arguments: (argument_list
+        argument: (string)))))
+
+================================================================================
+A %map call takes a macro reference with colon subparameters
+================================================================================
+
+db %map(alpha, foo, bar)
+db %map(alpha::2, foo, bar)
+db %map(alpha:("!"):2, foo, bar)
+
+--------------------------------------------------------------------------------
+
+(source_file
+  (directive
+    name: (directive_name)
+    argument: (macro_call
+      function: (identifier)
+      arguments: (argument_list
+        argument: (identifier)
+        argument: (identifier)
+        argument: (identifier))))
+  (directive
+    name: (directive_name)
+    argument: (macro_call
+      function: (identifier)
+      arguments: (argument_list
+        argument: (macro_reference
+          name: (identifier)
+          count: (integer))
+        argument: (identifier)
+        argument: (identifier))))
+  (directive
+    name: (directive_name)
+    argument: (macro_call
+      function: (identifier)
+      arguments: (argument_list
+        argument: (macro_reference
+          name: (identifier)
+          parameters: (argument_list
+            argument: (string))
+          count: (integer))
+        argument: (identifier)
+        argument: (identifier)))))
+
+================================================================================
+Data lists follow the manual's grammar
+================================================================================
+
+db %(44, 55)
+db % ('XX', 'YY')
+dw byte (?, 44)
+dw 3 dup (0xcc, 4 dup byte ('PQR'), ?), 0xabcd
+dd 16 dup (?)
+dw word ?
+
+--------------------------------------------------------------------------------
+
+(source_file
+  (directive
+    name: (directive_name)
+    argument: (argument_list
+      argument: (integer)
+      argument: (integer)))
+  (directive
+    name: (directive_name)
+    argument: (argument_list
+      argument: (string)
+      argument: (string)))
+  (directive
+    name: (directive_name)
+    argument: (typed_operand
+      type: (operand_type)
+      operand: (argument_list
+        argument: (uninitialized)
+        argument: (integer))))
+  (directive
+    name: (directive_name)
+    argument: (binary_expression
+      left: (integer)
+      operator: (operator_word)
+      right: (argument_list
+        argument: (integer)
+        argument: (binary_expression
+          left: (integer)
+          operator: (operator_word)
+          right: (typed_operand
+            type: (operand_type)
+            operand: (argument_list
+              argument: (string))))
+        argument: (uninitialized)))
+    argument: (integer))
+  (directive
+    name: (directive_name)
+    argument: (binary_expression
+      left: (integer)
+      operator: (operator_word)
+      right: (argument_list
+        argument: (uninitialized))))
+  (directive
+    name: (directive_name)
+    argument: (typed_operand
+      type: (operand_type)
+      operand: (uninitialized))))
+
+================================================================================
+Standard macros take brace arguments
+================================================================================
+
+struc {s}
+.a: resb 1
+endstruc
+istruc {s}
+at {s.a}, db 1
+at s.a, {db 1}
+iend
+align {4}
+sectalign {4}
+
+--------------------------------------------------------------------------------
+
+(source_file
+  (structure
+    name: (argument_list
+      argument: (identifier))
+    body: (structure_body
+      (label
+        name: (local_identifier))
+      (directive
+        name: (directive_name)
+        argument: (integer))))
+  (structure_instance
+    name: (argument_list
+      argument: (identifier))
+    body: (body
+      (field_initializer
+        field: (argument_list
+          argument: (identifier))
+        statement: (directive
+          name: (directive_name)
+          argument: (integer)))
+      (field_initializer
+        field: (identifier)
+        argument: (argument_list
+          argument: (argument
+            (identifier)
+            (integer))))))
+  (directive
+    name: (directive_name)
+    argument: (argument_list
+      argument: (integer)))
+  (directive
+    name: (directive_name)
+    argument: (argument_list
+      argument: (integer))))

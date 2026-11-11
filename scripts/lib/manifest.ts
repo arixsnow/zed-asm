@@ -31,13 +31,12 @@ export interface Block {
   openers: string[];
   clauses: string[];
   closer: string;
+  syntax?: string;
 }
 
 export interface Syntax {
   blockComments: boolean;
   brackets: Bracket[];
-  labelPattern: string;
-  blocks: Block[];
   overrides?: Record<string, Record<string, string[]>>;
 }
 
@@ -62,6 +61,7 @@ export interface Shared {
 export interface Manifest {
   extension: Extension;
   syntaxes: Record<string, Syntax>;
+  blocks: Block[];
   languages: Language[];
   shared: Shared;
 }
@@ -141,16 +141,6 @@ function matching(pattern: RegExp, description: string): Check<string> {
   };
 }
 
-const regularExpression: Check<string> = (value, path) => {
-  const pattern = text(value, path);
-  try {
-    new RegExp(pattern);
-  } catch {
-    fail(path, `must be a valid regular expression (got "${pattern}")`);
-  }
-  return pattern;
-};
-
 export function parseAuthor(author: string, path: string): Author {
   const match = /^(.*?)\s*<(.*)>$/.exec(author);
   if (match === null) {
@@ -204,22 +194,23 @@ function tableOf<T>(check: Check<T>): Check<Record<string, T>> {
   };
 }
 
-const block: Check<Block> = (value, path) => {
-  const entry = record(value, path);
-  return {
-    openers: nonEmpty(texts, 'opener')(entry.openers, `${path}.openers`),
-    clauses: texts(entry.clauses, `${path}.clauses`),
-    closer: text(entry.closer, `${path}.closer`),
+function block(syntaxNames: string[]): Check<Block> {
+  return (value, path) => {
+    const entry = record(value, path);
+    return {
+      openers: nonEmpty(texts, 'opener')(entry.openers, `${path}.openers`),
+      clauses: texts(entry.clauses, `${path}.clauses`),
+      closer: text(entry.closer, `${path}.closer`),
+      syntax: optional(oneOf(syntaxNames))(entry.syntax, `${path}.syntax`),
+    };
   };
-};
+}
 
 const syntax: Check<Syntax> = (value, path) => {
   const entry = record(value, path);
   return {
     blockComments: flag(entry.blockComments, `${path}.blockComments`),
     brackets: list(bracket)(entry.brackets, `${path}.brackets`),
-    labelPattern: regularExpression(entry.labelPattern, `${path}.labelPattern`),
-    blocks: list(block)(entry.blocks, `${path}.blocks`),
     overrides: optional(tableOf(tableOf(texts)))(entry.overrides, `${path}.overrides`),
   };
 };
@@ -283,6 +274,7 @@ export function validateManifest(value: unknown): Manifest {
   return {
     extension: validExtension,
     syntaxes,
+    blocks: list(block(Object.keys(syntaxes)))(root.blocks, 'blocks'),
     languages,
     shared: shared(root.shared, 'shared'),
   };

@@ -42,7 +42,7 @@ Variadic macros and the name characters of C
 #define LOG(fmt, ...) fmt
 #define ALL(args...) args
 #define a.b 1
-#define $x 2
+#define a$b 2
 
 --------------------------------------------------------------------------------
 

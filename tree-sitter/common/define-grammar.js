@@ -1,6 +1,8 @@
 // SPDX-License-Identifier: MIT
 
 const { languages } = require('../../languages.config.cjs');
+const { joinTolerant } = require('./joins.js');
+const { INSTRUCTION_TOKENS } = require('./roles.js');
 const lexical = require('./lexical.js');
 
 const MODULES = {
@@ -9,6 +11,8 @@ const MODULES = {
   nasm: require('./syntax/nasm.js'),
   arm: require('./arch/arm.js'),
   x86: require('./arch/x86.js'),
+  'x86.gas': require('./arch/x86.gas.js'),
+  'x86.nasm': require('./arch/x86.nasm.js'),
 };
 
 const EXTERNALS = [
@@ -16,14 +20,20 @@ const EXTERNALS = [
   'preproc_directive',
   '_hash',
   '_at_attached',
-  '_at_type',
+  '_type_mark',
   '_separator',
   '_string_content',
   'preproc_argument',
+  '_bracket_argument',
+  '_raw_word',
+  '_trailing_argument',
   '_preproc_line_end',
   '_preproc_include',
   '_header_name',
   '_preproc_define',
+  '_preproc_set',
+  '_preproc_assign',
+  '_preproc_macro',
   '_preproc_condition',
   '_preproc_params_open',
   '_missing_operand',
@@ -52,15 +62,24 @@ const EXTERNALS = [
   '_glued_argument',
   '_glued_separator',
   '_glued_text',
+  '_glued_local',
+  '_glued_context',
+  '_glued_expansion',
   '_blank',
   '_prefix_word',
   '_prefix_semicolon',
   '_macro_open',
   '_if_open',
+  '_if_macro_open',
+  '_if_raw_open',
   '_rept_open',
   '_irp_open',
   '_irpc_open',
+  '_struc_open',
+  '_istruc_open',
   '_blank_separated_directive',
+  '_float_data_directive',
+  '_float_space_directive',
   '_cfi_register_directive',
   '_unwind_register_directive',
   '_linker_hint_directive',
@@ -74,7 +93,14 @@ const EXTERNALS = [
   '_att_syntax',
   '_syntax_prefix',
   '_syntax_noprefix',
-  '_bare_register',
+  '_register',
+  '_arm_register',
+  '_system_register',
+  '_condition',
+  '_shift_word',
+  '_extend_word',
+  '_predicate_qualifier',
+  '_section_type_word',
   '_remainder',
   '_intel_operands',
   '_intel_type_word',
@@ -83,9 +109,14 @@ const EXTERNALS = [
   '_intel_multiplicative_word',
   '_intel_bitwise_word',
   '_intel_comparison_word',
-  '_intel_flat_word',
   '_call_arguments',
   '_macro_label_name',
+  '_statement_call',
+  '_brace_open',
+  '_operand_gap',
+  '_reference_colon',
+  '_preproc_function',
+  '_list_open',
   '_index_open',
   '_memory_comma',
   '_bracket_colon',
@@ -98,10 +129,46 @@ const EXTERNALS = [
   '_macro_close',
   '_conditional_close',
   '_repeat_close',
+  '_struc_close',
+  '_istruc_close',
   '_elseif',
+  '_elseif_macro',
+  '_elseif_raw',
   '_else',
   '_block_end',
   '_end',
+  '_strict_word',
+  '_address_word',
+  '_absolute_word',
+  '_wrt_word',
+  '_to_word',
+  'special_symbol',
+  '_generic_directive',
+  '_section_directive',
+  '_declaration_directive',
+  '_common_directive',
+  '_bracket_directive',
+  '_data_directive',
+  '_align_directive',
+  '_use_directive',
+  '_times',
+  '_equ',
+  '_at_word',
+  '_alignment_colon',
+  '_dup_word',
+  '_float_special',
+  '_float_operator_word',
+  '_memory_open_word',
+  '_list_word',
+  '_conditional_question',
+  '_conditional_colon',
+  'uninitialized',
+  '_argument_reference',
+  'macro_local',
+  'context_local',
+  'macro_expansion',
+  ...INSTRUCTION_TOKENS,
+  '_macro_name',
   '_stray',
   '_error_sentinel',
 ];
@@ -114,9 +181,29 @@ const INLINED = [
   '_operand',
   '_value',
   '_symbol',
+  '_name',
+  '_macro_token',
+  '_macro_leaf',
+  '_call_name',
+  '_preproc_parameter_list',
   '_defined_name',
   '_glue_head',
   '_mnemonic',
+  '_instruction_body',
+  '_plain_att_operand',
+  '_plain_intel_operand',
+  '_segment_name',
+  '_memory_inside',
+  '_bracket_inside',
+  '_keyword_name',
+  '_keyword_value',
+  '_macro_end',
+  '_else_header',
+  '_conditional_clauses',
+  '_open_clauses',
+  '_conditional_end',
+  '_repeat_end',
+  '_glued_piece',
 ];
 
 module.exports = function defineGrammar(grammarName, catalog = languages) {
@@ -125,7 +212,14 @@ module.exports = function defineGrammar(grammarName, catalog = languages) {
     throw new Error(`languages.config.cjs declares no language with grammar "${grammarName}"`);
   }
 
-  const moduleNames = ['core', language.syntax, ...language.archs];
+  const moduleNames = [
+    'core',
+    language.syntax,
+    ...language.archs,
+    ...language.archs
+      .map((arch) => `${arch}.${language.syntax}`)
+      .filter((name) => Object.hasOwn(MODULES, name)),
+  ];
   for (const moduleName of moduleNames) {
     if (!Object.hasOwn(MODULES, moduleName)) {
       throw new Error(`unknown module "${moduleName}" for grammar "${grammarName}"`);
@@ -142,7 +236,6 @@ module.exports = function defineGrammar(grammarName, catalog = languages) {
   const choices = {};
   const extras = [];
   const conflicts = [];
-  let word;
 
   for (const moduleName of moduleNames) {
     const fragment = MODULES[moduleName](ctx);
@@ -157,12 +250,6 @@ module.exports = function defineGrammar(grammarName, catalog = languages) {
     }
     extras.push(...(fragment.extras ?? []));
     conflicts.push(...(fragment.conflicts ?? []));
-    if (fragment.word !== undefined) {
-      if (word !== undefined) {
-        throw new Error(`the word token is declared twice (again by module "${moduleName}")`);
-      }
-      word = fragment.word;
-    }
   }
 
   for (const [name, alternatives] of Object.entries(choices)) {
@@ -172,12 +259,17 @@ module.exports = function defineGrammar(grammarName, catalog = languages) {
     rules[name] = ($) => choice(...unique(alternatives.map((alternative) => alternative($))));
   }
 
+  if (ctx.lexical.lineJoins) {
+    for (const [name, rule] of Object.entries(rules)) {
+      rules[name] = ($) => joinTolerant(rule($));
+    }
+  }
+
   return grammar({
     name: grammarName,
     externals: ($) => EXTERNALS.map((name) => $[name]),
     extras: ($) => extras.map((extra) => extra($)),
     conflicts: ($) => unique(conflicts.map((conflict) => conflict($))),
-    ...(word === undefined ? {} : { word }),
     inline: ($) => INLINED.filter((name) => name in rules).map((name) => $[name]),
     rules,
   });

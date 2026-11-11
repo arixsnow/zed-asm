@@ -1,3 +1,5 @@
+; SPDX-License-Identifier: MIT
+
 (label_block
   label: (label
     name: (_) @name)) @item

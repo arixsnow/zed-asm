@@ -24,6 +24,10 @@
         "required": false,
         "types": [
           {
+            "type": "argument_list",
+            "named": true
+          },
+          {
             "type": "binary_expression",
             "named": true
           },
@@ -44,7 +48,23 @@
             "named": true
           },
           {
+            "type": "immediate",
+            "named": true
+          },
+          {
+            "type": "indexed_register",
+            "named": true
+          },
+          {
             "type": "integer",
+            "named": true
+          },
+          {
+            "type": "keyword_argument",
+            "named": true
+          },
+          {
+            "type": "literal_pool",
             "named": true
           },
           {
@@ -64,6 +84,10 @@
             "named": true
           },
           {
+            "type": "memory_operand",
+            "named": true
+          },
+          {
             "type": "numeric_label",
             "named": true
           },
@@ -72,7 +96,27 @@
             "named": true
           },
           {
+            "type": "predicate",
+            "named": true
+          },
+          {
+            "type": "register",
+            "named": true
+          },
+          {
+            "type": "register_list",
+            "named": true
+          },
+          {
             "type": "relocation",
+            "named": true
+          },
+          {
+            "type": "shift",
+            "named": true
+          },
+          {
+            "type": "signed_register",
             "named": true
           },
           {
@@ -80,7 +124,15 @@
             "named": true
           },
           {
+            "type": "symbol_type",
+            "named": true
+          },
+          {
             "type": "unary_expression",
+            "named": true
+          },
+          {
+            "type": "writeback",
             "named": true
           }
         ]
@@ -419,6 +471,10 @@
         },
         {
           "type": "label_block",
+          "named": true
+        },
+        {
+          "type": "macro_call",
           "named": true
         },
         {
@@ -1137,10 +1193,6 @@
         "required": false,
         "types": [
           {
-            "type": "argument_list",
-            "named": true
-          },
-          {
             "type": "binary_expression",
             "named": true
           },
@@ -1174,10 +1226,6 @@
           },
           {
             "type": "integer",
-            "named": true
-          },
-          {
-            "type": "keyword_argument",
             "named": true
           },
           {
@@ -1275,6 +1323,10 @@
         "required": false,
         "types": [
           {
+            "type": "argument_list",
+            "named": true
+          },
+          {
             "type": "binary_expression",
             "named": true
           },
@@ -1299,7 +1351,15 @@
             "named": true
           },
           {
+            "type": "indexed_register",
+            "named": true
+          },
+          {
             "type": "integer",
+            "named": true
+          },
+          {
+            "type": "literal_pool",
             "named": true
           },
           {
@@ -1319,6 +1379,10 @@
             "named": true
           },
           {
+            "type": "memory_operand",
+            "named": true
+          },
+          {
             "type": "numeric_label",
             "named": true
           },
@@ -1327,7 +1391,27 @@
             "named": true
           },
           {
+            "type": "predicate",
+            "named": true
+          },
+          {
+            "type": "register",
+            "named": true
+          },
+          {
+            "type": "register_list",
+            "named": true
+          },
+          {
             "type": "relocation",
+            "named": true
+          },
+          {
+            "type": "shift",
+            "named": true
+          },
+          {
+            "type": "signed_register",
             "named": true
           },
           {
@@ -1340,6 +1424,10 @@
           },
           {
             "type": "unary_expression",
+            "named": true
+          },
+          {
+            "type": "writeback",
             "named": true
           }
         ]
@@ -1419,6 +1507,10 @@
         },
         {
           "type": "label",
+          "named": true
+        },
+        {
+          "type": "macro_call",
           "named": true
         },
         {
@@ -1518,7 +1610,7 @@
     "fields": {
       "arguments": {
         "multiple": false,
-        "required": true,
+        "required": false,
         "types": [
           {
             "type": "argument_list",
@@ -1562,6 +1654,10 @@
         "types": [
           {
             "type": "identifier",
+            "named": true
+          },
+          {
+            "type": "macro_argument",
             "named": true
           }
         ]
@@ -1689,6 +1785,10 @@
         "required": false,
         "types": [
           {
+            "type": "argument_list",
+            "named": true
+          },
+          {
             "type": "binary_expression",
             "named": true
           },
@@ -1713,7 +1813,15 @@
             "named": true
           },
           {
+            "type": "indexed_register",
+            "named": true
+          },
+          {
             "type": "integer",
+            "named": true
+          },
+          {
+            "type": "literal_pool",
             "named": true
           },
           {
@@ -1733,6 +1841,10 @@
             "named": true
           },
           {
+            "type": "memory_operand",
+            "named": true
+          },
+          {
             "type": "numeric_label",
             "named": true
           },
@@ -1741,7 +1853,27 @@
             "named": true
           },
           {
+            "type": "predicate",
+            "named": true
+          },
+          {
+            "type": "register",
+            "named": true
+          },
+          {
+            "type": "register_list",
+            "named": true
+          },
+          {
             "type": "relocation",
+            "named": true
+          },
+          {
+            "type": "shift",
+            "named": true
+          },
+          {
+            "type": "signed_register",
             "named": true
           },
           {
@@ -1755,6 +1887,10 @@
           {
             "type": "unary_expression",
             "named": true
+          },
+          {
+            "type": "writeback",
+            "named": true
           }
         ]
       },
@@ -1764,6 +1900,10 @@
         "types": [
           {
             "type": "identifier",
+            "named": true
+          },
+          {
+            "type": "macro_argument",
             "named": true
           }
         ]
@@ -1939,6 +2079,10 @@
         "types": [
           {
             "type": "preproc_argument",
+            "named": true
+          },
+          {
+            "type": "string",
             "named": true
           }
         ]
@@ -2377,6 +2521,10 @@
           {
             "type": "identifier",
             "named": true
+          },
+          {
+            "type": "macro_argument",
+            "named": true
           }
         ]
       },
@@ -2384,6 +2532,10 @@
         "multiple": true,
         "required": false,
         "types": [
+          {
+            "type": "argument_list",
+            "named": true
+          },
           {
             "type": "binary_expression",
             "named": true
@@ -2409,7 +2561,15 @@
             "named": true
           },
           {
+            "type": "indexed_register",
+            "named": true
+          },
+          {
             "type": "integer",
+            "named": true
+          },
+          {
+            "type": "literal_pool",
             "named": true
           },
           {
@@ -2429,6 +2589,10 @@
             "named": true
           },
           {
+            "type": "memory_operand",
+            "named": true
+          },
+          {
             "type": "numeric_label",
             "named": true
           },
@@ -2437,7 +2601,27 @@
             "named": true
           },
           {
+            "type": "predicate",
+            "named": true
+          },
+          {
+            "type": "register",
+            "named": true
+          },
+          {
+            "type": "register_list",
+            "named": true
+          },
+          {
             "type": "relocation",
+            "named": true
+          },
+          {
+            "type": "shift",
+            "named": true
+          },
+          {
+            "type": "signed_register",
             "named": true
           },
           {
@@ -2450,6 +2634,10 @@
           },
           {
             "type": "unary_expression",
+            "named": true
+          },
+          {
+            "type": "writeback",
             "named": true
           }
         ]
@@ -2603,6 +2791,10 @@
         },
         {
           "type": "label_block",
+          "named": true
+        },
+        {
+          "type": "macro_call",
           "named": true
         },
         {
@@ -2768,6 +2960,10 @@
         },
         {
           "type": "label_block",
+          "named": true
+        },
+        {
+          "type": "macro_call",
           "named": true
         },
         {

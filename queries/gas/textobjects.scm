@@ -1,3 +1,5 @@
+; SPDX-License-Identifier: MIT
+
 (macro_definition
   body: (_
     .

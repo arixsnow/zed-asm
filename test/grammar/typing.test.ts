@@ -7,6 +7,7 @@ import { join } from 'node:path';
 
 import { sourcesOf } from '../../scripts/build.ts';
 import { filesUnder, ROOT } from '../../scripts/lib/files.ts';
+import { statementLexing } from '../../scripts/lib/indent.ts';
 import { type Language, manifest } from '../../scripts/lib/manifest.ts';
 import { fixtures } from '../../scripts/verify-fixtures.ts';
 import { parseFiles, PRINTABLE, treeText } from '../lib/parse.ts';
@@ -26,23 +27,36 @@ interface Block {
 interface Tree {
   nodes: Node[];
   blocks: Block[];
+  comments: { startRow: number; endRow: number }[];
 }
 
-const SPANNING_TYPES = new Set(['block_comment', 'preproc_line', 'preproc_define']);
+const PREPROCESSOR_TYPES = new Set(['preproc_line', 'preproc_define']);
+const LEXING = statementLexing(
+  readFileSync(join(ROOT, 'tree-sitter', 'common', 'scanner.h'), 'utf8'),
+);
 const SYNTAX_DIRECTIVE = /^\s*\.(?:intel|att)_syntax\b/i;
-const BLOCK_TYPES = new Set(['macro_definition', 'conditional', 'repeat_block']);
+const BLOCK_TYPES = new Set([
+  'macro_definition',
+  'conditional',
+  'repeat_block',
+  'structure',
+  'structure_instance',
+]);
 const CLAUSE_TYPES = new Set(['elseif_clause', 'else_clause']);
 const CONTAINER_TYPES = new Set([
   'label_block',
   'body',
   'unclosed_body',
+  'structure_body',
+  'field_initializer',
   ...BLOCK_TYPES,
   ...CLAUSE_TYPES,
 ]);
 const HEADER = /^( *)(?:\w+: )?\((\w+) \[(\d+), \d+\] - \[(\d+), (\d+)\]/;
+const COMMENT = /\((?:block_comment|preproc_comment) \[(\d+), \d+\] - \[(\d+), (\d+)\]/g;
 
-function lastRow(header: RegExpExecArray): number {
-  const [startRow, endRow, endColumn] = [3, 4, 5].map((group) => Number(header[group]));
+function lastRow(range: RegExpMatchArray, first: number): number {
+  const [startRow, endRow, endColumn] = [0, 1, 2].map((offset) => Number(range[first + offset]));
   return endColumn === 0 && endRow > startRow ? endRow - 1 : endRow;
 }
 
@@ -69,7 +83,7 @@ function lineNodes(tree: string): Tree {
       const enclosing = containers.findLast((container) => container.block !== null)?.block ??
         null;
       const block = BLOCK_TYPES.has(header[2])
-        ? { rows: [Number(header[3]), lastRow(header)], parent: enclosing }
+        ? { rows: [Number(header[3]), lastRow(header, 3)], parent: enclosing }
         : null;
       if (block !== null) {
         blocks.push(block);
@@ -83,13 +97,17 @@ function lineNodes(tree: string): Tree {
     const node = {
       type: header[2],
       startRow: Number(header[3]),
-      endRow: lastRow(header),
-      text: line.slice(depth),
+      endRow: lastRow(header, 3),
+      text: line.slice(depth).replace(/^label: /, ''),
     };
     nodes.push(node);
     current = { depth, node };
   }
-  return { nodes, blocks };
+  const comments = [...tree.matchAll(COMMENT)].map((match) => ({
+    startRow: Number(match[1]),
+    endRow: lastRow(match, 1),
+  }));
+  return { nodes, blocks, comments };
 }
 
 function parseAll(grammar: string, sources: string[]): Tree[] {
@@ -122,6 +140,64 @@ function enclosingRows(blocks: Block[], row: number): number[] {
     }
   }
   return rows;
+}
+
+function joiner(grammar: string, tree: Tree, lines: string[]): (index: number) => boolean {
+  const language = manifest.languages.find((candidate) => candidate.grammar === grammar);
+  const lexing = language === undefined ? undefined : LEXING[language.dialect];
+  if (lexing === undefined) {
+    throw new Error(`no scanner settings for ${grammar}`);
+  }
+  const join = lexing.spacedJoins ? /\\[ \t\f\v\r]*$/ : /\\\r?$/;
+  return (index: number) =>
+    join.test(lines[index]) &&
+    (lexing.lineJoins ||
+      tree.nodes.some((node) =>
+        PREPROCESSOR_TYPES.has(node.type) && node.startRow <= index && index <= node.endRow
+      ));
+}
+
+function joinedStart(grammar: string, tree: Tree, lines: string[], row: number): number {
+  const joins = joiner(grammar, tree, lines);
+  let start = row;
+  while (start > 0 && joins(start - 1)) {
+    start--;
+  }
+  return start;
+}
+
+function reach(grammar: string, tree: Tree, lines: string[], row: number): number {
+  const joins = joiner(grammar, tree, lines);
+  let end = row;
+  let extended = true;
+  while (extended) {
+    extended = false;
+    while (end + 1 < lines.length && joins(end)) {
+      end++;
+      extended = true;
+    }
+    const comment = tree.comments.find((range) => range.startRow <= end && range.endRow > end);
+    if (comment !== undefined) {
+      const closing = lines.findIndex((line, index) =>
+        index > comment.startRow && line.includes('*/')
+      );
+      end = closing === -1 ? lines.length - 1 : closing;
+      extended = true;
+    }
+  }
+  return end;
+}
+
+function logicalRows(grammar: string, tree: Tree, lines: string[], rows: number[]): number[] {
+  return [
+    ...new Set(rows.flatMap((row) => {
+      const start = joinedStart(grammar, tree, lines, row);
+      return Array.from(
+        { length: reach(grammar, tree, lines, row) - start + 1 },
+        (_, offset) => start + offset,
+      );
+    })),
+  ];
 }
 
 function outside(nodes: Node[], first: number, last: number, partners: number[]): string[] {
@@ -159,24 +235,41 @@ function typingFailures(grammar: string, label: string, text: string): string[] 
   ]);
   const failures: string[] = [];
   const lines = text.split('\n');
-  for (const [index, { row, typed }] of typing.entries()) {
+  for (const [index, { row, typed, source }] of typing.entries()) {
     if (SYNTAX_DIRECTIVE.test(lines[row])) {
       continue;
     }
     const touching = baseline.nodes.filter((node) => node.startRow <= row && row <= node.endRow);
-    const first = Math.min(row, ...touching.map((node) => node.startRow));
-    const last = Math.max(row, ...touching.map((node) => node.endRow));
-    const delimiters = delimiterRows(baseline.blocks, row);
-    const partners = delimiters.length === 0
-      ? delimiters
-      : [...delimiters, ...enclosingRows(parsed[index].blocks, row)];
-    const nodes = parsed[index].nodes;
-    const spansByDesign = nodes.some((node) =>
-      SPANNING_TYPES.has(node.type) && node.startRow <= last && node.endRow > last
+    const typedLines = source.split('\n');
+    const first = Math.min(
+      row,
+      ...touching.map((node) => node.startRow),
+      joinedStart(grammar, baseline, lines, row),
+      joinedStart(grammar, parsed[index], typedLines, row),
     );
-    if (spansByDesign) {
-      continue;
-    }
+    const last = Math.max(
+      row,
+      ...touching.map((node) => node.endRow),
+      reach(grammar, baseline, lines, row),
+      reach(grammar, parsed[index], typedLines, row),
+    );
+    const typedRows = logicalRows(grammar, baseline, lines, [row]);
+    const delimiters = logicalRows(
+      grammar,
+      baseline,
+      lines,
+      typedRows.flatMap((typedRow) => delimiterRows(baseline.blocks, typedRow)),
+    );
+    const partners = delimiters.length === 0 ? delimiters : [
+      ...delimiters,
+      ...logicalRows(
+        grammar,
+        parsed[index],
+        typedLines,
+        typedRows.flatMap((typedRow) => enclosingRows(parsed[index].blocks, typedRow)),
+      ),
+    ];
+    const nodes = parsed[index].nodes;
     const leaked = nodes.some((node) =>
       node.startRow <= last && node.endRow >= first && (node.startRow < first || node.endRow > last)
     );
@@ -225,13 +318,6 @@ test('a line being typed in a fixture never changes how any other line parses', 
 
 const UNSUPPORTED: [string, string[]][] = [
   ['mov eax, dword ptr [rbx]', ['asm_auto', 'asm_x86_gas']],
-  ['mov rax, [rbp-8]', ['asm_x86_nasm']],
-  ['%define N 4', ['asm_x86_nasm']],
-  ['%include "x.inc"', ['asm_x86_nasm']],
-  ['[bits 64]', ['asm_x86_nasm']],
-  ['%macro m 1\n%endmacro', ['asm_x86_nasm']],
-  ['times 4 db 0', ['asm_x86_nasm']],
-  ['len equ $ - msg', ['asm_x86_nasm']],
 ];
 
 test('syntax the grammars do not parse yet keeps its errors on its own lines', () => {
@@ -258,8 +344,6 @@ const STRAY_LABELS: [string, string[]][] = [
   ['add x0, x0, :lo12:.LC0 // c', ['asm_arm_apple']],
   ['ldr x1, [x0, :got_lo12:sym]', ['asm_arm_apple']],
   ['mov rax, qword ptr fs:[0x28]', ['asm_auto', 'asm_x86_gas']],
-  ['mov rax, [fs:0x28]', ['asm_x86_nasm']],
-  ['mov ax, es:[bx]', ['asm_x86_nasm']],
 ];
 
 test('an operand the grammars do not parse yet never starts a label in the middle of its line', () => {
@@ -311,15 +395,30 @@ const OPEN_LINES: Record<string, string[]> = {
     'db `a',
     'db `a\\',
     'x:',
+    'dd $',
+    'dd $-',
+    'dd $$',
+    'mov eax, 7 %',
+    'dd 1 ?',
+    'at',
+    'at a',
+    'at a,',
+    'at a, dd',
   ],
   arm: ['mov r0, #', 'mov r0, #(', 'add r0, r1, lsl', 'add r0, r1, lsl #'],
   x86: ['movq $', 'movq $(', 'movq %', '.type f, @'],
 };
 
-function openLines(language: Language): string[] {
+const OPENING_LINES: Record<string, string[]> = {
+  gas: [],
+  nasm: ['struc', 'struc a', 'struc a,', 'istruc', 'istruc a'],
+};
+
+function openLines(language: Language, extra: string[] = []): string[] {
   const contexts = [
     ...OPEN_LINES[language.syntax],
     ...(language.syntax === 'gas' ? language.archs.flatMap((arch) => OPEN_LINES[arch]) : []),
+    ...extra,
   ];
   return [
     ...new Set(
@@ -333,12 +432,11 @@ function openLines(language: Language): string[] {
 test('any character typed into an open construct keeps its effects on its own line', () => {
   const failures: string[] = [];
   for (const language of manifest.languages) {
-    const lines = openLines(language);
+    const lines = openLines(language, OPENING_LINES[language.syntax]);
     const parsed = parseAll(language.grammar, lines.map((line) => `${line}\nnop\n`));
-    for (const [index, { nodes }] of parsed.entries()) {
-      const spansByDesign = nodes.some((node) =>
-        SPANNING_TYPES.has(node.type) && node.startRow === 0 && node.endRow > 0
-      );
+    for (const [index, tree] of parsed.entries()) {
+      const { nodes } = tree;
+      const spansByDesign = reach(language.grammar, tree, [lines[index], 'nop', ''], 0) > 0;
       const onNopRow = nodes.filter((node) => node.startRow <= 1 && node.endRow >= 1);
       if (
         !spansByDesign &&

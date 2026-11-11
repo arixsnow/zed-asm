@@ -1,6 +1,10 @@
+# SPDX-License-Identifier: MIT
+
 * text=auto eol=lf
 extension.toml linguist-generated
 languages/** linguist-generated
+tree-sitter/common/keywords.h linguist-generated
+tree-sitter/common/words.h linguist-generated
 tree-sitter/tree-sitter.json linguist-generated
 tree-sitter/*/grammar.js linguist-generated
 tree-sitter/*/src/** linguist-generated

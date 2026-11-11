@@ -4,14 +4,26 @@ const COMPARISONS = ['==', '!=', '<>', '<', '<=', '>', '>='];
 const PRECEDENCE_LEVELS = {
   gnu: [['||'], ['&&'], COMPARISONS, ['+', '-'], ['|', '&', '^', '!'], ['*', '/', '%', '<<', '>>']],
   darwin: [['&&', '||'], ['|', '&', '^'], COMPARISONS, ['<<', '>>'], ['+', '-'], ['*', '/', '%']],
-  c: [['||'], ['&&'], COMPARISONS, ['|'], ['^'], ['&'], ['<<', '>>'], ['+', '-'], ['*', '/', '%']],
+  nasm: [
+    ['||'],
+    ['^^'],
+    ['&&'],
+    [...COMPARISONS, '=', '<=>'],
+    ['|'],
+    ['^'],
+    ['&'],
+    ['<<', '>>', '<<<', '>>>'],
+    ['+', '-'],
+    ['*', '/', '//', '%', '%%'],
+  ],
 };
 const LEVEL_STEP = 10;
 const DARWIN_PRECEDENCE = ['ARM_APPLE'];
+const CLANG_INTEGERS = ['ARM_APPLE'];
 
 function precedence(ctx) {
   const family = ctx.syntax === 'nasm'
-    ? 'c'
+    ? 'nasm'
     : DARWIN_PRECEDENCE.includes(ctx.dialect)
     ? 'darwin'
     : 'gnu';
@@ -30,95 +42,132 @@ function operatorToken($, operator) {
   return operator === '%' ? alias($._remainder, '%') : operator;
 }
 
-function operandList($, name) {
-  return seq(
-    field(name, $._operand),
-    repeat(seq(',', choice(field(name, $._operand), $._missing_argument))),
-  );
+function commaList($, item) {
+  return seq(item, repeat(seq(',', choice(item, $._missing_argument))));
 }
 
-function instructionOperands($) {
-  return seq(
-    field('operand', $._instruction_operand),
-    repeat(
-      choice(
-        seq(',', choice(field('operand', $._instruction_operand), $._missing_operand)),
-        seq($._blank, choice(field('operand', $._instruction_operand), $._missing_operand)),
+module.exports = (ctx) => ({
+  rules: {
+    source_file: ($) => repeat(choice($._item, $.label_block)),
+
+    label_block: ($) =>
+      prec.right(seq(field('label', alias($._global_label, $.label)), repeat($._item))),
+
+    _newline: () => /\r?\n/,
+
+    identifier: () => ctx.lexical.identifier,
+    _dot_identifier: () => ctx.lexical.dotIdentifier,
+    integer: () =>
+      CLANG_INTEGERS.includes(ctx.dialect) ? ctx.lexical.clangInteger : ctx.lexical.integer,
+
+    escape_sequence: () => token.immediate(seq('\\', ctx.lexical.escape)),
+
+    _body_items: ($) =>
+      seq(choice($._newline, $._separator, $._end), repeat(choice($._item, $.label_block))),
+    body: ($) => $._body_items,
+    unclosed_body: ($) => $._body_items,
+    macro_definition: ($) => seq($._macro_header, field('body', $.body), $._macro_end),
+    _unclosed_macro: ($) => seq($._macro_header, field('body', $.unclosed_body)),
+    conditional: ($) =>
+      seq(
+        $._conditional_header,
+        field('body', $.body),
+        optional($._conditional_clauses),
+        $._conditional_end,
       ),
-    ),
-  );
-}
-
-module.exports = (ctx) => {
-  const levels = precedence(ctx);
-  return {
-    rules: {
-      source_file: ($) => repeat(choice($._item, $.label_block)),
-
-      label_block: ($) =>
-        prec.right(seq(field('label', alias($._global_label, $.label)), repeat($._item))),
-
-      _newline: () => /\r?\n/,
-
-      _global_label: ($) => seq(field('name', alias($._global_label_name, $.identifier)), ':'),
-
-      identifier: () => ctx.lexical.identifier,
-      _dot_identifier: () => ctx.lexical.dotIdentifier,
-      integer: () => ctx.lexical.integer,
-
-      binary_expression: ($) =>
+    _unclosed_conditional: ($) =>
+      seq(
+        $._conditional_header,
         choice(
-          ...[...levels.operators].map(([operator, level]) =>
-            prec.left(
-              level,
-              seq(
-                field('left', $._expression),
-                field('operator', operatorToken($, operator)),
-                field('right', $._expression),
-              ),
-            )
+          field('body', $.unclosed_body),
+          seq(
+            field('body', $.body),
+            optional($._open_clauses),
+            choice(
+              alias($._unclosed_elseif_clause, $.elseif_clause),
+              alias($._unclosed_else_clause, $.else_clause),
+            ),
           ),
         ),
-      unary_expression: ($) =>
-        prec(
-          levels.unary,
-          seq(field('operator', choice('-', '+', '~', '!')), field('argument', $._expression)),
-        ),
-      parenthesized_expression: ($) => seq('(', $._expression, choice(')', $._unclosed)),
-    },
-    choices: {
-      instruction: [($) => seq(field('mnemonic', $._mnemonic), optional($._operands))],
-      _operands: [($) => instructionOperands($)],
-      _item: [
-        ($) => alias($._local_label, $.label),
-        ($) => $._newline,
-        ($) => $._separator,
-        ($) => seq($._line_content, choice($._newline, $._separator, $._end)),
-      ],
-      _line_content: [($) => $._statement],
-      _mnemonic: [($) => alias($.identifier, $.mnemonic)],
-      _local_label: [
-        ($) => seq(field('name', alias($._local_label_name, $.local_identifier)), ':'),
-      ],
-      _symbol: [($) => $.identifier],
-      _statement: [($) => $.instruction],
-      _instruction_operand: [($) => $._operand],
-      _operand: [($) => $._value],
-      _value: [($) => $._expression],
-      _expression: [
-        ($) => $._symbol,
-        ($) => $.integer,
-        ($) => $.unary_expression,
-        ($) => $.binary_expression,
-        ($) => $.parenthesized_expression,
-        ($) => $._missing_expression,
-      ],
-    },
-    extras: [() => /[ \t\f\v\r]/, ($) => $.line_comment],
-  };
-};
+      ),
+    elseif_clause: ($) => seq($._elseif_header, field('body', $.body)),
+    _unclosed_elseif_clause: ($) => seq($._elseif_header, field('body', $.unclosed_body)),
+    else_clause: ($) => seq($._else_header, field('body', $.body)),
+    _unclosed_else_clause: ($) => seq($._else_header, field('body', $.unclosed_body)),
+    repeat_block: ($) => seq($._repeat_header, field('body', $.body), $._repeat_end),
+    _unclosed_repeat: ($) => seq($._repeat_header, field('body', $.unclosed_body)),
 
-module.exports.operandList = operandList;
-module.exports.instructionOperands = instructionOperands;
+    concatenation: ($) => seq($._glue_head, $._glued_pieces),
+    _glued_pieces: ($) => repeat1($._glued_piece),
+
+    preproc_params: ($) =>
+      seq(
+        alias($._preproc_params_open, '('),
+        optional($._preproc_parameter_list),
+        ')',
+      ),
+
+    _macro_invocation: ($) =>
+      seq(
+        field('function', alias($._macro_name, $.identifier)),
+        optional(field('arguments', alias($._macro_arguments, $.argument_list))),
+      ),
+
+    keyword_argument: ($) => seq(field('name', $._keyword_name), '=', $._keyword_value),
+
+    macro_call: ($) => seq(field('function', $._call_name), field('arguments', $.argument_list)),
+    _macro_label: ($) =>
+      seq(
+        field('function', alias($._macro_label_name, $.identifier)),
+        field('arguments', $.argument_list),
+      ),
+  },
+  choices: {
+    instruction: [($) => $._instruction_body],
+    _instruction_body: [($) => seq(field('mnemonic', $._mnemonic), optional($._operands))],
+    _item: [
+      ($) => alias($._local_label, $.label),
+      ($) => $._newline,
+      ($) => $._separator,
+      ($) => seq($._line_content, choice($._newline, $._separator, $._end)),
+      ($) =>
+        seq(
+          choice(
+            alias($._unclosed_macro, $.macro_definition),
+            alias($._unclosed_conditional, $.conditional),
+            alias($._unclosed_repeat, $.repeat_block),
+          ),
+          $._block_end,
+        ),
+    ],
+    _line_content: [($) => $._statement],
+    _mnemonic: [($) => alias($._instruction_name, $.mnemonic)],
+    _global_label: [
+      ($) => seq(field('name', alias($._global_label_name, $.identifier)), ':'),
+    ],
+    _local_label: [
+      ($) => seq(field('name', alias($._local_label_name, $.local_identifier)), ':'),
+    ],
+    _symbol: [($) => $.identifier],
+    _statement: [
+      ($) => $.instruction,
+      ($) => alias($._macro_invocation, $.macro_call),
+      ($) => $.macro_definition,
+      ($) => $.conditional,
+      ($) => $.repeat_block,
+    ],
+    string: [
+      ($) =>
+        seq(
+          ctx.lexical.escapedQuote,
+          repeat(choice($._string_content, $.escape_sequence)),
+          choice(token.immediate(ctx.lexical.escapedQuote), $._unclosed),
+        ),
+    ],
+  },
+  extras: [() => /[ \t\f\v\r]/, ($) => $.line_comment],
+});
+
+module.exports.commaList = commaList;
 module.exports.precedence = precedence;
 module.exports.operatorToken = operatorToken;

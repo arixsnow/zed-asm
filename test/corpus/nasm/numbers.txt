@@ -1,0 +1,244 @@
+================================================================================
+NASM number forms
+================================================================================
+
+dd 0x1f, 1fh, $1f, 0o17, 17q, 0b101, 101y, 0d99, 99t, 1_000
+dd 0h1f, 0q17, 17o, 0y101, 101b, 99d, 0t99, 0x_ff, 0bh, 0b1h
+
+--------------------------------------------------------------------------------
+
+(source_file
+  (directive
+    name: (directive_name)
+    argument: (integer)
+    argument: (integer)
+    argument: (integer)
+    argument: (integer)
+    argument: (integer)
+    argument: (integer)
+    argument: (integer)
+    argument: (integer)
+    argument: (integer)
+    argument: (integer))
+  (directive
+    name: (directive_name)
+    argument: (integer)
+    argument: (integer)
+    argument: (integer)
+    argument: (integer)
+    argument: (integer)
+    argument: (integer)
+    argument: (integer)
+    argument: (integer)
+    argument: (integer)
+    argument: (integer)))
+
+================================================================================
+NASM floats, specials and float functions
+================================================================================
+
+dd 1.5, 1., 1.e10, 1e10, 1e, 0x1.8p0, 0x1.8, 0b1.1, 1E+5, 1_000.5
+dq -1.5, __?Infinity?__, __QNaN__, -__?SNaN?__
+mov eax, __?float32?__(1.5)
+dd __?FLOAT32?__ (-1.5)
+dq 0x.8, $1.8p0, 0y1.1p2, 1e+, 1._5, 0d1.5e2
+dt 1234p, 0p99, -12_34p
+dd --1.5, (1.5), __infinity__
+
+--------------------------------------------------------------------------------
+
+(source_file
+  (directive
+    name: (directive_name)
+    argument: (float)
+    argument: (float)
+    argument: (float)
+    argument: (float)
+    argument: (float)
+    argument: (float)
+    argument: (float)
+    argument: (float)
+    argument: (float)
+    argument: (float))
+  (directive
+    name: (directive_name)
+    argument: (unary_expression
+      argument: (float))
+    argument: (float)
+    argument: (float)
+    argument: (unary_expression
+      argument: (float)))
+  (instruction
+    mnemonic: (mnemonic)
+    operand: (register)
+    operand: (unary_expression
+      operator: (operator_word)
+      argument: (parenthesized_expression
+        (float))))
+  (directive
+    name: (directive_name)
+    argument: (unary_expression
+      operator: (operator_word)
+      argument: (parenthesized_expression
+        (unary_expression
+          argument: (float)))))
+  (directive
+    name: (directive_name)
+    argument: (float)
+    argument: (float)
+    argument: (float)
+    argument: (float)
+    argument: (float)
+    argument: (float))
+  (directive
+    name: (directive_name)
+    argument: (float)
+    argument: (float)
+    argument: (unary_expression
+      argument: (float)))
+  (directive
+    name: (directive_name)
+    argument: (unary_expression
+      argument: (unary_expression
+        argument: (float)))
+    argument: (parenthesized_expression
+      (float))
+    argument: (float)))
+
+================================================================================
+A dot and digits is a local label, not a float
+================================================================================
+
+dd .5
+
+--------------------------------------------------------------------------------
+
+(source_file
+  (directive
+    name: (directive_name)
+    argument: (local_identifier)))
+
+================================================================================
+Location counters and NASM-only operators
+================================================================================
+
+len equ $ - msg
+pad: times 16-($-$$) db 0
+dd 7 // 2, 7 %% 2, 1 <<< 2, 8 >>> 1, 1 <=> 2, 1 ? 2 : 3
+dd 1 ^^ 0, 2 = 2
+
+--------------------------------------------------------------------------------
+
+(source_file
+  (assignment
+    name: (identifier)
+    value: (binary_expression
+      left: (location_counter)
+      right: (identifier)))
+  (label_block
+    label: (label
+      name: (identifier))
+    (times
+      count: (binary_expression
+        left: (integer)
+        right: (parenthesized_expression
+          (binary_expression
+            left: (location_counter)
+            right: (section_start))))
+      statement: (directive
+        name: (directive_name)
+        argument: (integer)))
+    (directive
+      name: (directive_name)
+      argument: (binary_expression
+        left: (integer)
+        right: (integer))
+      argument: (binary_expression
+        left: (integer)
+        right: (integer))
+      argument: (binary_expression
+        left: (integer)
+        right: (integer))
+      argument: (binary_expression
+        left: (integer)
+        right: (integer))
+      argument: (binary_expression
+        left: (integer)
+        right: (integer))
+      argument: (conditional_expression
+        condition: (integer)
+        consequence: (integer)
+        alternative: (integer)))
+    (directive
+      name: (directive_name)
+      argument: (binary_expression
+        left: (integer)
+        right: (integer))
+      argument: (binary_expression
+        left: (integer)
+        right: (integer)))))
+
+================================================================================
+? reserves an uninitialized data item
+================================================================================
+
+dd ?, 1
+times 4 db ?
+dd 2 dup ?, 3 dup (?, 1)
+
+--------------------------------------------------------------------------------
+
+(source_file
+  (directive
+    name: (directive_name)
+    argument: (uninitialized)
+    argument: (integer))
+  (times
+    count: (integer)
+    statement: (directive
+      name: (directive_name)
+      argument: (uninitialized)))
+  (directive
+    name: (directive_name)
+    argument: (binary_expression
+      left: (integer)
+      operator: (operator_word)
+      right: (uninitialized))
+    argument: (binary_expression
+      left: (integer)
+      operator: (operator_word)
+      right: (argument_list
+        argument: (uninitialized)
+        argument: (integer)))))
+
+================================================================================
+An x suffix makes a hex number, and a backquote string escapes with a caret
+================================================================================
+
+dd 1010_0101x
+db 0x
+db 0dx, 0bx, 0hd
+db `\0\x0\^@\^`\^ `
+
+--------------------------------------------------------------------------------
+
+(source_file
+  (directive
+    name: (directive_name)
+    argument: (integer))
+  (directive
+    name: (directive_name)
+    argument: (integer))
+  (directive
+    name: (directive_name)
+    argument: (integer)
+    argument: (integer)
+    argument: (integer))
+  (directive
+    name: (directive_name)
+    argument: (string
+      (escape_sequence)
+      (escape_sequence)
+      (escape_sequence)
+      (escape_sequence)
+      (escape_sequence))))

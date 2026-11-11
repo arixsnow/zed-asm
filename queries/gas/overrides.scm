@@ -1,3 +1,5 @@
+; SPDX-License-Identifier: MIT
+
 (block_comment) @comment.inclusive
 
 (char) @string

@@ -44,7 +44,7 @@ vaddps %zmm1, %zmm2, %zmm3{z}{%k1}
       decorator: (decorator))))
 
 ================================================================================
-Rounding, SAE and APX flags are operands of their own
+Rounding and SAE flags are operands of their own, and default flags lead an SCC instruction's operands
 ================================================================================
 
 vaddps {rn-sae}, %zmm1, %zmm2, %zmm3

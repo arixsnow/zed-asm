@@ -64,6 +64,60 @@ fld ST (7)
     operand: (register)))
 
 ================================================================================
+Register names come from every GNU assembler, indexes in any GNU integer form
+================================================================================
+
+fadd %st(0x1), %st(01)
+movq %mm(7), %xmm(15)
+movl %eflags, %fs.base
+
+--------------------------------------------------------------------------------
+
+(source_file
+  (instruction
+    mnemonic: (mnemonic)
+    operand: (register)
+    operand: (register))
+  (instruction
+    mnemonic: (mnemonic)
+    operand: (register)
+    operand: (register))
+  (instruction
+    mnemonic: (mnemonic)
+    operand: (register)
+    operand: (register)))
+
+================================================================================
+flat is a segment register in Intel syntax only
+================================================================================
+
+.intel_syntax noprefix
+mov eax, flat:[ebx]
+.att_syntax noprefix
+movl flat, eax
+
+--------------------------------------------------------------------------------
+
+(source_file
+  (directive
+    name: (directive_name)
+    argument: (identifier))
+  (instruction
+    mnemonic: (mnemonic)
+    operand: (register)
+    operand: (segment_override
+      segment: (register)
+      operand: (memory_operand
+        address: (register))))
+  (directive
+    name: (directive_name)
+    argument: (identifier))
+  (instruction
+    mnemonic: (mnemonic)
+    operand: (identifier)
+    operand: (register)))
+
+================================================================================
 A % after a value is the remainder
 ================================================================================
 
@@ -143,7 +197,7 @@ movl %r\n\()d, %eax
         operand: (register)))))
 
 ================================================================================
-A % after a register starts the next blank-separated operand
+A % after a blank starts the next macro argument
 ================================================================================
 
 m %rax %rbx
@@ -152,13 +206,14 @@ m $7 %rax
 --------------------------------------------------------------------------------
 
 (source_file
-  (instruction
-    mnemonic: (mnemonic)
-    operand: (register)
-    operand: (register))
-  (instruction
-    mnemonic: (mnemonic)
-    operand: (immediate
-      value: (binary_expression
-        left: (integer)
-        right: (identifier)))))
+  (macro_call
+    function: (identifier)
+    arguments: (argument_list
+      argument: (register)
+      argument: (register)))
+  (macro_call
+    function: (identifier)
+    arguments: (argument_list
+      argument: (immediate
+        value: (integer))
+      argument: (register))))

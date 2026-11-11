@@ -186,29 +186,3 @@ nop
         left: (identifier))))
   (instruction
     mnemonic: (mnemonic)))
-
-================================================================================
-Operands may be separated by blanks, as in a macro call
-================================================================================
-
-m 1 2
-m 1 -2
-m a, b c
-
---------------------------------------------------------------------------------
-
-(source_file
-  (instruction
-    mnemonic: (mnemonic)
-    operand: (integer)
-    operand: (integer))
-  (instruction
-    mnemonic: (mnemonic)
-    operand: (binary_expression
-      left: (integer)
-      right: (integer)))
-  (instruction
-    mnemonic: (mnemonic)
-    operand: (identifier)
-    operand: (identifier)
-    operand: (identifier)))

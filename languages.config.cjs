@@ -27,12 +27,6 @@ const syntaxes = {
       { start: "'", end: "'", close: true, newline: false, not_in: ['string', 'comment'] },
       { start: '/*', end: ' */', close: true, newline: false, not_in: ['string', 'comment'] },
     ],
-    labelPattern: '^\\s*(?:[A-Za-z_.][A-Za-z0-9_.$]*|[0-9]+):',
-    blocks: [
-      { openers: ['MACRO_OPEN'], clauses: [], closer: 'MACRO_CLOSE' },
-      { openers: ['IF_OPEN'], clauses: ['ELSEIF', 'ELSE'], closer: 'CONDITIONAL_CLOSE' },
-      { openers: ['REPT_OPEN', 'IRP_OPEN', 'IRPC_OPEN'], clauses: [], closer: 'REPEAT_CLOSE' },
-    ],
     overrides: { preproc: { line_comments: ['// '] } },
   },
   nasm: {
@@ -45,10 +39,20 @@ const syntaxes = {
       { start: '`', end: '`', close: true, newline: false, not_in: ['string'] },
       { start: "'", end: "'", close: true, newline: false, not_in: ['string', 'comment'] },
     ],
-    labelPattern: '^\\s*[A-Za-z_.?$@][A-Za-z0-9_$#@~.?]*:',
-    blocks: [],
   },
 };
+
+const blocks = [
+  { openers: ['MACRO_OPEN'], clauses: [], closer: 'MACRO_CLOSE' },
+  {
+    openers: ['IF_OPEN', 'IF_MACRO_OPEN', 'IF_RAW_OPEN'],
+    clauses: ['ELSEIF', 'ELSEIF_MACRO', 'ELSEIF_RAW', 'ELSE'],
+    closer: 'CONDITIONAL_CLOSE',
+  },
+  { openers: ['REPT_OPEN', 'IRP_OPEN', 'IRPC_OPEN'], clauses: [], closer: 'REPEAT_CLOSE' },
+  { openers: ['STRUC_OPEN'], clauses: [], closer: 'STRUC_CLOSE', syntax: 'nasm' },
+  { openers: ['ISTRUC_OPEN'], clauses: [], closer: 'ISTRUC_CLOSE', syntax: 'nasm' },
+];
 
 const languages = [
   {
@@ -118,4 +122,4 @@ const shared = {
   debuggers: ['CodeLLDB', 'GDB'],
 };
 
-module.exports = { extension, syntaxes, languages, shared };
+module.exports = { extension, syntaxes, blocks, languages, shared };

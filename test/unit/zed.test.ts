@@ -148,7 +148,7 @@ test('the model refuses settings and queries whose Zed behavior it does not repr
       {},
       'brackets with newline = true',
     ],
-    [{}, { indents: '(x "}" @end) @indent' }, '@end in indents.scm'],
+    [{}, { indents: '(x) @start.if' }, '@start.if in indents.scm'],
     [{}, { brackets: '(("(" @open ")" @close) (#set! newline.only))' }, 'bracket query properties'],
     [
       { brackets: [{ start: '"', end: '"', close: true, newline: false, not_in: ['string'] }] },

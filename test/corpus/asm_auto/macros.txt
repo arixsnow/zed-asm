@@ -21,6 +21,35 @@ Blank-separated macro parameters
     body: (body)))
 
 ================================================================================
+Macro arguments may be separated by blanks
+================================================================================
+
+m 1 2
+m 1 -2
+m a, b c
+
+--------------------------------------------------------------------------------
+
+(source_file
+  (macro_call
+    function: (identifier)
+    arguments: (argument_list
+      argument: (integer)
+      argument: (integer)))
+  (macro_call
+    function: (identifier)
+    arguments: (argument_list
+      argument: (binary_expression
+        left: (integer)
+        right: (integer))))
+  (macro_call
+    function: (identifier)
+    arguments: (argument_list
+      argument: (identifier)
+      argument: (identifier)
+      argument: (identifier))))
+
+================================================================================
 Blank-separated .irp values
 ================================================================================
 
@@ -34,4 +63,40 @@ Blank-separated .irp values
     parameter: (identifier)
     value: (identifier)
     value: (identifier)
+    body: (body)))
+
+================================================================================
+MRI aliases of else, endif, irp and irpc open and close blocks
+================================================================================
+
+.if 1
+nop
+.elsec
+nop
+.endc
+.irep r, 1, 2
+.endr
+.irepc c, 12
+.endr
+
+--------------------------------------------------------------------------------
+
+(source_file
+  (conditional
+    condition: (integer)
+    body: (body
+      (instruction
+        mnemonic: (mnemonic)))
+    (else_clause
+      body: (body
+        (instruction
+          mnemonic: (mnemonic)))))
+  (repeat_block
+    parameter: (identifier)
+    value: (integer)
+    value: (integer)
+    body: (body))
+  (repeat_block
+    parameter: (identifier)
+    value: (integer)
     body: (body)))

@@ -10,6 +10,7 @@ import { ROOT } from './files.ts';
 export interface RunOptions {
   stream?: boolean;
   env?: Record<string, string>;
+  cwd?: string;
 }
 
 export interface RunResult {
@@ -20,7 +21,7 @@ export interface RunResult {
 export function run(command: string, args: string[], options: RunOptions = {}): RunResult {
   const stdio = options.stream ? 'inherit' : 'pipe';
   const result = spawnSync(command, args, {
-    cwd: ROOT,
+    cwd: options.cwd ?? ROOT,
     env: options.env === undefined ? process.env : { ...process.env, ...options.env },
     stdio: ['ignore', stdio, stdio],
     encoding: 'utf8',
@@ -36,8 +37,8 @@ export function run(command: string, args: string[], options: RunOptions = {}): 
   return { ok, output: `${result.stdout}${result.stderr}` };
 }
 
-export function runOrThrow(command: string, args: string[]): string {
-  const { ok, output } = run(command, args);
+export function runOrThrow(command: string, args: string[], options: RunOptions = {}): string {
+  const { ok, output } = run(command, args, options);
   if (!ok) {
     throw new Error(`${command} ${args.join(' ')} failed:\n${output}`);
   }
@@ -60,7 +61,9 @@ function sourceHash(grammar: string): string {
   for (const source of LIBRARY_SOURCES) {
     hash.update(readFileSync(join(ROOT, 'tree-sitter', grammar, source)));
   }
-  hash.update(readFileSync(join(ROOT, 'tree-sitter', 'common', 'scanner.h')));
+  for (const header of ['scanner.h', 'words.h']) {
+    hash.update(readFileSync(join(ROOT, 'tree-sitter', 'common', header)));
+  }
   return hash.digest('hex').slice(0, 16);
 }
 
@@ -79,7 +82,7 @@ export function buildLibrary(grammar: string): string {
     const stale = new RegExp(`^${grammar}-[0-9a-f]{16}\\.so$`);
     for (const entry of readdirSync(LIBRARY_DIRECTORY)) {
       if (stale.test(entry) && entry !== name) {
-        rmSync(join(LIBRARY_DIRECTORY, entry));
+        rmSync(join(LIBRARY_DIRECTORY, entry), { force: true });
       }
     }
   }

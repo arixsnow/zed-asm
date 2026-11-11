@@ -1,0 +1,47 @@
+================================================================================
+Suffixed, encoded and hyphenated mnemonics are instructions, other words macro calls
+================================================================================
+
+movl $1, %eax
+cmovll %eax, %ebx
+mov.s %eax, %ebx
+jmp.d32 1f
+xcrypt-ecb
+fistpll (%rax)
+movx %eax
+addz %eax, %ebx
+
+--------------------------------------------------------------------------------
+
+(source_file
+  (instruction
+    mnemonic: (mnemonic)
+    operand: (immediate
+      value: (integer))
+    operand: (register))
+  (instruction
+    mnemonic: (mnemonic)
+    operand: (register)
+    operand: (register))
+  (instruction
+    mnemonic: (mnemonic)
+    operand: (register)
+    operand: (register))
+  (instruction
+    mnemonic: (mnemonic)
+    operand: (numeric_label))
+  (instruction
+    mnemonic: (mnemonic))
+  (instruction
+    mnemonic: (mnemonic)
+    operand: (memory_operand
+      base: (register)))
+  (macro_call
+    function: (identifier)
+    arguments: (argument_list
+      argument: (register)))
+  (macro_call
+    function: (identifier)
+    arguments: (argument_list
+      argument: (register)
+      argument: (register))))

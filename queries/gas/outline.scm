@@ -1,3 +1,5 @@
+; SPDX-License-Identifier: MIT
+
 (macro_definition
   ".macro" @context
   name: (_) @name) @item
