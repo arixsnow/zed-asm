@@ -13,7 +13,7 @@ const extension = {
   authors: ['Arka Mondal <arka@arkamondal.net>'],
   license: 'MIT',
   repository,
-  grammarRev: 'ede7101f9c705e8c4c9ec05d50c151978dedaabd',
+  grammarRev: 'fab895a21a0655fb25c4a6af6bdb7010da022d18',
 };
 
 const syntaxes = {
