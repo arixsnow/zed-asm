@@ -18,6 +18,7 @@ jobs:
             - name: Check out (actions/checkout v7.0.1)
               uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
               with:
+                  fetch-depth: 2
                   persist-credentials: false
 
             - name: Name the toolchain image
@@ -59,3 +60,17 @@ jobs:
 
             - name: Sanitizers
               run: scripts/dev bun run sanitize
+
+            - name: Export the baseline commit
+              env:
+                  BASE: ${{ github.event.pull_request.base.sha || github.event.before }}
+              run: |
+                  if [ -z "${BASE}" ] || [ "${BASE}" = 0000000000000000000000000000000000000000 ]; then
+                      BASE=$(git rev-parse HEAD^)
+                  fi
+                  git fetch --quiet --depth=1 origin "${BASE}"
+                  mkdir -p .build/budgets-baseline
+                  git archive "${BASE}" | tar -x -C .build/budgets-baseline
+
+            - name: Budgets
+              run: scripts/dev bun run check:budgets .build/budgets-baseline

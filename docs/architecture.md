@@ -1815,6 +1815,8 @@ type packages as well.
 | `bun run corpus`          | composes each grammar's corpus tests from `test/corpus/`                                                                                                                                                                                                                                      |
 | `bun run test:corpus`     | runs `corpus`, then the corpus tests of all five grammars                                                                                                                                                                                                                                     |
 | `bun run sanitize`        | corpus and fuzzing against parsers built with AddressSanitizer and UndefinedBehaviorSanitizer                                                                                                                                                                                                 |
+| `bun run budgets`         | not a check: measures each grammar's parse cost with callgrind and writes it to `test/budgets.json` with the states and parser size                                                                                                                                                           |
+| `bun run check:budgets`   | measures the baseline tree at DIR and this tree in the same image and fails on any cost change `test/budgets.json` does not declare (`bun run check:budgets DIR`)                                                                                                                             |
 | `bun run bench`           | not a check: prints parse, edit and query times, states and parser size for every grammar                                                                                                                                                                                                     |
 | `bun run zed:qa`          | the `docs/qa.md` checks; `scripts/zed` runs it in the container that holds Zed and a display                                                                                                                                                                                                  |
 | `scripts/zed`             | the `docs/qa.md` checks in the real Zed app, in Podman on a virtual display                                                                                                                                                                                                                   |
@@ -1855,6 +1857,27 @@ take ranges, `!` or `^` and the POSIX classes, and a path matches when it or a p
 does. A file fails when tree-sitter reports an error in its tree (`--json-summary`); the error lines
 come from a query for every ERROR and MISSING node. One parse and one query run per language cover
 all files.
+
+`bun run budgets` measures each grammar's parse of its two bench inputs, `basics` and the fixtures
+joined, under callgrind's cache simulation, and writes the cost to `test/budgets.json` with the
+states, the parser.c size and a hash of each input. The cost is gungraun's estimated cycles: L1 hits
+plus 5 times LL hits plus 35 times RAM accesses. Instruction counts alone rate the x86 (GAS) parser
+0.3% cheaper than M4's, where wall-clock timing shows it about 3% slower; the estimate, which sees
+the cache misses of the keyword dictionary, rates it 0.9% dearer. Callgrind collects inside
+`ts_parser_parse` only, with a fixed cache model (32 KiB 8-way L1 caches, a 16 MiB 16-way LL, 64 B
+lines) and `LD_BIND_NOW=1`, so that dynamic linking stays outside. Each library and input is
+copied to one fixed path first, since a longer path moves the buffers and with them the cache
+misses; the same parser on the same input then repeats its count exactly.
+
+The count still moves with the image's compilers and glibc, which CI rebuilds weekly, so the check
+compares within one image. `bun run check:budgets DIR` measures the baseline tree at DIR and this
+one, and each change in cost must match the change `test/budgets.json` declares between the two,
+within 1 point plus a tenth of the declared change. An undeclared speedup fails as well as a
+slowdown, so the declared costs stay exact. An input the baseline declares no cost for, or measured
+with other text, has no baseline and passes. The states, parser.c size and input hashes are the
+same anywhere, and a unit test requires them to match the tree. CI exports the push's previous
+head, or a pull request's base, with `git archive`; locally,
+`git archive HEAD | tar -x -C .build/budgets-baseline` gives the last commit.
 
 The fixtures live in `test/fixtures/<dialect>/`, and every assembler of the dialect must accept each
 file there. Forms that only one assembler accepts, such as `.eqv` and `0f1.5` in GNU as or
@@ -1936,14 +1959,15 @@ file holds twice as many functions, at the top level and inside a block.
 The unit tests also enforce the repository rules: ASCII only, LF line endings, a final newline and
 an SPDX license line in every hand-written source file.
 
-CI runs `bun run test` and `bun run sanitize` in the same container for every push and for pull
-requests from forks. Building the 3.0 GB image compiles tree-sitter and dprint from source, so CI
-saves it in the Actions cache under the image tag and the ISO week (`scripts/dev --image` prints
-the tag, a hash of the Containerfile) and loads it instead of building, until the Containerfile
-changes or the week ends; Fedora's package updates still reach CI within a week. The unit tests run
-their files in parallel, except the performance tests, which run alone afterwards because they
-compare timings. Compiled parsers are cached in `.build/lib` under a hash of their sources and the
-tree-sitter version, so the test, query and fixture checks build each grammar once.
+CI runs `bun run test`, `bun run sanitize` and `bun run check:budgets` in the same container for
+every push and for pull requests from forks. Building the 3.0 GB image compiles tree-sitter and
+dprint from source, so CI saves it in the Actions cache under the image tag and the ISO week
+(`scripts/dev --image` prints the tag, a hash of the Containerfile) and loads it instead of
+building, until the Containerfile changes or the week ends; Fedora's package updates still reach CI
+within a week. The unit tests run their files in parallel, except the performance tests, which run
+alone afterwards because they compare timings. Compiled parsers are cached in `.build/lib` of their
+tree under a hash of their sources and the tree-sitter version, so the test, query and fixture
+checks build each grammar once.
 
 ## Performance
 

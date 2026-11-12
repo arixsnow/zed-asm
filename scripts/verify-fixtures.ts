@@ -79,11 +79,11 @@ function runsPreprocessor(assembler: string): boolean {
     return assembler === 'clang';
 }
 
-export function fixtures(): Fixture[] {
+export function fixtures(root = ROOT): Fixture[] {
     const found: Fixture[] = [];
     for (const [dialect, { grammars, assemblers }] of Object.entries(FIXTURE_DIALECTS)) {
         const directory = join('test', 'fixtures', dialect);
-        const names = filesUnder(join(ROOT, directory));
+        const names = filesUnder(join(root, directory));
         if (names.length === 0) {
             throw new Error(`${directory} holds no fixture`);
         }

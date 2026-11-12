@@ -21,6 +21,8 @@
         "test:corpus": "bun run corpus && bun scripts/tree-sitter.ts test",
         "sanitize": "bun run corpus && bun scripts/sanitize.ts",
         "bench": "bun scripts/bench.ts",
+        "budgets": "bun scripts/budgets.ts write",
+        "check:budgets": "bun scripts/budgets.ts check",
         "zed:qa": "bun scripts/zed-qa.ts",
         "test": "dprint check && bun run lint && bun run check:types && bun run check:generated && bun run test:unit && bun run check:c && bun run check:shell && bun run test:corpus && bun run check:queries && bun run check:fixtures"
     }

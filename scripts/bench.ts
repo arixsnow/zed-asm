@@ -23,14 +23,14 @@ function column(text: string | number, width: number): string {
     return String(text).padStart(width);
 }
 
-function inputs({ grammar, syntax, archs }: Language): [string, string][] {
+export function benchInputs({ grammar, syntax, archs }: Language, root = ROOT): [string, string][] {
     const fileEnd = syntax === 'gas' && archs.includes('x86') ? '    .att_syntax\n' : '';
-    const all = fixtures()
+    const all = fixtures(root)
         .filter((fixture) => fixture.grammars.includes(grammar))
-        .map((fixture) => `${readFileSync(join(ROOT, fixture.file), 'utf8')}${fileEnd}`)
+        .map((fixture) => `${readFileSync(join(root, fixture.file), 'utf8')}${fileEnd}`)
         .join('');
     return [
-        ['basics', readFileSync(join(ROOT, 'test', 'fixtures', BASICS[grammar]), 'utf8')],
+        ['basics', readFileSync(join(root, 'test', 'fixtures', BASICS[grammar]), 'utf8')],
         ['fixtures', all],
     ];
 }
@@ -61,7 +61,7 @@ function main(args: string[]): number {
         const parser = readFileSync(join(ROOT, 'tree-sitter', grammar, 'src', 'parser.c'), 'utf8');
         const states = /#define STATE_COUNT (\d+)/.exec(parser)?.[1] ?? '?';
         const queries = filesUnder(join(ROOT, 'languages', dir));
-        for (const [name, text] of inputs(language)) {
+        for (const [name, text] of benchInputs(language)) {
             const copies = Math.ceil(TARGET_BYTES / text.length);
             const input = join(directory, `${grammar}-${name}.s`);
             writeFileSync(input, text.repeat(copies));

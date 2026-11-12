@@ -41,6 +41,7 @@ RUN dnf -y install --setopt=install_weak_deps=False \
         nasm \
         yasm \
         ShellCheck \
+        valgrind \
         perl-interpreter \
         python3 \
         cmake \

@@ -55,9 +55,10 @@ lists what comes next.
 Everything runs in a Podman container built from `Containerfile`, so your machine only needs
 `podman` and `git`. The container pins tree-sitter 0.27.0, Bun 1.4.3, TypeScript 7.0.2, oxlint
 1.88.0, dprint 0.63.0 and its four plugins exactly. The C toolchain, the assemblers, ShellCheck,
-and the Perl, Python, CMake and Ninja that regenerating the keyword tables needs come from Fedora
-45's repositories as they are when the image is built. CI builds it fresh whenever the Containerfile
-changes and in the first run of each week, and reuses that image for the rest of the week;
+valgrind, and the Perl, Python, CMake and Ninja that regenerating the keyword tables needs come from
+Fedora 45's repositories as they are when the image is built. CI builds it fresh whenever the
+Containerfile changes and in the first run of each week, and reuses that image for the rest of the
+week;
 `scripts/dev` rebuilds it locally whenever the Containerfile changes. Only the image build and
 `scripts/fetch-sources` download anything: the container itself runs without a network.
 
@@ -66,6 +67,7 @@ scripts/dev bun run test       # every check except the sanitizers
 scripts/dev bun run sanitize   # corpus tests and fuzzing under ASan and UBSan
 scripts/dev bun run generate   # rebuild languages/, extension.toml and the parsers
 scripts/dev bun run bench      # parse, edit and query timings for every grammar
+scripts/dev bun run budgets    # record each grammar's parse cost in test/budgets.json
 scripts/dev bun run fmt        # dprint and clang-format
 scripts/dev bun run            # list every script
 scripts/dev                    # a shell inside the toolchain

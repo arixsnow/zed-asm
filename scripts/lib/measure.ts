@@ -1,6 +1,58 @@
 // SPDX-License-Identifier: MIT
 
+import { readFileSync } from 'node:fs';
+
 import { languageArgs, run } from './grammars.ts';
+
+const CACHE_MODEL = ['--I1=32768,8,64', '--D1=32768,8,64', '--LL=16777216,16,64'];
+const LL_HIT_CYCLES = 5;
+const RAM_CYCLES = 35;
+
+export function cyclesFromCallgrind(text: string): number {
+    const events = /^events: (.+)$/m.exec(text)?.[1].split(' ');
+    const totals = /^summary: (.+)$/m.exec(text)?.[1].split(' ').map(Number);
+    if (events === undefined || totals === undefined) {
+        throw new Error('the callgrind output has no events or summary line');
+    }
+    const total = (...names: string[]) =>
+        names.reduce((sum, name) => {
+            const index = events.indexOf(name);
+            if (index === -1) {
+                throw new Error(`the callgrind output has no ${name} event`);
+            }
+            return sum + (totals[index] ?? 0);
+        }, 0);
+    const accesses = total('Ir', 'Dr', 'Dw');
+    const l1Misses = total('I1mr', 'D1mr', 'D1mw');
+    const llMisses = total('ILmr', 'DLmr', 'DLmw');
+    return accesses - l1Misses + LL_HIT_CYCLES * (l1Misses - llMisses) + RAM_CYCLES * llMisses;
+}
+
+export function estimatedCycles(grammar: string, library: string, file: string): number {
+    const out = `${file}.callgrind`;
+    const { status, output } = run('valgrind', [
+        '--tool=callgrind',
+        '--cache-sim=yes',
+        ...CACHE_MODEL,
+        '--toggle-collect=ts_parser_parse',
+        `--callgrind-out-file=${out}`,
+        'tree-sitter',
+        'parse',
+        '--quiet',
+        ...languageArgs(grammar, library),
+        file,
+    ], { env: { LD_BIND_NOW: '1' } });
+    if (status !== 0 && status !== 1) {
+        throw new Error(`${grammar}: callgrind on ${file} failed:\n${output}`);
+    }
+    const cycles = cyclesFromCallgrind(readFileSync(out, 'utf8'));
+    if (cycles === 0) {
+        throw new Error(
+            `${grammar}: callgrind collected nothing inside ts_parser_parse on ${file}`,
+        );
+    }
+    return cycles;
+}
 
 export interface ParseTiming {
     parse: number;

@@ -5,7 +5,7 @@ import { createHash, randomUUID } from 'node:crypto';
 import { existsSync, mkdirSync, readdirSync, readFileSync, renameSync, rmSync } from 'node:fs';
 import { join } from 'node:path';
 
-import { ROOT } from './files.ts';
+import { filesUnder, ROOT } from './files.ts';
 
 export interface RunOptions {
     stream?: boolean;
@@ -15,6 +15,7 @@ export interface RunOptions {
 
 export interface RunResult {
     ok: boolean;
+    status: number | null;
     output: string;
 }
 
@@ -32,9 +33,9 @@ export function run(command: string, args: string[], options: RunOptions = {}): 
     }
     const ok = result.status === 0;
     if (options.stream) {
-        return { ok, output: '' };
+        return { ok, status: result.status, output: '' };
     }
-    return { ok, output: `${result.stdout}${result.stderr}` };
+    return { ok, status: result.status, output: `${result.stdout}${result.stderr}` };
 }
 
 export function runOrThrow(command: string, args: string[], options: RunOptions = {}): string {
@@ -46,47 +47,46 @@ export function runOrThrow(command: string, args: string[], options: RunOptions 
 }
 
 const libraries = new Map<string, string>();
-const LIBRARY_DIRECTORY = join(ROOT, '.build', 'lib');
-const LIBRARY_SOURCES = [
-    'src/parser.c',
-    'src/scanner.c',
-    'src/tree_sitter/alloc.h',
-    'src/tree_sitter/array.h',
-    'src/tree_sitter/parser.h',
-];
 
-function sourceHash(grammar: string): string {
+function sourceHash(grammar: string, root: string): string {
     const hash = createHash('sha256');
     hash.update(runOrThrow('tree-sitter', ['--version']));
-    for (const source of LIBRARY_SOURCES) {
-        hash.update(readFileSync(join(ROOT, 'tree-sitter', grammar, source)));
-    }
-    for (const header of ['scanner.h', 'words.h']) {
-        hash.update(readFileSync(join(ROOT, 'tree-sitter', 'common', header)));
+    for (const directory of [join(grammar, 'src'), 'common']) {
+        for (const source of filesUnder(join(root, 'tree-sitter', directory))) {
+            hash.update(`${join(directory, source)}\0`);
+            hash.update(readFileSync(join(root, 'tree-sitter', directory, source)));
+        }
     }
     return hash.digest('hex').slice(0, 16);
 }
 
-export function buildLibrary(grammar: string): string {
-    const built = libraries.get(grammar);
+export function buildLibrary(grammar: string, root = ROOT): string {
+    const key = join(root, grammar);
+    const built = libraries.get(key);
     if (built !== undefined) {
         return built;
     }
-    mkdirSync(LIBRARY_DIRECTORY, { recursive: true });
-    const name = `${grammar}-${sourceHash(grammar)}.so`;
-    const library = join(LIBRARY_DIRECTORY, name);
+    const directory = join(root, '.build', 'lib');
+    mkdirSync(directory, { recursive: true });
+    const name = `${grammar}-${sourceHash(grammar, root)}.so`;
+    const library = join(directory, name);
     if (!existsSync(library)) {
-        const partial = join(LIBRARY_DIRECTORY, `.${randomUUID()}.so`);
-        runOrThrow('tree-sitter', ['build', '--output', partial, join('tree-sitter', grammar)]);
+        const partial = join(directory, `.${randomUUID()}.so`);
+        runOrThrow('tree-sitter', [
+            'build',
+            '--output',
+            partial,
+            join(root, 'tree-sitter', grammar),
+        ]);
         renameSync(partial, library);
         const stale = new RegExp(`^${grammar}-[0-9a-f]{16}\\.so$`);
-        for (const entry of readdirSync(LIBRARY_DIRECTORY)) {
+        for (const entry of readdirSync(directory)) {
             if (stale.test(entry) && entry !== name) {
-                rmSync(join(LIBRARY_DIRECTORY, entry), { force: true });
+                rmSync(join(directory, entry), { force: true });
             }
         }
     }
-    libraries.set(grammar, library);
+    libraries.set(key, library);
     return library;
 }
 
