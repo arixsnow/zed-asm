@@ -2069,6 +2069,18 @@ faster, and x86 (GAS) 3% slower, with 20% more states for Intel operands, prefix
 file of nothing but `nop` lines, which M4 read without any lookup, still parses 4 to 23% slower.
 One-character edits are as fast as in M4 or faster.
 
+A callgrind profile of x86 (GAS) against M4, with the cache model of the budgets, shows where the
+time goes. The scanner and lexer now spend about 1,250 fewer instructions per statement than M4's;
+tree-sitter's runtime spends more. M4 lexed the mnemonic as an internal `identifier`, which
+tree-sitter keeps inline in the tree. M5's instruction word is a scanner token, and tree-sitter
+heap-allocates every token an external scanner returns: about 375 instructions per statement for
+the allocation and the last-external-token bookkeeping. Parse-table lookups are as many as in M4
+but cost about 470 more per statement, from the layout `tree-sitter generate` gives the larger
+table. In estimated cycles x86 (GAS) is 1.7% cheaper than M4 on `basics`, 1.0% dearer on the
+fixtures and 3.4% dearer on `nop` lines; the wall-clock gap above is larger, and the estimate models
+the caches but not branch prediction. The scanner token is what tells `movl` from a macro call such
+as `SAVE_ALL`, so it stays.
+
 NASM parses 60% slower than M4 on the fixtures and 72% on `basics`, because its grammar grew from
 71 states to 4341 to read the preprocessor, macro calls and structures. Taking one rule out of a
 scratch copy at a time, split memory operands cost 532 states, `macro_reference` 318, calls in
