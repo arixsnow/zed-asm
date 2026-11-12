@@ -186,7 +186,7 @@ const POSITIONS: Position[] = [
         prefix: 'ld1 {v0.s}[1 ',
         arch: 'arm',
     },
-    { name: 'after a brace', token: '_missing_name', prefix: 'push { ', arch: 'arm' },
+    { name: 'after a brace', token: '_missing_register', prefix: 'push { ', arch: 'arm' },
     {
         name: 'inside a register list',
         token: '_unclosed_brace',
@@ -201,14 +201,14 @@ const POSITIONS: Position[] = [
     },
     {
         name: 'after a comma in a register list',
-        token: '_missing_name',
+        token: '_missing_register',
         prefix: 'push {r0, ',
         arch: 'arm',
     },
-    { name: 'after a range dash', token: '_missing_name', prefix: 'push {r0- ', arch: 'arm' },
+    { name: 'after a range dash', token: '_missing_register', prefix: 'push {r0- ', arch: 'arm' },
     {
         name: 'after a register alias directive',
-        token: '_missing_name',
+        token: '_missing_register',
         prefix: 'x .req ',
         arch: 'arm',
     },

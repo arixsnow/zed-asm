@@ -37,6 +37,7 @@ function nasmRadixFloats(prefix, digit) {
 
 module.exports = {
     gas: {
+        spacedJoins: true,
         nameCharacter: new RegExp(GAS_NAME),
         identifier: new RegExp(GAS_IDENTIFIER),
         dotIdentifier: new RegExp(GAS_DOT_NAME),
@@ -76,7 +77,7 @@ module.exports = {
         },
     },
     nasm: {
-        lineJoins: true,
+        spacedJoins: false,
         nameCharacter: new RegExp(NASM_NAME),
         identifier: new RegExp(NASM_IDENTIFIER),
         digitName: new RegExp(NASM_DIGIT_NAME),

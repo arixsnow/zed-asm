@@ -84,13 +84,17 @@ An instruction's operands are `_instruction_operand`, which offers everything a 
 (`_operand`) offers plus the ARM forms. That keeps ARM registers, memory operands and register lists
 out of directive arguments, where `.quad x0` names a symbol.
 
-In a syntax whose lines join at a backslash (NASM; `lexical.js` says which, and a test checks it
-against the scanner's `ASM_LINE_JOINS`), `define-grammar.js` passes every rule through
-`tree-sitter/common/joins.js`. It lets a join stand between any two characters of a terminal:
-regexes and token contents are rewritten so that a join may come before every character but the
-first, so no token starts or ends with one, and a string of several characters becomes a pattern
-aliased to its own text, so `<<` keeps its node name. Extras stay as they are. The scanner's word
-readers step over joins the same way.
+Lines join at a backslash in every syntax: nasm and yasm join them, and in GNU syntax the C
+preprocessor does (see C preprocessor lines). A join is a backslash and a newline, with blanks
+between them in GNU syntax, as the preprocessor allows; `lexical.js` holds that rule
+(`spacedJoins`), and a test checks it against the scanner's `ASM_SPACED_JOINS`.
+`define-grammar.js` passes every rule through `tree-sitter/common/joins.js`. It lets a join stand
+between any two characters of a terminal: regexes and token contents are rewritten so that a join
+may come before every character but the first, so no token starts or ends with one, and a string of
+several characters becomes a pattern aliased to its own text, so `<<` keeps its node name. A join
+between tokens is an extra. The scanner steps over joins between tokens, in strings and in raw
+text. In NASM its word readers and line comments step over them too (`ASM_WORD_JOINS`,
+`ASM_COMMENT_JOINS`); in GNU syntax a word the scanner reads and a line comment end at a backslash.
 
 Composition decides what a dialect can contain. Symbol types written with `@` (`.type f, @function`)
 come from the x86 module. The ARM grammars have no such rule and read `@note` as a comment.
@@ -209,16 +213,16 @@ comma, an expression missing after an operator, `(`, `#` or `$`, and a parenthes
 register list or a GNU-syntax string left open all close at the end of the line, before a separator,
 or before any character that cannot continue them. Each missing piece and each open construct has a
 closing token of its own (see The external scanner). `mov x0, , x1` keeps both operands, and
-`ldr x0, [x1` closes its bracket at the end of the line. GNU character constants end at the closing
-quote or at the end of the line, and so do NASM strings, unless the line ends in a join, which
-continues them on the next line. A relocation may still lack its specifier and a register its name
+`ldr x0, [x1` closes its bracket at the end of the line. Character constants and strings end at the
+closing quote or at the end of the line, unless the line ends in a join, which continues them on
+the next line. A relocation may still lack its specifier and a register its name
 after `%`. In ARM a register range may lack its end, a `:lo12:` relocation its name or its second
 colon, and a `sym(GOT)` suffix its name or its `)`.
 
 Three tests hold this. The first types every prefix of every line of the fixtures, with and without
 their final newline, and of all corpus examples, and requires every other line to parse exactly as
-before. Some constructs really span lines: a line that ends in a join (any line in NASM, a C
-preprocessor line in GNU syntax) takes in the lines it continues into, and an unclosed `/*` reaches
+before. Some constructs really span lines: a line that ends in a join (any line but a GNU-syntax
+line comment) takes in the lines it continues into, and an unclosed `/*` reaches
 its next `*/` or the end of the file. The test computes those lines from the text and lets them
 change, as part of the typed line. The other allowed change: typing a line that holds a block's
 opener, clause or closer may change how the other such lines of that block, and of the blocks around
@@ -360,18 +364,19 @@ The scanner sees only which of its own tokens the parser accepts. So each closin
 one kind of construct, and the scanner knows what may continue it. A missing piece closes before
 any character that cannot start it:
 
-| Token                        | The missing piece                                                                      | Starts with                                                    |
-| ---------------------------- | -------------------------------------------------------------------------------------- | -------------------------------------------------------------- |
-| `_missing_operand`           | an instruction operand or a condition                                                  | a value; in ARM also `[`, `{` and `=`; in x86 also `*`         |
-| `_missing_label_operand`     | an ARM branch target                                                                   | a value, `[` or `=`                                            |
-| `_missing_argument`          | a directive argument or an `.irp` value                                                | a value                                                        |
-| `_missing_register_argument` | an argument of `.cfi_offset`, `.save` and the other register directives                | a value; in ARM also `{`                                       |
-| `_missing_element`           | an element of an ARM bracket                                                           | an expression; in Assembly also `$`                            |
-| `_missing_expression`        | an expression                                                                          | an expression                                                  |
-| `_missing_name`              | a register list element, a range end, a `.req` register, the instruction after `{vex}` | a letter, `_`, `\`, or `.` before a letter                     |
-| `_missing_identifier`        | a macro name or parameter, an `.irp` parameter                                         | a letter or `_`                                                |
-| `_missing_symbol`            | an `.loh` argument, a NASM structure name                                              | a letter, `_`, or `.` before a letter                          |
-| `_missing_relocation`        | the name or second colon of `:lo12:`, the name in `sym(GOT)`                           | nothing the parser reads; the scanner reads the name and colon |
+| Token                        | The missing piece                                                                         | Starts with                                                    |
+| ---------------------------- | ----------------------------------------------------------------------------------------- | -------------------------------------------------------------- |
+| `_missing_operand`           | an instruction operand or a condition                                                     | a value; in ARM also `[`, `{` and `=`; in x86 also `*`         |
+| `_missing_label_operand`     | an ARM branch target                                                                      | a value, `[` or `=`                                            |
+| `_missing_argument`          | a directive argument or an `.irp` value                                                   | a value                                                        |
+| `_missing_register_argument` | an argument of `.cfi_offset`, `.save` and the other register directives                   | a value; in ARM also `{`                                       |
+| `_missing_element`           | an element of an ARM bracket                                                              | an expression; in Assembly also `$`                            |
+| `_missing_expression`        | an expression                                                                             | an expression                                                  |
+| `_missing_register`          | a register list element, a range end, a `.req` register                                   | a letter, `_` or `\`; in ARM (Apple) also `$`                  |
+| `_missing_name`              | a `.macro` name or parameter, an `.irp` parameter, the statement after `{vex}` or `times` | a letter, `_`, `\`, or `.` before a letter                     |
+| `_missing_identifier`        | a parameter's qualifier (`:req`), a `%macro` name                                         | a letter or `_`                                                |
+| `_missing_symbol`            | an `.loh` argument, a NASM structure name                                                 | a letter, `_`, or `.` before a letter                          |
+| `_missing_relocation`        | the name or second colon of `:lo12:`, the name in `sym(GOT)`                              | nothing the parser reads; the scanner reads the name and colon |
 
 An expression starts with a letter, a digit or one of `_ . ( - + ~ !`, in the GNU syntax also
 `' " \`, in Assembly and ARM `:` (a relocation), and in NASM `? $`. A value starts as an expression
@@ -568,6 +573,22 @@ comment lines here. No real code writes these three. A `// note` ending in a bac
 line swallows the next line in a `.S` file, which goes through the preprocessor, but not in a `.s`
 file, which GNU as reads directly. Both open as the same language, so the grammar ends that comment
 at the end of its line.
+
+The preprocessor joins code lines the same way: in a `.S` file every line that ends in a backslash,
+also with blanks before the newline, continues on the next, and a join inside a word splices it
+(GCC's manual: "you may split a line anywhere, even in the middle of a word"). GNU as and clang
+reject a backslash-newline in the code of a `.s` file, so every GNU-syntax language joins code
+lines as the preprocessor does, and no valid `.s` file reads differently. A join is a blank
+between tokens, a splice inside a name, a number or an operator, and a string continues past it:
+`.long A | \` and `B` on the next line is one directive. A backslash that no newline follows keeps
+its GNU meaning, a macro argument (`\reg`) or `\()`. A word the scanner reads, a mnemonic, a
+directive, a register, a prefix or a statement's label, ends at a backslash. The scanner cannot see
+the character after a backslash without reading it, and tree-sitter gives it one token end and no
+way back, so it cannot tell `push\width`, a word and a macro argument, from `.lo\` and `ng` on the
+next line, one word. None of the 7,245 joins in the pinned Linux, glibc and FFmpeg sources splits
+such a word. When the scanner meets a backslash that is no join between two tokens, it hands the
+rest of the scan a lexer that offers the backslash again, so every token is decided as without
+joins.
 
 ## Blocks, labels and directive forms
 
@@ -884,7 +905,7 @@ directives that take registers, below.
 | `relocation`       | `:lo12:sym`, `#:lower16:sym`, `sym(GOT)`, and as before `sym@PAGE`                                                                                                  | `specifier`, `value`, `symbol`  |
 | `register_alias`   | `name .req x0`, `name .dn d0`, `name .qn q0`                                                                                                                        | `name`, `directive`, `register` |
 
-After `[` or `{` an element is required. `[]` reads a missing element, `{}` a missing name and
+After `[` or `{` an element is required. `[]` reads a missing element, `{}` a missing register and
 `d0[]` a missing expression, the hidden tokens that close constructs being typed, which is also how
 `d0[]`, a valid lane, parses. The scanner closes `[` and `{` at the end of a line, before a
 separator and before any character that cannot continue them (see The external scanner).
@@ -954,7 +975,11 @@ writeback, lanes and before an arrangement (`src.16b`). The same positions take 
 argument (`{$0.16b}`), which FFmpeg's and dav1d's NEON macros use throughout. The grammar reads
 `.req`, `.dn` and `.qn` lines as a `register_alias`. A name or macro argument in a register list, a
 range, a writeback or before a lane is an `identifier`, a `macro_argument` or a `concatenation`,
-which also keeps a register name still being typed (`{d8-d`) from breaking the line.
+which also keeps a register name still being typed (`{d8-d`) from breaking the line. A
+concatenation there starts with a register, a name or a macro argument, never a dot name: GNU as
+and clang read `.foo .req r1` as an unknown directive and reject `{.foo}`, so a register list
+closes before `.foo` and the error stays on its line. x86 register positions use the same rule
+with their own heads, a register or a `%` name (`%xmm\i`).
 
 ### Keywords
 
@@ -1375,8 +1400,8 @@ it, and a join inside a token splices it as nasm does (`d\` and then `b 4` is `d
 modules). A word that ends right before a join, with a character that cannot continue it on the next
 line, keeps the join inside its node: the scanner cannot see past the line end without reading it,
 and its zero-width tokens rule out marking the end early. A directive after a line that holds only a
-backslash still starts its line, and one after `nop \` does not. GNU as and clang join no lines of a
-`.s` file, so in GNU syntax only C preprocessor lines join.
+backslash still starts its line, and one after `nop \` does not. GNU syntax joins lines as the C
+preprocessor does (see C preprocessor lines).
 
 | Token              | Meaning                                                                                                    | yasm |
 | ------------------ | ---------------------------------------------------------------------------------------------------------- | ---- |

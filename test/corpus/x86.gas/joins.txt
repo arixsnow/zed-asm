@@ -1,0 +1,68 @@
+================================================================================
+A join between two operands
+================================================================================
+
+movl %eax, \
+     %ebx
+
+--------------------------------------------------------------------------------
+
+(source_file
+  (instruction
+    mnemonic: (mnemonic)
+    operand: (register)
+    operand: (register)))
+
+================================================================================
+A join inside an AT&T memory operand
+================================================================================
+
+movl 8(%rsp, \
+     %rax, 4), %eax
+
+--------------------------------------------------------------------------------
+
+(source_file
+  (instruction
+    mnemonic: (mnemonic)
+    operand: (memory_operand
+      displacement: (integer)
+      base: (register)
+      index: (register)
+      scale: (integer))
+    operand: (register)))
+
+================================================================================
+A join between the mnemonic and its operands
+================================================================================
+
+movl \
+     %eax, %ebx
+
+--------------------------------------------------------------------------------
+
+(source_file
+  (instruction
+    mnemonic: (mnemonic)
+    operand: (register)
+    operand: (register)))
+
+================================================================================
+A macro argument after a blank is an operand, not a join
+================================================================================
+
+.macro m reg
+push \reg
+.endm
+
+--------------------------------------------------------------------------------
+
+(source_file
+  (macro_definition
+    name: (identifier)
+    parameter: (parameter
+      name: (identifier))
+    body: (body
+      (instruction
+        mnemonic: (mnemonic)
+        operand: (macro_argument)))))

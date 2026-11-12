@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 
 const { languages } = require('../../languages.config.cjs');
-const { joinTolerant } = require('./joins.js');
+const { lineJoins } = require('./joins.js');
 const { INSTRUCTION_TOKENS } = require('./roles.js');
 const lexical = require('./lexical.js');
 
@@ -40,6 +40,7 @@ const EXTERNALS = [
     '_missing_label_operand',
     '_missing_argument',
     '_missing_register_argument',
+    '_missing_register',
     '_missing_element',
     '_missing_expression',
     '_missing_name',
@@ -261,16 +262,15 @@ module.exports = function defineGrammar(grammarName, catalog = languages) {
         rules[name] = ($) => choice(...unique(alternatives.map((alternative) => alternative($))));
     }
 
-    if (ctx.lexical.lineJoins) {
-        for (const [name, rule] of Object.entries(rules)) {
-            rules[name] = ($) => joinTolerant(rule($));
-        }
+    const joins = lineJoins(ctx.lexical.spacedJoins);
+    for (const [name, rule] of Object.entries(rules)) {
+        rules[name] = ($) => joins.joinTolerant(rule($));
     }
 
     return grammar({
         name: grammarName,
         externals: ($) => EXTERNALS.map((name) => $[name]),
-        extras: ($) => extras.map((extra) => extra($)),
+        extras: ($) => [...extras.map((extra) => extra($)), joins.extra],
         conflicts: ($) => unique(conflicts.map((conflict) => conflict($))),
         inline: ($) => INLINED.filter((name) => name in rules).map((name) => $[name]),
         rules,

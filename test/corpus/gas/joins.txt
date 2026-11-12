@@ -1,0 +1,128 @@
+================================================================================
+A backslash joins the operands of a directive across lines
+================================================================================
+
+.long 1 | \
+      2
+
+--------------------------------------------------------------------------------
+
+(source_file
+  (directive
+    name: (directive_name)
+    argument: (binary_expression
+      left: (integer)
+      right: (integer))))
+
+================================================================================
+Blanks between the backslash and the newline still join, as the C preprocessor reads them
+================================================================================
+
+.long 1 + \   
+      2
+
+--------------------------------------------------------------------------------
+
+(source_file
+  (directive
+    name: (directive_name)
+    argument: (binary_expression
+      left: (integer)
+      right: (integer))))
+
+================================================================================
+A join inside a name splices it
+================================================================================
+
+.long fo\
+o
+
+--------------------------------------------------------------------------------
+
+(source_file
+  (directive
+    name: (directive_name)
+    argument: (identifier)))
+
+================================================================================
+A string continues past a join
+================================================================================
+
+.ascii "a\
+b"
+
+--------------------------------------------------------------------------------
+
+(source_file
+  (directive
+    name: (directive_name)
+    argument: (string)))
+
+================================================================================
+A line comment ends at its line even after a backslash
+================================================================================
+
+nop // c \
+nop
+
+--------------------------------------------------------------------------------
+
+(source_file
+  (instruction
+    mnemonic: (mnemonic))
+  (line_comment)
+  (instruction
+    mnemonic: (mnemonic)))
+
+================================================================================
+A macro argument keeps its backslash next to a join
+================================================================================
+
+.macro m reg
+.long \reg + \
+      1
+.endm
+
+--------------------------------------------------------------------------------
+
+(source_file
+  (macro_definition
+    name: (identifier)
+    parameter: (parameter
+      name: (identifier))
+    body: (body
+      (directive
+        name: (directive_name)
+        argument: (binary_expression
+          left: (macro_argument)
+          right: (integer))))))
+
+================================================================================
+A statement after a line that holds only a backslash still starts its line
+================================================================================
+
+\
+.long 1
+
+--------------------------------------------------------------------------------
+
+(source_file
+  (directive
+    name: (directive_name)
+    argument: (integer)))
+
+================================================================================
+Several joins in a row
+================================================================================
+
+.long 1, \
+\
+      2
+
+--------------------------------------------------------------------------------
+
+(source_file
+  (directive
+    name: (directive_name)
+    argument: (integer)
+    argument: (integer)))

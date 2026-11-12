@@ -638,6 +638,10 @@
         {
           "type": "macro_argument",
           "named": true
+        },
+        {
+          "type": "register",
+          "named": true
         }
       ]
     }

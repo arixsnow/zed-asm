@@ -5,8 +5,9 @@ import assert from 'node:assert/strict';
 import { createRequire } from 'node:module';
 
 const load = createRequire(import.meta.url);
-const { joinTolerant, nonEmptyRegex } = load('../../tree-sitter/common/joins.js');
+const { lineJoins } = load('../../tree-sitter/common/joins.js');
 const lexical = load('../../tree-sitter/common/lexical.js');
+const { joinTolerant, nonEmptyRegex } = lineJoins(false);
 
 const JOIN = '\\\n';
 
@@ -43,6 +44,21 @@ test('a join-tolerant terminal takes a join between two characters, never at eit
         }
     }
     assert.deepStrictEqual(failures, []);
+});
+
+test('a GNU join may hold blanks before its newline, as cpp splices, and a NASM join may not', () => {
+    const gnu = lineJoins(true);
+    const identifier = new RegExp(`^(?:${gnu.nonEmptyRegex(lexical.gas.identifier.source)})$`);
+    const argument = new RegExp(`^(?:${gnu.nonEmptyRegex(lexical.gas.macroArgument.source)})$`);
+    for (const join of ['\\\n', '\\ \t\n', '\\\r\n', '\\ \r\n']) {
+        assert.ok(gnu.extra.test(join), JSON.stringify(join));
+        assert.ok(identifier.test(`fo${join}o`), JSON.stringify(join));
+        assert.ok(argument.test(`\\${join}reg`), JSON.stringify(join));
+    }
+    assert.ok(!identifier.test('fo\\o'));
+    assert.ok(argument.test('\\reg'));
+    assert.ok(!lineJoins(false).extra.test('\\ \n'));
+    assert.ok(lineJoins(false).extra.test('\\\r\n'));
 });
 
 test('a multi-character string keeps its node name and a single character stays a string', () => {

@@ -274,7 +274,7 @@ test("the tooling reads each dialect's quote, comment, join and block rules from
         gnuSyntax: true,
         backquoteStrings: false,
         percentMacros: false,
-        lineJoins: false,
+        commentJoins: false,
         spacedJoins: true,
         reservedNames: false,
         namedStatements: false,
@@ -312,7 +312,7 @@ test("the tooling reads each dialect's quote, comment, join and block rules from
             gnuSyntax: false,
             backquoteStrings: true,
             percentMacros: true,
-            lineJoins: true,
+            commentJoins: true,
             spacedJoins: false,
             reservedNames: true,
             namedStatements: true,
@@ -379,12 +379,12 @@ test("the tooling reads each dialect's quote, comment, join and block rules from
     ]);
 });
 
-test('a syntax joins lines in the grammar exactly where its dialects join them in the scanner', () => {
+test('a syntax joins lines in the grammar with the blank rule its dialects use in the scanner', () => {
     const lexing = statementLexing(SCANNER);
     for (const language of manifest.languages) {
         assert.deepStrictEqual(
-            lexical[language.syntax].lineJoins === true,
-            lexing[language.dialect].lineJoins,
+            lexical[language.syntax].spacedJoins,
+            lexing[language.dialect].spacedJoins,
             language.grammar,
         );
     }

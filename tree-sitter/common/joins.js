@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: MIT
 
-const JOIN = '(?:\\\\\\r?\\n)*';
+const SPACED_JOIN = '\\\\[ \\t\\f\\v\\r]*\\n';
+const TIGHT_JOIN = '\\\\\\r?\\n';
 const SPECIAL = /[\\^$.*+?()[\]{}|]/;
 const LONG_ESCAPE = /[xuUpPck0-9]/;
 
@@ -133,204 +134,217 @@ function nullableSequence(items) {
     return items.every(nullableItem);
 }
 
-function joinedAtom(atom) {
-    if (atom.kind === 'unit') {
-        return `${JOIN}${atom.text}`;
-    }
-    return `(?:${atom.content.map(joinedSequence).join('|')})`;
-}
+function lineJoins(spaced) {
+    const join = spaced ? SPACED_JOIN : TIGHT_JOIN;
+    const JOIN = `(?:${join})*`;
 
-function joinedItem({ item, quantifier }) {
-    const base = joinedAtom(item);
-    return quantifier === '' ? base : `(?:${base})${quantifier}`;
-}
-
-function joinedSequence(items) {
-    return items.map(joinedItem).join('');
-}
-
-function choiceOf(alternatives) {
-    const present = alternatives.filter((alternative) => alternative !== null);
-    if (present.length === 0) {
-        return null;
-    }
-    return present.length === 1 ? present[0] : `(?:${present.join('|')})`;
-}
-
-function nonEmptyAtom(atom) {
-    if (atom.kind === 'unit') {
-        return atom.text;
-    }
-    return choiceOf(atom.content.map(nonEmptySequence));
-}
-
-function nonEmptyItem({ item, quantifier }) {
-    const first = nonEmptyAtom(item);
-    if (first === null || quantifier === '' || quantifier === '?') {
-        return first;
-    }
-    const { low, high } = bounds(quantifier);
-    if (high === 0) {
-        return null;
-    }
-    const rest = `(?:${joinedAtom(item)})`;
-    let more = `{${Math.max(low - 1, 0)},${high === null ? '' : high - 1}}`;
-    if (high === null && low <= 1) {
-        more = '*';
-    }
-    return `(?:${first})${rest}${more}`;
-}
-
-function nonEmptySequence(items) {
-    if (items.length === 0) {
-        return null;
-    }
-    const [first, ...rest] = items;
-    const head = nonEmptyItem(first);
-    const withHead = head === null ? null : `${head}${joinedSequence(rest)}`;
-    return nullableItem(first) ? choiceOf([withHead, nonEmptySequence(rest)]) : withHead;
-}
-
-function nonEmptyRegex(source) {
-    return choiceOf(parseRegex(source).map(nonEmptySequence));
-}
-
-function joinedRegex(source) {
-    return parseRegex(source).map(joinedSequence).join('|');
-}
-
-function literal(text) {
-    return [...text].map((character) => SPECIAL.test(character) ? `\\${character}` : character)
-        .join('');
-}
-
-function normalize(node) {
-    if (typeof node === 'string') {
-        return { type: 'STRING', value: node };
-    }
-    if (node instanceof RegExp) {
-        return { type: 'PATTERN', value: node.source };
-    }
-    return node;
-}
-
-function nullable(node) {
-    switch (node.type) {
-        case 'STRING':
-            return node.value === '';
-        case 'PATTERN':
-            return parseRegex(node.value).some(nullableSequence);
-        case 'SEQ':
-            return node.members.map(normalize).every(nullable);
-        case 'CHOICE':
-            return node.members.map(normalize).some(nullable);
-        case 'REPEAT':
-        case 'BLANK':
-            return true;
-        default:
-            return nullable(normalize(node.content));
-    }
-}
-
-function joined(node) {
-    switch (node.type) {
-        case 'STRING':
-            return { type: 'PATTERN', value: joinedRegex(literal(node.value)) };
-        case 'PATTERN':
-            return { ...node, value: joinedRegex(node.value) };
-        case 'SEQ':
-        case 'CHOICE':
-            return { ...node, members: node.members.map((member) => joined(normalize(member))) };
-        case 'BLANK':
-            return node;
-        default:
-            return { ...node, content: joined(normalize(node.content)) };
-    }
-}
-
-function nonEmptyChoice(members) {
-    const present = members.filter((member) => member !== null);
-    if (present.length === 0) {
-        return null;
-    }
-    return present.length === 1 ? present[0] : { type: 'CHOICE', members: present };
-}
-
-function nonEmptySeq(members) {
-    if (members.length === 0) {
-        return null;
-    }
-    const [first, ...rest] = members;
-    const head = nonEmpty(first);
-    const withHead = head === null ? null : { type: 'SEQ', members: [head, ...rest.map(joined)] };
-    return nullable(first) ? nonEmptyChoice([withHead, nonEmptySeq(rest)]) : withHead;
-}
-
-function nonEmpty(node) {
-    switch (node.type) {
-        case 'STRING':
-            if (node.value.length <= 1) {
-                return node.value === '' ? null : node;
-            }
-            return { type: 'PATTERN', value: nonEmptyRegex(literal(node.value)) };
-        case 'PATTERN': {
-            const value = nonEmptyRegex(node.value);
-            return value === null ? null : { ...node, value };
+    function joinedAtom(atom) {
+        if (atom.kind === 'unit') {
+            return `${JOIN}${atom.text}`;
         }
-        case 'SEQ':
-            return nonEmptySeq(node.members.map(normalize));
-        case 'CHOICE':
-            return nonEmptyChoice(node.members.map((member) => nonEmpty(normalize(member))));
-        case 'REPEAT':
-        case 'REPEAT1': {
-            const content = normalize(node.content);
-            const head = nonEmpty(content);
-            return head === null
-                ? null
-                : { type: 'SEQ', members: [head, { type: 'REPEAT', content: joined(content) }] };
-        }
-        case 'BLANK':
+        return `(?:${atom.content.map(joinedSequence).join('|')})`;
+    }
+
+    function joinedItem({ item, quantifier }) {
+        const base = joinedAtom(item);
+        return quantifier === '' ? base : `(?:${base})${quantifier}`;
+    }
+
+    function joinedSequence(items) {
+        return items.map(joinedItem).join('');
+    }
+
+    function choiceOf(alternatives) {
+        const present = alternatives.filter((alternative) => alternative !== null);
+        if (present.length === 0) {
             return null;
-        default: {
-            const content = nonEmpty(normalize(node.content));
-            return content === null ? null : { ...node, content };
+        }
+        return present.length === 1 ? present[0] : `(?:${present.join('|')})`;
+    }
+
+    function nonEmptyAtom(atom) {
+        if (atom.kind === 'unit') {
+            return atom.text;
+        }
+        return choiceOf(atom.content.map(nonEmptySequence));
+    }
+
+    function nonEmptyItem({ item, quantifier }) {
+        const first = nonEmptyAtom(item);
+        if (first === null || quantifier === '' || quantifier === '?') {
+            return first;
+        }
+        const { low, high } = bounds(quantifier);
+        if (high === 0) {
+            return null;
+        }
+        const rest = `(?:${joinedAtom(item)})`;
+        let more = `{${Math.max(low - 1, 0)},${high === null ? '' : high - 1}}`;
+        if (high === null && low <= 1) {
+            more = '*';
+        }
+        return `(?:${first})${rest}${more}`;
+    }
+
+    function nonEmptySequence(items) {
+        if (items.length === 0) {
+            return null;
+        }
+        const [first, ...rest] = items;
+        const head = nonEmptyItem(first);
+        const withHead = head === null ? null : `${head}${joinedSequence(rest)}`;
+        return nullableItem(first) ? choiceOf([withHead, nonEmptySequence(rest)]) : withHead;
+    }
+
+    function nonEmptyRegex(source) {
+        return choiceOf(parseRegex(source).map(nonEmptySequence));
+    }
+
+    function joinedRegex(source) {
+        return parseRegex(source).map(joinedSequence).join('|');
+    }
+
+    function literal(text) {
+        return [...text].map((character) => SPECIAL.test(character) ? `\\${character}` : character)
+            .join('');
+    }
+
+    function normalize(node) {
+        if (typeof node === 'string') {
+            return { type: 'STRING', value: node };
+        }
+        if (node instanceof RegExp) {
+            return { type: 'PATTERN', value: node.source };
+        }
+        return node;
+    }
+
+    function nullable(node) {
+        switch (node.type) {
+            case 'STRING':
+                return node.value === '';
+            case 'PATTERN':
+                return parseRegex(node.value).some(nullableSequence);
+            case 'SEQ':
+                return node.members.map(normalize).every(nullable);
+            case 'CHOICE':
+                return node.members.map(normalize).some(nullable);
+            case 'REPEAT':
+            case 'BLANK':
+                return true;
+            default:
+                return nullable(normalize(node.content));
         }
     }
-}
 
-function full(node) {
-    const content = nonEmpty(node);
-    if (!nullable(node)) {
-        return content;
+    function joined(node) {
+        switch (node.type) {
+            case 'STRING':
+                return { type: 'PATTERN', value: joinedRegex(literal(node.value)) };
+            case 'PATTERN':
+                return { ...node, value: joinedRegex(node.value) };
+            case 'SEQ':
+            case 'CHOICE':
+                return {
+                    ...node,
+                    members: node.members.map((member) => joined(normalize(member))),
+                };
+            case 'BLANK':
+                return node;
+            default:
+                return { ...node, content: joined(normalize(node.content)) };
+        }
     }
-    return content === null
-        ? { type: 'BLANK' }
-        : { type: 'CHOICE', members: [content, { type: 'BLANK' }] };
-}
 
-function joinTolerant(rule) {
-    const node = normalize(rule);
-    switch (node.type) {
-        case 'STRING':
-            return node.value.length > 1
-                ? { type: 'ALIAS', content: nonEmpty(node), named: false, value: node.value }
-                : node;
-        case 'PATTERN':
-            return full(node);
-        case 'TOKEN':
-        case 'IMMEDIATE_TOKEN':
-            return { ...node, content: full(normalize(node.content)) };
-        case 'ALIAS':
-            return { ...node, content: joinTolerant(node.content) };
-        default:
-            if ('members' in node) {
-                return { ...node, members: node.members.map(joinTolerant) };
+    function nonEmptyChoice(members) {
+        const present = members.filter((member) => member !== null);
+        if (present.length === 0) {
+            return null;
+        }
+        return present.length === 1 ? present[0] : { type: 'CHOICE', members: present };
+    }
+
+    function nonEmptySeq(members) {
+        if (members.length === 0) {
+            return null;
+        }
+        const [first, ...rest] = members;
+        const head = nonEmpty(first);
+        const withHead = head === null
+            ? null
+            : { type: 'SEQ', members: [head, ...rest.map(joined)] };
+        return nullable(first) ? nonEmptyChoice([withHead, nonEmptySeq(rest)]) : withHead;
+    }
+
+    function nonEmpty(node) {
+        switch (node.type) {
+            case 'STRING':
+                if (node.value.length <= 1) {
+                    return node.value === '' ? null : node;
+                }
+                return { type: 'PATTERN', value: nonEmptyRegex(literal(node.value)) };
+            case 'PATTERN': {
+                const value = nonEmptyRegex(node.value);
+                return value === null ? null : { ...node, value };
             }
-            if ('content' in node) {
+            case 'SEQ':
+                return nonEmptySeq(node.members.map(normalize));
+            case 'CHOICE':
+                return nonEmptyChoice(node.members.map((member) => nonEmpty(normalize(member))));
+            case 'REPEAT':
+            case 'REPEAT1': {
+                const content = normalize(node.content);
+                const head = nonEmpty(content);
+                return head === null ? null : {
+                    type: 'SEQ',
+                    members: [head, { type: 'REPEAT', content: joined(content) }],
+                };
+            }
+            case 'BLANK':
+                return null;
+            default: {
+                const content = nonEmpty(normalize(node.content));
+                return content === null ? null : { ...node, content };
+            }
+        }
+    }
+
+    function full(node) {
+        const content = nonEmpty(node);
+        if (!nullable(node)) {
+            return content;
+        }
+        return content === null
+            ? { type: 'BLANK' }
+            : { type: 'CHOICE', members: [content, { type: 'BLANK' }] };
+    }
+
+    function joinTolerant(rule) {
+        const node = normalize(rule);
+        switch (node.type) {
+            case 'STRING':
+                return node.value.length > 1
+                    ? { type: 'ALIAS', content: nonEmpty(node), named: false, value: node.value }
+                    : node;
+            case 'PATTERN':
+                return full(node);
+            case 'TOKEN':
+            case 'IMMEDIATE_TOKEN':
+                return { ...node, content: full(normalize(node.content)) };
+            case 'ALIAS':
                 return { ...node, content: joinTolerant(node.content) };
-            }
-            return node;
+            default:
+                if ('members' in node) {
+                    return { ...node, members: node.members.map(joinTolerant) };
+                }
+                if ('content' in node) {
+                    return { ...node, content: joinTolerant(node.content) };
+                }
+                return node;
+        }
     }
+
+    return { joinTolerant, nonEmptyRegex, extra: new RegExp(join) };
 }
 
-module.exports = { joinTolerant, nonEmptyRegex };
+module.exports = { lineJoins };

@@ -539,5 +539,4 @@ module.exports = (ctx) => ({
                 ),
         ],
     },
-    extras: [() => /\\\r?\n/],
 });

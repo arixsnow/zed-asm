@@ -7040,6 +7040,10 @@
     },
     {
       "type": "SYMBOL",
+      "name": "_missing_register"
+    },
+    {
+      "type": "SYMBOL",
       "name": "_missing_element"
     },
     {

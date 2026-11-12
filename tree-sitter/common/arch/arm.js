@@ -120,8 +120,23 @@ module.exports = (ctx) => {
                     alias($._arm_register, $.register),
                     prec(1, $.identifier),
                     prec(1, $.macro_argument),
-                    prec(1, $.concatenation),
+                    alias($._arm_register_concatenation, $.concatenation),
                     ...(positionalArguments ? [alias($._darwin_argument, $.macro_argument)] : []),
+                ),
+            _arm_register_concatenation: ($) =>
+                prec(
+                    1,
+                    seq(
+                        choice(
+                            alias($._arm_register, $.register),
+                            $.identifier,
+                            $.macro_argument,
+                            ...(positionalArguments
+                                ? [alias($._darwin_argument, $.macro_argument)]
+                                : []),
+                        ),
+                        $._glued_pieces,
+                    ),
                 ),
             writeback: ($) => prec(1, seq(field('register', $._register_name), '!')),
             indexed_register: ($) =>
@@ -167,8 +182,10 @@ module.exports = (ctx) => {
             register_list: ($) =>
                 prec.right(seq(
                     '{',
-                    choice(field('element', $._list_element), $._missing_name),
-                    repeat(seq(',', choice(field('element', $._list_element), $._missing_name))),
+                    choice(field('element', $._list_element), $._missing_register),
+                    repeat(
+                        seq(',', choice(field('element', $._list_element), $._missing_register)),
+                    ),
                     choice('}', $._unclosed_brace),
                     optional(
                         seq('[', field('index', $._expression), choice(']', $._unclosed_index)),
@@ -180,7 +197,7 @@ module.exports = (ctx) => {
                 seq(
                     field('start', $._register_name),
                     alias($._range_dash, '-'),
-                    choice(field('end', $._register_name), $._missing_name),
+                    choice(field('end', $._register_name), $._missing_register),
                 ),
             register_alias: ($) =>
                 seq(
@@ -196,7 +213,7 @@ module.exports = (ctx) => {
                     ),
                     choice(
                         field('register', choice($._register_name, $.indexed_register)),
-                        $._missing_name,
+                        $._missing_register,
                     ),
                 ),
             literal_pool: ($) => seq('=', field('value', $._expression)),

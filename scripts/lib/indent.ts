@@ -17,7 +17,7 @@ export interface StatementLexing {
     gnuSyntax: boolean;
     backquoteStrings: boolean;
     percentMacros: boolean;
-    lineJoins: boolean;
+    commentJoins: boolean;
     spacedJoins: boolean;
     reservedNames: boolean;
     namedStatements: boolean;
@@ -315,7 +315,7 @@ export function statementLexing(scanner: string): Record<string, Omit<StatementL
             gnuSyntax: flag('ASM_GNU_SYNTAX'),
             backquoteStrings: flag('ASM_BACKQUOTE_STRINGS'),
             percentMacros: flag('ASM_PERCENT_MACROS'),
-            lineJoins: flag('ASM_LINE_JOINS'),
+            commentJoins: flag('ASM_COMMENT_JOINS'),
             spacedJoins: flag('ASM_SPACED_JOINS'),
             reservedNames: flag('ASM_RESERVED_NAMES'),
             namedStatements: flag('ASM_NAMED_STATEMENTS'),

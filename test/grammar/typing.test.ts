@@ -30,7 +30,6 @@ interface Tree {
     comments: { startRow: number; endRow: number }[];
 }
 
-const PREPROCESSOR_TYPES = new Set(['preproc_line', 'preproc_define']);
 const LEXING = statementLexing(
     readFileSync(join(ROOT, 'tree-sitter', 'common', 'scanner.h'), 'utf8'),
 );
@@ -151,9 +150,9 @@ function joiner(grammar: string, tree: Tree, lines: string[]): (index: number) =
     const join = lexing.spacedJoins ? /\\[ \t\f\v\r]*$/ : /\\\r?$/;
     return (index: number) =>
         join.test(lines[index]) &&
-        (lexing.lineJoins ||
-            tree.nodes.some((node) =>
-                PREPROCESSOR_TYPES.has(node.type) && node.startRow <= index && index <= node.endRow
+        (lexing.commentJoins ||
+            !tree.nodes.some((node) =>
+                node.type === 'line_comment' && node.startRow <= index && index <= node.endRow
             ));
 }
 

@@ -16,6 +16,8 @@ const REJECTED: [string, number[], string[]][] = [
     ['1$:\n    b 1$', [0, 1], ['asm_arm_apple', 'asm_x86_gas']],
     ['1:\n    b 1B', [1], GNU],
     ['1b: nop', [0], GNU],
+    ['    ldm r0, {.foo}\n    nop', [0], ['asm_auto', 'asm_arm']],
+    ['    ldm r0, {.endm\n    nop', [0], ['asm_auto', 'asm_arm']],
     ['    .loc 1, 2, 3', [0], GNU],
     ['    .equ A 1', [0], GNU],
     ['    .float 1.5f', [0], GNU],

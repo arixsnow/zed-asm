@@ -49,19 +49,19 @@
     },
     "_newline": {
       "type": "PATTERN",
-      "value": "\\r?\\n"
+      "value": "(?:\\r(?:\\\\[ \\t\\f\\v\\r]*\\n)*\\n|\\n)"
     },
     "identifier": {
       "type": "PATTERN",
-      "value": "[A-Za-z_][A-Za-z0-9_.$]*"
+      "value": "[A-Za-z_](?:(?:\\\\[ \\t\\f\\v\\r]*\\n)*[A-Za-z0-9_.$])*"
     },
     "_dot_identifier": {
       "type": "PATTERN",
-      "value": "\\.[A-Za-z0-9_.$]+"
+      "value": "\\.(?:(?:\\\\[ \\t\\f\\v\\r]*\\n)*[A-Za-z0-9_.$])+"
     },
     "integer": {
       "type": "PATTERN",
-      "value": "(0[xX][0-9a-fA-F]+|0[bB][01]+|[0-9]+)([uU][lL]{0,2}|[lL]{1,2}[uU]?)?"
+      "value": "(?:0(?:\\\\[ \\t\\f\\v\\r]*\\n)*[xX](?:(?:\\\\[ \\t\\f\\v\\r]*\\n)*[0-9a-fA-F])+|0(?:\\\\[ \\t\\f\\v\\r]*\\n)*[bB](?:(?:\\\\[ \\t\\f\\v\\r]*\\n)*[01])+|(?:[0-9])(?:(?:\\\\[ \\t\\f\\v\\r]*\\n)*[0-9])*)(?:(?:(?:\\\\[ \\t\\f\\v\\r]*\\n)*[uU](?:(?:\\\\[ \\t\\f\\v\\r]*\\n)*[lL]){0,2}|(?:(?:\\\\[ \\t\\f\\v\\r]*\\n)*[lL]){1,2}(?:(?:\\\\[ \\t\\f\\v\\r]*\\n)*[uU])?))?"
     },
     "escape_sequence": {
       "type": "IMMEDIATE_TOKEN",
@@ -74,7 +74,7 @@
           },
           {
             "type": "PATTERN",
-            "value": "[0-7]{1,3}|[xX][0-9a-fA-F]+|[^0-7xX\\n]"
+            "value": "(?:(?:\\\\[ \\t\\f\\v\\r]*\\n)*[0-7]){1,3}|(?:\\\\[ \\t\\f\\v\\r]*\\n)*[xX](?:(?:\\\\[ \\t\\f\\v\\r]*\\n)*[0-9a-fA-F])+|(?:\\\\[ \\t\\f\\v\\r]*\\n)*[^0-7xX\\n]"
           }
         ]
       }
@@ -550,7 +550,12 @@
                 "type": "FIELD",
                 "name": "operator",
                 "content": {
-                  "type": "STRING",
+                  "type": "ALIAS",
+                  "content": {
+                    "type": "PATTERN",
+                    "value": "\\|(?:\\\\[ \\t\\f\\v\\r]*\\n)*\\|"
+                  },
+                  "named": false,
                   "value": "||"
                 }
               },
@@ -583,7 +588,12 @@
                 "type": "FIELD",
                 "name": "operator",
                 "content": {
-                  "type": "STRING",
+                  "type": "ALIAS",
+                  "content": {
+                    "type": "PATTERN",
+                    "value": "&(?:\\\\[ \\t\\f\\v\\r]*\\n)*&"
+                  },
+                  "named": false,
                   "value": "&&"
                 }
               },
@@ -616,7 +626,12 @@
                 "type": "FIELD",
                 "name": "operator",
                 "content": {
-                  "type": "STRING",
+                  "type": "ALIAS",
+                  "content": {
+                    "type": "PATTERN",
+                    "value": "=(?:\\\\[ \\t\\f\\v\\r]*\\n)*="
+                  },
+                  "named": false,
                   "value": "=="
                 }
               },
@@ -649,7 +664,12 @@
                 "type": "FIELD",
                 "name": "operator",
                 "content": {
-                  "type": "STRING",
+                  "type": "ALIAS",
+                  "content": {
+                    "type": "PATTERN",
+                    "value": "!(?:\\\\[ \\t\\f\\v\\r]*\\n)*="
+                  },
+                  "named": false,
                   "value": "!="
                 }
               },
@@ -682,7 +702,12 @@
                 "type": "FIELD",
                 "name": "operator",
                 "content": {
-                  "type": "STRING",
+                  "type": "ALIAS",
+                  "content": {
+                    "type": "PATTERN",
+                    "value": "<(?:\\\\[ \\t\\f\\v\\r]*\\n)*>"
+                  },
+                  "named": false,
                   "value": "<>"
                 }
               },
@@ -748,7 +773,12 @@
                 "type": "FIELD",
                 "name": "operator",
                 "content": {
-                  "type": "STRING",
+                  "type": "ALIAS",
+                  "content": {
+                    "type": "PATTERN",
+                    "value": "<(?:\\\\[ \\t\\f\\v\\r]*\\n)*="
+                  },
+                  "named": false,
                   "value": "<="
                 }
               },
@@ -814,7 +844,12 @@
                 "type": "FIELD",
                 "name": "operator",
                 "content": {
-                  "type": "STRING",
+                  "type": "ALIAS",
+                  "content": {
+                    "type": "PATTERN",
+                    "value": ">(?:\\\\[ \\t\\f\\v\\r]*\\n)*="
+                  },
+                  "named": false,
                   "value": ">="
                 }
               },
@@ -1149,7 +1184,12 @@
                 "type": "FIELD",
                 "name": "operator",
                 "content": {
-                  "type": "STRING",
+                  "type": "ALIAS",
+                  "content": {
+                    "type": "PATTERN",
+                    "value": "<(?:\\\\[ \\t\\f\\v\\r]*\\n)*<"
+                  },
+                  "named": false,
                   "value": "<<"
                 }
               },
@@ -1182,7 +1222,12 @@
                 "type": "FIELD",
                 "name": "operator",
                 "content": {
-                  "type": "STRING",
+                  "type": "ALIAS",
+                  "content": {
+                    "type": "PATTERN",
+                    "value": ">(?:\\\\[ \\t\\f\\v\\r]*\\n)*>"
+                  },
+                  "named": false,
                   "value": ">>"
                 }
               },
@@ -1552,7 +1597,7 @@
         "value": 1,
         "content": {
           "type": "PATTERN",
-          "value": "\\.[0-9]+([eE][+-]?[0-9]+)?"
+          "value": "\\.(?:(?:\\\\[ \\t\\f\\v\\r]*\\n)*[0-9])+(?:(?:(?:\\\\[ \\t\\f\\v\\r]*\\n)*[eE](?:(?:\\\\[ \\t\\f\\v\\r]*\\n)*[+-])?(?:(?:\\\\[ \\t\\f\\v\\r]*\\n)*[0-9])+))?"
         }
       }
     },
@@ -1578,7 +1623,12 @@
                 "value": "="
               },
               {
-                "type": "STRING",
+                "type": "ALIAS",
+                "content": {
+                  "type": "PATTERN",
+                  "value": "=(?:\\\\[ \\t\\f\\v\\r]*\\n)*="
+                },
+                "named": false,
                 "value": "=="
               }
             ]
@@ -1699,15 +1749,15 @@
     },
     "macro_argument": {
       "type": "PATTERN",
-      "value": "\\\\(\\.?[A-Za-z_][A-Za-z0-9_.$]*|@|\\+)"
+      "value": "\\\\(?:(?:(?:\\\\[ \\t\\f\\v\\r]*\\n)*\\.)?(?:\\\\[ \\t\\f\\v\\r]*\\n)*[A-Za-z_](?:(?:\\\\[ \\t\\f\\v\\r]*\\n)*[A-Za-z0-9_.$])*|(?:\\\\[ \\t\\f\\v\\r]*\\n)*@|(?:\\\\[ \\t\\f\\v\\r]*\\n)*\\+)"
     },
     "numeric_label": {
       "type": "PATTERN",
-      "value": "[0-9]+[bf]"
+      "value": "(?:[0-9])(?:(?:\\\\[ \\t\\f\\v\\r]*\\n)*[0-9])*(?:\\\\[ \\t\\f\\v\\r]*\\n)*[bf]"
     },
     "float": {
       "type": "PATTERN",
-      "value": "[0-9]+\\.[0-9]*([eE][+-]?[0-9]+)?|[0-9]+[eE][+-]?[0-9]+|0[fFdDeErRsShHpP][+-]?([0-9]+\\.?[0-9]*|\\.[0-9]+)([eE][+-]?[0-9]+)?|0[xXbB][+-]?([0-9]+\\.[0-9]*|\\.[0-9]+)([eE][+-]?[0-9]+)?|0[xX]([0-9a-fA-F]+\\.?[0-9a-fA-F]*|\\.[0-9a-fA-F]+)[pP][+-]?[0-9]+"
+      "value": "(?:(?:[0-9])(?:(?:\\\\[ \\t\\f\\v\\r]*\\n)*[0-9])*(?:\\\\[ \\t\\f\\v\\r]*\\n)*\\.(?:(?:\\\\[ \\t\\f\\v\\r]*\\n)*[0-9])*(?:(?:(?:\\\\[ \\t\\f\\v\\r]*\\n)*[eE](?:(?:\\\\[ \\t\\f\\v\\r]*\\n)*[+-])?(?:(?:\\\\[ \\t\\f\\v\\r]*\\n)*[0-9])+))?|(?:[0-9])(?:(?:\\\\[ \\t\\f\\v\\r]*\\n)*[0-9])*(?:\\\\[ \\t\\f\\v\\r]*\\n)*[eE](?:(?:\\\\[ \\t\\f\\v\\r]*\\n)*[+-])?(?:(?:\\\\[ \\t\\f\\v\\r]*\\n)*[0-9])+|0(?:\\\\[ \\t\\f\\v\\r]*\\n)*[fFdDeErRsShHpP](?:(?:\\\\[ \\t\\f\\v\\r]*\\n)*[+-])?(?:(?:(?:\\\\[ \\t\\f\\v\\r]*\\n)*[0-9])+(?:(?:\\\\[ \\t\\f\\v\\r]*\\n)*\\.)?(?:(?:\\\\[ \\t\\f\\v\\r]*\\n)*[0-9])*|(?:\\\\[ \\t\\f\\v\\r]*\\n)*\\.(?:(?:\\\\[ \\t\\f\\v\\r]*\\n)*[0-9])+)(?:(?:(?:\\\\[ \\t\\f\\v\\r]*\\n)*[eE](?:(?:\\\\[ \\t\\f\\v\\r]*\\n)*[+-])?(?:(?:\\\\[ \\t\\f\\v\\r]*\\n)*[0-9])+))?|0(?:\\\\[ \\t\\f\\v\\r]*\\n)*[xXbB](?:(?:\\\\[ \\t\\f\\v\\r]*\\n)*[+-])?(?:(?:(?:\\\\[ \\t\\f\\v\\r]*\\n)*[0-9])+(?:\\\\[ \\t\\f\\v\\r]*\\n)*\\.(?:(?:\\\\[ \\t\\f\\v\\r]*\\n)*[0-9])*|(?:\\\\[ \\t\\f\\v\\r]*\\n)*\\.(?:(?:\\\\[ \\t\\f\\v\\r]*\\n)*[0-9])+)(?:(?:(?:\\\\[ \\t\\f\\v\\r]*\\n)*[eE](?:(?:\\\\[ \\t\\f\\v\\r]*\\n)*[+-])?(?:(?:\\\\[ \\t\\f\\v\\r]*\\n)*[0-9])+))?|0(?:\\\\[ \\t\\f\\v\\r]*\\n)*[xX](?:(?:(?:\\\\[ \\t\\f\\v\\r]*\\n)*[0-9a-fA-F])+(?:(?:\\\\[ \\t\\f\\v\\r]*\\n)*\\.)?(?:(?:\\\\[ \\t\\f\\v\\r]*\\n)*[0-9a-fA-F])*|(?:\\\\[ \\t\\f\\v\\r]*\\n)*\\.(?:(?:\\\\[ \\t\\f\\v\\r]*\\n)*[0-9a-fA-F])+)(?:\\\\[ \\t\\f\\v\\r]*\\n)*[pP](?:(?:\\\\[ \\t\\f\\v\\r]*\\n)*[+-])?(?:(?:\\\\[ \\t\\f\\v\\r]*\\n)*[0-9])+)"
     },
     "preproc_line": {
       "type": "CHOICE",
@@ -2084,7 +2134,7 @@
     },
     "_preproc_name": {
       "type": "PATTERN",
-      "value": "[A-Za-z_][A-Za-z0-9_]*"
+      "value": "[A-Za-z_](?:(?:\\\\[ \\t\\f\\v\\r]*\\n)*[A-Za-z0-9_])*"
     },
     "block_comment": {
       "type": "TOKEN",
@@ -2092,16 +2142,16 @@
         "type": "SEQ",
         "members": [
           {
-            "type": "STRING",
-            "value": "/*"
+            "type": "PATTERN",
+            "value": "/(?:\\\\[ \\t\\f\\v\\r]*\\n)*\\*"
           },
           {
             "type": "PATTERN",
-            "value": "[^*]*\\*+([^/*][^*]*\\*+)*"
+            "value": "(?:(?:\\\\[ \\t\\f\\v\\r]*\\n)*[^*])*(?:(?:\\\\[ \\t\\f\\v\\r]*\\n)*\\*)+(?:(?:(?:\\\\[ \\t\\f\\v\\r]*\\n)*[^/*](?:(?:\\\\[ \\t\\f\\v\\r]*\\n)*[^*])*(?:(?:\\\\[ \\t\\f\\v\\r]*\\n)*\\*)+))*"
           },
           {
-            "type": "STRING",
-            "value": "/"
+            "type": "PATTERN",
+            "value": "(?:\\\\[ \\t\\f\\v\\r]*\\n)*/"
           }
         ]
       }
@@ -2123,21 +2173,21 @@
                 "members": [
                   {
                     "type": "PATTERN",
-                    "value": "[^\\\\\\n]"
+                    "value": "(?:\\\\[ \\t\\f\\v\\r]*\\n)*[^\\\\\\n]"
                   },
                   {
                     "type": "SEQ",
                     "members": [
                       {
-                        "type": "STRING",
-                        "value": "\\"
+                        "type": "PATTERN",
+                        "value": "(?:\\\\[ \\t\\f\\v\\r]*\\n)*\\\\"
                       },
                       {
                         "type": "CHOICE",
                         "members": [
                           {
                             "type": "PATTERN",
-                            "value": "."
+                            "value": "(?:\\\\[ \\t\\f\\v\\r]*\\n)*."
                           },
                           {
                             "type": "BLANK"
@@ -2157,8 +2207,8 @@
             "type": "CHOICE",
             "members": [
               {
-                "type": "STRING",
-                "value": "'"
+                "type": "PATTERN",
+                "value": "(?:\\\\[ \\t\\f\\v\\r]*\\n)*'"
               },
               {
                 "type": "BLANK"
@@ -2414,7 +2464,7 @@
               "members": [
                 {
                   "type": "PATTERN",
-                  "value": "[A-Za-z0-9_]+"
+                  "value": "(?:(?:\\\\[ \\t\\f\\v\\r]*\\n)*[A-Za-z0-9_])+"
                 },
                 {
                   "type": "BLANK"
@@ -2432,7 +2482,7 @@
         "value": 1,
         "content": {
           "type": "PATTERN",
-          "value": "\\.L[A-Za-z0-9_.$]*"
+          "value": "\\.(?:\\\\[ \\t\\f\\v\\r]*\\n)*L(?:(?:\\\\[ \\t\\f\\v\\r]*\\n)*[A-Za-z0-9_.$])*"
         }
       }
     },
@@ -2659,14 +2709,50 @@
           }
         },
         {
-          "type": "PREC",
-          "value": 1,
+          "type": "ALIAS",
           "content": {
             "type": "SYMBOL",
-            "name": "concatenation"
-          }
+            "name": "_arm_register_concatenation"
+          },
+          "named": true,
+          "value": "concatenation"
         }
       ]
+    },
+    "_arm_register_concatenation": {
+      "type": "PREC",
+      "value": 1,
+      "content": {
+        "type": "SEQ",
+        "members": [
+          {
+            "type": "CHOICE",
+            "members": [
+              {
+                "type": "ALIAS",
+                "content": {
+                  "type": "SYMBOL",
+                  "name": "_arm_register"
+                },
+                "named": true,
+                "value": "register"
+              },
+              {
+                "type": "SYMBOL",
+                "name": "identifier"
+              },
+              {
+                "type": "SYMBOL",
+                "name": "macro_argument"
+              }
+            ]
+          },
+          {
+            "type": "SYMBOL",
+            "name": "_glued_pieces"
+          }
+        ]
+      }
     },
     "writeback": {
       "type": "PREC",
@@ -2991,7 +3077,7 @@
               },
               {
                 "type": "SYMBOL",
-                "name": "_missing_name"
+                "name": "_missing_register"
               }
             ]
           },
@@ -3017,7 +3103,7 @@
                     },
                     {
                       "type": "SYMBOL",
-                      "name": "_missing_name"
+                      "name": "_missing_register"
                     }
                   ]
                 }
@@ -3140,7 +3226,7 @@
             },
             {
               "type": "SYMBOL",
-              "name": "_missing_name"
+              "name": "_missing_register"
             }
           ]
         }
@@ -3206,7 +3292,7 @@
             },
             {
               "type": "SYMBOL",
-              "name": "_missing_name"
+              "name": "_missing_register"
             }
           ]
         }
@@ -6938,7 +7024,12 @@
                   "type": "CHOICE",
                   "members": [
                     {
-                      "type": "STRING",
+                      "type": "ALIAS",
+                      "content": {
+                        "type": "PATTERN",
+                        "value": "\\.(?:\\\\[ \\t\\f\\v\\r]*\\n)*\\.(?:\\\\[ \\t\\f\\v\\r]*\\n)*\\."
+                      },
+                      "named": false,
                       "value": "..."
                     },
                     {
@@ -6949,7 +7040,12 @@
               ]
             },
             {
-              "type": "STRING",
+              "type": "ALIAS",
+              "content": {
+                "type": "PATTERN",
+                "value": "\\.(?:\\\\[ \\t\\f\\v\\r]*\\n)*\\.(?:\\\\[ \\t\\f\\v\\r]*\\n)*\\."
+              },
+              "named": false,
               "value": "..."
             }
           ]
@@ -7351,6 +7447,10 @@
     {
       "type": "SYMBOL",
       "name": "block_comment"
+    },
+    {
+      "type": "PATTERN",
+      "value": "\\\\[ \\t\\f\\v\\r]*\\n"
     }
   ],
   "conflicts": [
@@ -7456,6 +7556,10 @@
     {
       "type": "SYMBOL",
       "name": "_missing_register_argument"
+    },
+    {
+      "type": "SYMBOL",
+      "name": "_missing_register"
     },
     {
       "type": "SYMBOL",

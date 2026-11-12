@@ -51,7 +51,8 @@ enum SemicolonMode {
 #define ASM_FOLDED_DECORATORS      0
 #define ASM_BACKQUOTE_STRINGS      0
 #define ASM_PERCENT_MACROS         0
-#define ASM_LINE_JOINS             0
+#define ASM_WORD_JOINS             0
+#define ASM_COMMENT_JOINS          0
 #define ASM_SPACED_JOINS           1
 #define ASM_SEMICOLONS             SEMICOLON_HEURISTIC
 #define ASM_AARCH64_GNU_KEYWORDS   1
@@ -79,7 +80,8 @@ enum SemicolonMode {
 #define ASM_FOLDED_DECORATORS      0
 #define ASM_BACKQUOTE_STRINGS      0
 #define ASM_PERCENT_MACROS         0
-#define ASM_LINE_JOINS             0
+#define ASM_WORD_JOINS             0
+#define ASM_COMMENT_JOINS          0
 #define ASM_SPACED_JOINS           1
 #define ASM_SEMICOLONS             SEMICOLON_SEPARATES
 #define ASM_AARCH64_GNU_KEYWORDS   1
@@ -107,7 +109,8 @@ enum SemicolonMode {
 #define ASM_FOLDED_DECORATORS      0
 #define ASM_BACKQUOTE_STRINGS      0
 #define ASM_PERCENT_MACROS         0
-#define ASM_LINE_JOINS             0
+#define ASM_WORD_JOINS             0
+#define ASM_COMMENT_JOINS          0
 #define ASM_SPACED_JOINS           1
 #define ASM_SEMICOLONS             SEMICOLON_COMMENTS
 #define ASM_AARCH64_GNU_KEYWORDS   0
@@ -135,7 +138,8 @@ enum SemicolonMode {
 #define ASM_FOLDED_DECORATORS      0
 #define ASM_BACKQUOTE_STRINGS      0
 #define ASM_PERCENT_MACROS         0
-#define ASM_LINE_JOINS             0
+#define ASM_WORD_JOINS             0
+#define ASM_COMMENT_JOINS          0
 #define ASM_SPACED_JOINS           1
 #define ASM_SEMICOLONS             SEMICOLON_SEPARATES
 #define ASM_AARCH64_GNU_KEYWORDS   0
@@ -163,7 +167,8 @@ enum SemicolonMode {
 #define ASM_FOLDED_DECORATORS      1
 #define ASM_BACKQUOTE_STRINGS      1
 #define ASM_PERCENT_MACROS         1
-#define ASM_LINE_JOINS             1
+#define ASM_WORD_JOINS             1
+#define ASM_COMMENT_JOINS          1
 #define ASM_SPACED_JOINS           0
 #define ASM_SEMICOLONS             SEMICOLON_COMMENTS
 #define ASM_AARCH64_GNU_KEYWORDS   0
@@ -198,6 +203,7 @@ enum TokenType {
     MISSING_LABEL_OPERAND,
     MISSING_ARGUMENT,
     MISSING_REGISTER_ARGUMENT,
+    MISSING_REGISTER,
     MISSING_ELEMENT,
     MISSING_EXPRESSION,
     MISSING_NAME,
@@ -551,19 +557,26 @@ static inline bool is_blank(int32_t codepoint)
         || codepoint == '\r';
 }
 
-static uint32_t join_width(TSLexer *lexer)
+static uint32_t join_blanks(TSLexer *lexer)
 {
-    uint32_t width = 1;
+    uint32_t count = 0;
 
     if (ASM_SPACED_JOINS) {
         while (is_blank(lexer->lookahead)) {
             advance(lexer);
-            width++;
+            count++;
         }
     } else if (lexer->lookahead == '\r') {
         advance(lexer);
-        width++;
+        count++;
     }
+    return count;
+}
+
+static uint32_t join_width(TSLexer *lexer)
+{
+    const uint32_t width = 1 + join_blanks(lexer);
+
     return lexer->lookahead == '\n' ? width : 0;
 }
 
@@ -578,7 +591,7 @@ static bool joins_line(TSLexer *lexer, bool skipping)
 
 static bool advance_blanks(TSLexer *lexer)
 {
-    while (is_blank(lexer->lookahead) || (ASM_LINE_JOINS && lexer->lookahead == '\\')) {
+    while (is_blank(lexer->lookahead) || (ASM_WORD_JOINS && lexer->lookahead == '\\')) {
         const bool backslash = lexer->lookahead == '\\';
 
         advance(lexer);
@@ -591,7 +604,7 @@ static bool advance_blanks(TSLexer *lexer)
 
 static bool cross_joins(TSLexer *lexer)
 {
-    while (ASM_LINE_JOINS && lexer->lookahead == '\\') {
+    while (ASM_WORD_JOINS && lexer->lookahead == '\\') {
         advance(lexer);
         if (!joins_line(lexer, false)) {
             return false;
@@ -602,7 +615,7 @@ static bool cross_joins(TSLexer *lexer)
 
 static bool skip_joins(TSLexer *lexer)
 {
-    while (ASM_LINE_JOINS && lexer->lookahead == '\\') {
+    while (ASM_WORD_JOINS && lexer->lookahead == '\\') {
         skip(lexer);
         if (!joins_line(lexer, true)) {
             return false;
@@ -622,9 +635,18 @@ static bool word_continues(TSLexer *lexer, bool (*part)(int32_t), bool *stray)
 
 static void advance_text(TSLexer *lexer)
 {
-    if (ASM_LINE_JOINS && lexer->lookahead == '\\') {
+    if (lexer->lookahead == '\\') {
         advance(lexer);
         joins_line(lexer, false);
+    } else {
+        advance(lexer);
+    }
+}
+
+static void advance_comment(TSLexer *lexer)
+{
+    if (ASM_COMMENT_JOINS) {
+        advance_text(lexer);
     } else {
         advance(lexer);
     }
@@ -633,33 +655,44 @@ static void advance_text(TSLexer *lexer)
 struct Gap {
     uint32_t blanks;
     uint32_t line_blanks;
+    uint32_t backslash_columns;
+    bool glued;
     bool joined;
     bool empty_before;
 };
 
-static bool skip_gap(TSLexer *lexer, struct Gap *gap)
+static __attribute__((cold, noinline)) bool skip_gap_join(TSLexer *lexer, struct Gap *gap)
 {
     uint32_t width = 0;
 
-    while (is_blank(lexer->lookahead) || (ASM_LINE_JOINS && lexer->lookahead == '\\')) {
-        if (lexer->lookahead != '\\') {
-            skip(lexer);
-            gap->blanks++;
-            gap->line_blanks++;
+    lexer->mark_end(lexer);
+    advance(lexer);
+    width = 1 + join_blanks(lexer);
+    if (lexer->lookahead != '\n') {
+        gap->backslash_columns = width;
+        return false;
+    }
+    if (!gap->joined) {
+        gap->empty_before = lexer->get_column(lexer) == gap->line_blanks + width;
+    }
+    skip(lexer);
+    gap->joined = true;
+    gap->line_blanks = 0;
+    return true;
+}
+
+static bool skip_gap(TSLexer *lexer, struct Gap *gap)
+{
+    while (is_blank(lexer->lookahead) || lexer->lookahead == '\\') {
+        if (lexer->lookahead == '\\') {
+            if (!skip_gap_join(lexer, gap)) {
+                return false;
+            }
             continue;
         }
-        lexer->mark_end(lexer);
-        advance(lexer);
-        width = join_width(lexer);
-        if (width == 0) {
-            return false;
-        }
-        if (!gap->joined) {
-            gap->empty_before = lexer->get_column(lexer) == gap->line_blanks + width;
-        }
         skip(lexer);
-        gap->joined = true;
-        gap->line_blanks = 0;
+        gap->blanks++;
+        gap->line_blanks++;
     }
     return true;
 }
@@ -765,6 +798,11 @@ static inline bool starts_element(int32_t codepoint)
 static inline bool starts_name(int32_t codepoint)
 {
     return is_alpha(codepoint) || codepoint == '.' || codepoint == '\\';
+}
+
+static inline bool starts_register_name(int32_t codepoint)
+{
+    return is_alpha(codepoint) || codepoint == '\\' || (ASM_DARWIN_ARGUMENTS && codepoint == '$');
 }
 
 static inline bool starts_symbol(int32_t codepoint)
@@ -924,6 +962,7 @@ static const TSSymbol CLOSING_TOKENS[] = {
     MISSING_LABEL_OPERAND,
     MISSING_ARGUMENT,
     MISSING_REGISTER_ARGUMENT,
+    MISSING_REGISTER,
     MISSING_ELEMENT,
     MISSING_EXPRESSION,
     MISSING_NAME,
@@ -1028,6 +1067,7 @@ static bool missing_continues(int32_t codepoint, const bool *valid)
         || (valid[MISSING_LABEL_OPERAND] && starts_label_operand(codepoint))
         || (valid[MISSING_ARGUMENT] && starts_argument(codepoint))
         || (valid[MISSING_REGISTER_ARGUMENT] && starts_register_argument(codepoint))
+        || (valid[MISSING_REGISTER] && starts_register_name(codepoint))
         || (valid[MISSING_ELEMENT] && starts_element(codepoint))
         || (valid[MISSING_EXPRESSION] && starts_missing_expression(codepoint, valid))
         || (valid[MISSING_NAME] && starts_name(codepoint))
@@ -1080,7 +1120,7 @@ static bool line_comment(TSLexer *lexer, const bool *valid)
         return false;
     }
     while (!at_line_end(lexer)) {
-        advance_text(lexer);
+        advance_comment(lexer);
     }
     return finish_token(lexer, LINE_COMMENT);
 }
@@ -1135,7 +1175,7 @@ static bool semicolon_comment(TSLexer *lexer, const bool *valid)
     }
     while (!at_line_end(lexer)) {
         if (lexer->lookahead != ';') {
-            advance_text(lexer);
+            advance_comment(lexer);
             continue;
         }
         lexer->mark_end(lexer);
@@ -1194,7 +1234,7 @@ static bool scan_string_content(TSLexer *lexer, const bool *valid)
         if (lexer->lookahead == '\\') {
             lexer->mark_end(lexer);
             advance(lexer);
-            if (!(ASM_LINE_JOINS && joins_line(lexer, false)) && !at_line_end(lexer)) {
+            if (!joins_line(lexer, false) && !at_line_end(lexer)) {
                 lexer->result_symbol = STRING_CONTENT;
                 return consumed;
             }
@@ -3458,7 +3498,7 @@ static enum ScanDecision scan_percent(TSLexer *lexer, const bool *valid,
         return decided(valid[REMAINDER] && finish_token(lexer, REMAINDER));
     }
     take_word_char(lexer, word, &length);
-    if (ASM_LINE_JOINS && lexer->lookahead == '\\') {
+    if (ASM_WORD_JOINS && lexer->lookahead == '\\') {
         joined = true;
         line_start = starts_line(lexer, gap);
         if (!cross_joins(lexer)) {
@@ -3988,7 +4028,7 @@ static enum ScanDecision scan_open_content(TSLexer *lexer, const bool *valid, bo
         return decided(scan_relocation_specifier(lexer));
     }
     if (glued
-        && ASM_LINE_JOINS
+        && ASM_WORD_JOINS
         && lexer->lookahead == '\\'
         && (valid[GLUED_ARGUMENT] || valid[GLUED_SEPARATOR] || valid[GLUED_TEXT])) {
         if (!skip_joins(lexer)) {
@@ -4031,26 +4071,69 @@ static bool scan_stray_backslash(TSLexer *lexer, const bool *valid)
     return closable(valid) && closes_before('\\', valid) && close_construct(lexer, valid);
 }
 
-static bool scan(TSLexer *lexer, const bool *valid, const struct Scanner *scanner,
-    bool *closes_input)
+struct Pushback {
+    TSLexer lexer;
+    TSLexer *source;
+    uint32_t columns;
+    bool marked;
+};
+
+static void pushback_advance(TSLexer *lexer, bool skipping)
+{
+    struct Pushback *pushback = (struct Pushback *)lexer;
+
+    if (pushback->columns > 0) {
+        pushback->columns = 0;
+    } else {
+        pushback->source->advance(pushback->source, skipping);
+    }
+    lexer->lookahead = pushback->source->lookahead;
+}
+
+static void pushback_mark_end(TSLexer *lexer)
+{
+    struct Pushback *pushback = (struct Pushback *)lexer;
+
+    pushback->marked = true;
+    if (pushback->columns == 0) {
+        pushback->source->mark_end(pushback->source);
+    }
+}
+
+static uint32_t pushback_get_column(TSLexer *lexer)
+{
+    struct Pushback *pushback = (struct Pushback *)lexer;
+
+    return pushback->source->get_column(pushback->source) - pushback->columns;
+}
+
+static bool pushback_at_included_range_start(const TSLexer *lexer)
+{
+    const struct Pushback *pushback = (const struct Pushback *)lexer;
+
+    return pushback->columns == 0 && pushback->source->is_at_included_range_start(pushback->source);
+}
+
+static bool pushback_eof(const TSLexer *lexer)
+{
+    const struct Pushback *pushback = (const struct Pushback *)lexer;
+
+    return pushback->columns == 0 && pushback->source->eof(pushback->source);
+}
+
+static void pushback_log(const TSLexer *lexer __attribute__((unused)),
+    const char *format __attribute__((unused)), ...)
+{
+}
+
+static bool scan_after_gap(TSLexer *lexer, const bool *valid, const struct Scanner *scanner,
+    bool *closes_input, const struct Gap *gap, bool closing)
 {
     const bool recovering = valid[ERROR_SENTINEL];
-    const bool glued = !is_blank(lexer->lookahead);
-    const bool closing = closable(valid);
     enum ScanDecision decision = SCAN_UNDECIDED;
-    struct Gap gap = {0, 0, false, false};
 
     if (!recovering) {
-        decision = scan_open_content(lexer, valid, closing);
-    }
-    if (decision != SCAN_UNDECIDED) {
-        return decision == SCAN_FOUND;
-    }
-    if (!skip_gap(lexer, &gap)) {
-        return !recovering && scan_stray_backslash(lexer, valid);
-    }
-    if (!recovering) {
-        decision = scan_line_token(lexer, valid, scanner, &gap);
+        decision = scan_line_token(lexer, valid, scanner, gap);
     }
     if (decision != SCAN_UNDECIDED) {
         return decision == SCAN_FOUND;
@@ -4082,14 +4165,71 @@ static bool scan(TSLexer *lexer, const bool *valid, const struct Scanner *scanne
         case '/':
             return scan_slash(lexer, valid, closing);
         case '#':
-            return scan_hash(lexer, valid, recovering, &gap);
+            return scan_hash(lexer, valid, recovering, gap);
         case '@':
-            return scan_at(lexer, valid, recovering, glued, closing);
+            return scan_at(lexer, valid, recovering, gap->glued, closing);
         case ';':
             return scan_semicolon(lexer, valid, recovering, closing);
         default:
             return false;
     }
+}
+
+static __attribute__((cold, noinline)) void start_pushback(struct Pushback *pushback,
+    TSLexer *source, uint32_t columns)
+{
+    pushback->lexer.lookahead = '\\';
+    pushback->lexer.result_symbol = 0;
+    pushback->lexer.advance = pushback_advance;
+    pushback->lexer.mark_end = pushback_mark_end;
+    pushback->lexer.get_column = pushback_get_column;
+    pushback->lexer.is_at_included_range_start = pushback_at_included_range_start;
+    pushback->lexer.eof = pushback_eof;
+    pushback->lexer.log = pushback_log;
+    pushback->source = source;
+    pushback->columns = columns;
+    pushback->marked = false;
+}
+
+static __attribute__((cold, noinline)) bool finish_pushback(const struct Pushback *pushback,
+    bool found)
+{
+    if (found) {
+        pushback->source->result_symbol = pushback->lexer.result_symbol;
+        if (!pushback->marked && pushback->columns == 0) {
+            pushback->source->mark_end(pushback->source);
+        }
+    }
+    return found;
+}
+
+static bool scan(TSLexer *lexer, const bool *valid, const struct Scanner *scanner,
+    bool *closes_input)
+{
+    const bool recovering = valid[ERROR_SENTINEL];
+    const bool closing = closable(valid);
+    enum ScanDecision decision = SCAN_UNDECIDED;
+    struct Gap gap = {0, 0, 0, !is_blank(lexer->lookahead), false, false};
+    struct Pushback pushback;
+    struct Pushback *pushed = NULL;
+    bool found = false;
+
+    if (!recovering) {
+        decision = scan_open_content(lexer, valid, closing);
+    }
+    if (decision != SCAN_UNDECIDED) {
+        return decision == SCAN_FOUND;
+    }
+    if (!skip_gap(lexer, &gap)) {
+        if (!ASM_GNU_SYNTAX) {
+            return !recovering && scan_stray_backslash(lexer, valid);
+        }
+        start_pushback(&pushback, lexer, gap.backslash_columns);
+        pushed = &pushback;
+    }
+    found = scan_after_gap(pushed == NULL ? lexer : &pushed->lexer, valid, scanner, closes_input,
+        &gap, closing);
+    return pushed == NULL ? found : finish_pushback(pushed, found);
 }
 
 #define ASM_CONCAT_(a, b)  a##b

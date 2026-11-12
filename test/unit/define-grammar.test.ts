@@ -11,24 +11,48 @@ import { assertThrowsIncluding } from '../lib/assert.ts';
 interface RuleNode {
     type: string;
     name?: string;
+    value?: unknown;
+    named?: boolean;
+    content?: RuleNode;
     members?: RuleNode[];
 }
 
-function node(type: string) {
-    return (...members: RuleNode[]): RuleNode => ({ type, members });
+function members(type: string) {
+    return (...rules: RuleNode[]): RuleNode => ({ type, members: rules });
+}
+
+function wrapper(type: string) {
+    return (content: RuleNode): RuleNode => ({ type, content });
+}
+
+function precedence(type: string) {
+    return (value: number | RuleNode, content?: RuleNode): RuleNode =>
+        content === undefined
+            ? { type, value: 0, content: value as RuleNode }
+            : { type, value, content };
 }
 
 Object.assign(globalThis, {
     grammar: (config: unknown) => config,
-    seq: node('SEQ'),
-    choice: node('CHOICE'),
-    repeat: node('REPEAT'),
-    repeat1: node('REPEAT1'),
-    optional: node('OPTIONAL'),
-    alias: node('ALIAS'),
-    field: node('FIELD'),
-    token: Object.assign(node('TOKEN'), { immediate: node('IMMEDIATE_TOKEN') }),
-    prec: Object.assign(node('PREC'), { left: node('PREC_LEFT'), right: node('PREC_RIGHT') }),
+    seq: members('SEQ'),
+    choice: members('CHOICE'),
+    repeat: wrapper('REPEAT'),
+    repeat1: wrapper('REPEAT1'),
+    optional: (content: RuleNode): RuleNode => ({
+        type: 'CHOICE',
+        members: [content, { type: 'BLANK' }],
+    }),
+    alias: (content: RuleNode, value: RuleNode | string): RuleNode =>
+        typeof value === 'string'
+            ? { type: 'ALIAS', content, named: false, value }
+            : { type: 'ALIAS', content, named: true, value: value.name },
+    field: (name: string, content: RuleNode): RuleNode => ({ type: 'FIELD', name, content }),
+    token: Object.assign(wrapper('TOKEN'), { immediate: wrapper('IMMEDIATE_TOKEN') }),
+    prec: Object.assign(precedence('PREC'), {
+        left: precedence('PREC_LEFT'),
+        right: precedence('PREC_RIGHT'),
+        dynamic: precedence('PREC_DYNAMIC'),
+    }),
 });
 
 const defineGrammar = createRequire(import.meta.url)('../../tree-sitter/common/define-grammar.js');
@@ -84,7 +108,7 @@ test('choice points merge alternatives from every module without duplicates', ()
     const rules = defineGrammar('asm_auto').rules;
     const members = (name: string) =>
         ((rules[name]($) as RuleNode).members ?? []).map((member) =>
-            member.name ?? member.members?.find((inner) => inner.name)?.name
+            member.name ?? member.content?.name
         );
     const value = members('_value');
     assert.deepStrictEqual(value.filter((name) => name === 'immediate').length, 1);

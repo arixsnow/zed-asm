@@ -1,0 +1,51 @@
+================================================================================
+A join between two operands
+================================================================================
+
+mov x0, \
+    x1
+
+--------------------------------------------------------------------------------
+
+(source_file
+  (instruction
+    mnemonic: (mnemonic)
+    operand: (register)
+    operand: (register)))
+
+================================================================================
+A join inside an immediate expression
+================================================================================
+
+mov lr, #(1 | \
+         2)
+
+--------------------------------------------------------------------------------
+
+(source_file
+  (instruction
+    mnemonic: (mnemonic)
+    operand: (register)
+    operand: (immediate
+      value: (parenthesized_expression
+        (binary_expression
+          left: (integer)
+          right: (integer))))))
+
+================================================================================
+A join inside a memory operand
+================================================================================
+
+ldr x0, [x1, \
+    #4]
+
+--------------------------------------------------------------------------------
+
+(source_file
+  (instruction
+    mnemonic: (mnemonic)
+    operand: (register)
+    operand: (memory_operand
+      operand: (register)
+      operand: (immediate
+        value: (integer)))))
