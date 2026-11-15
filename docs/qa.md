@@ -2,23 +2,23 @@
 
 These checks cover what only the editor does: language choice, colors, Enter, toggle comment,
 auto-close, word selection, the outline, breadcrumbs, block indentation and vim text objects.
-`scripts/zed` runs them in the real Zed app inside Podman, on a virtual display, with nothing
-installed on the host. It builds the extension and types each case. Then it saves the file and
-compares the text, or reads what a step copied. An outline check picks an entry and types `X` where
-the cursor lands, so the saved text shows where the jump went. The vim checks run last, after vim
-mode is turned on in the settings. Before Zed starts, each grammar is built to wasm and checked to
-import only the C functions tree-sitter's wasm runtime supplies, which Zed loads grammars through.
-The run prints each result as it finishes, writes `.build/zed-qa/report.txt` with the Zed log and
-one screenshot per check, and keeps going when a check fails.
+`scripts/zed` runs them in the real Zed app in Podman, on a virtual display, with nothing installed
+on the host. It builds the extension and, before Zed starts, checks that each grammar built to wasm
+imports only the C functions of tree-sitter's wasm runtime, through which Zed loads grammars. It
+types each case, saves the file and compares the text, or reads what a step copied. An outline check
+picks an entry and types `X` where the cursor lands, so the saved text shows the jump target. The
+vim checks run last, after vim mode is turned on in the settings. The run prints each result as it
+finishes, continues after a failed check, and writes `.build/zed-qa/report.txt` with the Zed log and
+one screenshot per check.
 
 ```sh
 scripts/zed             # run every check
 scripts/zed --refresh   # first update Zed to its latest release
 ```
 
-Checks 1 to 4, 19, 22, 24, 26, 27 and 30 end with `LOOK`: open their screenshot and confirm it. The
-others pass or fail on their own. The exact languages are selected with a modeline such as
-`// vim: ft=arm`. Run the checks before each release and note the Zed version from the report.
+Checks 1 to 4, 19, 22, 24, 26, 27 and 30 end with `LOOK`: confirm each on its screenshot. The
+others pass or fail by themselves. A modeline such as `// vim: ft=arm` selects an exact language.
+Run the checks before each release and record the Zed version from the report.
 
 | #  | Do                                                                                              | Expect                                                |
 | -- | ----------------------------------------------------------------------------------------------- | ----------------------------------------------------- |
@@ -58,7 +58,7 @@ others pass or fail on their own. The exact languages are selected with a modeli
 | 34 | In NASM, run Move to Enclosing Bracket after `{` in `m {1, 2}` and after `%(` in `db %(1, 2)`   | The cursor jumps to the matching `}` or `)`           |
 | 35 | Read the Zed log                                                                                | No errors about the asm grammars or queries           |
 
-A Zed limitation: when nothing follows the cursor, at the very end of a file, Zed ignores
-scope-based settings. There, Enter after `#define X 1` inserts `#` and a space in the GNU-syntax
-languages, and `/*` closes inside a comment. Zed's own languages have the same limitation. Checks 9,
-10 and 13 therefore run with a line after the cursor.
+Limit: at the end of a file, with nothing after the cursor, Zed ignores scope-based settings: Enter
+after `#define X 1` inserts `#` and a space in the GNU-syntax languages, and `/*` closes inside a
+comment. Zed's own languages behave the same. Checks 9, 10 and 13 therefore run with a line after
+the cursor.

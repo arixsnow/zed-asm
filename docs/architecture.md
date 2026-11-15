@@ -1,17 +1,16 @@
 # Architecture
 
-This repository builds a Zed extension for the assembly code of two architectures, ARM and x86, as
-their assemblers read it. ARM code is written for GNU as and clang on ELF systems, or for Apple's
-clang, which reads `;` as a comment. x86 code is written in GNU syntax, in its AT&T or Intel flavor,
-or in NASM syntax, which yasm reads too. The extension gives Zed five languages for these, built
-from one manifest and one set of grammar modules. A rule is written once and reaches every language
-that includes its module; a new architecture is a new module.
+This repository builds a Zed extension for ARM and x86 assembly. ARM code targets GNU as and clang
+on ELF systems, or Apple's clang, which reads `;` as a comment. x86 code is in GNU syntax, AT&T or
+Intel flavor, or in NASM syntax, which yasm also reads. The five languages are built from one
+manifest and one set of grammar modules: a rule is written once and reaches every language whose
+grammar includes its module, and a new architecture is a new module.
 
 ## Languages
 
-Each language is one grammar for one architecture, one syntax and the rules of one group of
-assemblers. Assembly is the exception: it reads ARM and x86 code in GNU syntax without being told
-which it is. The other four, the exact languages, follow their assemblers exactly.
+Each language is one grammar for one architecture, one syntax and one group of assemblers.
+Assembly reads ARM and x86 in GNU syntax without a selection. The other four, the exact languages,
+follow their assemblers exactly.
 
 | Language (Zed picker) | Grammar         | Modules             | Owns by default           | Modeline aliases                           | Toggle comment |
 | --------------------- | --------------- | ------------------- | ------------------------- | ------------------------------------------ | -------------- |
@@ -22,9 +21,9 @@ which it is. The other four, the exact languages, follow their assemblers exactl
 | x86 Assembly (NASM)   | `asm_x86_nasm`  | core, nasm, x86     | `asm` `ASM` `nasm` `yasm` | `nasm` `yasm`                              | `;`            |
 
 Toggling a comment inserts the prefix shown and one space. `sx` is GCC's suffix for assembly that
-goes through the C preprocessor.
+the C preprocessor reads first.
 
-The rest of this document uses these terms:
+Terms used in this document:
 
 | Term                                              | Meaning                                                                                                      |
 | ------------------------------------------------- | ------------------------------------------------------------------------------------------------------------ |
@@ -37,21 +36,21 @@ The rest of this document uses these terms:
 | exact languages                                   | every language except Assembly                                                                               |
 | GNU-syntax languages                              | Assembly, ARM, ARM (Apple) and x86 (GAS)                                                                     |
 
-A `.s` file opens as Assembly unless a modeline or a setting selects another language.
-Select an exact language per file with a modeline on the first line, `// -*- mode: arm -*-` or the
-Vim form `// vim: ft=arm`, or by default in `settings.json`:
+A `.s` file opens as Assembly unless a modeline or a setting selects another language. A modeline
+on the first line selects one per file (`// -*- mode: arm -*-`, or `// vim: ft=arm`); a setting in
+`settings.json` selects one by default:
 
 ```json
 { "file_types": { "ARM Assembly": ["s", "S"] } }
 ```
 
-`.inc` is not claimed: PHP, Pascal and BitBake use it too.
+`.inc` is not claimed; PHP, Pascal and BitBake also use it.
 
 ## One manifest
 
 `languages.config.cjs` holds the registry metadata, the per-syntax editor settings, the block kinds
-both syntaxes share and the five language entries. `scripts/lib/manifest.ts` validates it on load,
-so a typo fails with the name of the field. `scripts/build.ts` turns it into:
+both syntaxes share and the five language entries. `scripts/lib/manifest.ts` validates it on load
+and names the field of any error. `scripts/build.ts` generates from it:
 
 - `extension.toml`
 - `languages/<dir>/config.toml` and the composed query files next to it
@@ -59,193 +58,188 @@ so a typo fails with the name of the field. `scripts/build.ts` turns it into:
 - `tree-sitter/<grammar>/grammar.js` and `tree-sitter/<grammar>/src/scanner.c`
 
 `scripts/tree-sitter.ts generate` then runs `tree-sitter generate` with its built-in JavaScript
-engine to write each grammar's `src/parser.c`. Generated files are committed because Zed reads them
-from the repository. `bun run check:generated` regenerates everything into `.build/` and fails if
-any committed file differs by one byte.
+engine to write each grammar's `src/parser.c`. Generated files are committed, since Zed reads them
+from the repository. `bun run check:generated` regenerates everything into `.build/` and fails on
+any difference.
 
 ## Grammar modules
 
-`tree-sitter/common/define-grammar.js` composes a grammar from the modules the manifest names:
-`core` first, then the syntax family (`gas` or `nasm`), then each architecture (`arm`, `x86`). A
-module is a function of the language's syntax, architectures and dialect that returns these
-tables:
+`tree-sitter/common/define-grammar.js` composes a grammar from the modules the manifest names, in
+this order: `core`, the syntax family (`gas` or `nasm`), each architecture (`arm`, `x86`). A module
+is a function of the language's syntax, architectures and dialect, and returns:
 
-- `rules`: rules it owns. A name defined by two modules is an error.
-- `choices`: alternatives it adds to shared choice points (`_item`, `_line_content`, `_statement`,
+- `rules`: the rules it owns. A name defined by two modules is an error.
+- `choices`: alternatives for shared choice points (`_item`, `_line_content`, `_statement`,
   `instruction`, `_mnemonic`, `_local_label`, `_instruction_operand`, `_operand`, `_value`,
-  `_expression`, `_symbol`, `_defined_name`, `immediate`, `symbol_type`). Alternatives from
-  different modules are merged and duplicates dropped.
+  `_expression`, `_symbol`, `_defined_name`, `immediate`, `symbol_type`). Alternatives from several
+  modules are merged and duplicates dropped.
 - `extras`: tokens allowed anywhere, such as block comments.
 
-No grammar declares a word token: the scanner reads every listed word (see "Keywords" under "ARM
-operands").
+No grammar declares a word token; the scanner reads every listed word (see ARM operands,
+Keywords).
 
-An instruction's operands are `_instruction_operand`, which offers everything a directive argument
-(`_operand`) offers plus the ARM forms. That keeps ARM registers, memory operands and register lists
-out of directive arguments, where `.quad x0` names a symbol.
+`_instruction_operand` holds an instruction's operands: everything `_operand` (a directive argument)
+holds plus the ARM forms. ARM registers, memory operands and register lists are therefore no
+directive arguments, and `.quad x0` names a symbol.
 
-Lines join at a backslash in every syntax: nasm and yasm join them, and in GNU syntax the C
-preprocessor does (see C preprocessor lines). A join is a backslash and a newline, with blanks
-between them in GNU syntax, as the preprocessor allows; `lexical.js` holds that rule
-(`spacedJoins`), and a test checks it against the scanner's `ASM_SPACED_JOINS`.
-`define-grammar.js` passes every rule through `tree-sitter/common/joins.js`. It lets a join stand
-between any two characters of a terminal: regexes and token contents are rewritten so that a join
-may come before every character but the first, so no token starts or ends with one, and a string of
-several characters becomes a pattern aliased to its own text, so `<<` keeps its node name. A join
-between tokens is an extra. The scanner steps over joins between tokens, in strings and in raw
-text. In NASM its word readers and line comments step over them too (`ASM_WORD_JOINS`,
-`ASM_COMMENT_JOINS`); in GNU syntax a word the scanner reads and a line comment end at a backslash.
+A backslash followed by a newline joins two lines in every syntax: nasm and yasm join them, and in
+GNU syntax the C preprocessor does (see C preprocessor lines). In GNU syntax blanks may stand
+between the backslash and the newline, as the preprocessor allows. `lexical.js` holds this rule
+(`spacedJoins`); a test checks it against the scanner's `ASM_SPACED_JOINS`. `define-grammar.js`
+passes every rule through `tree-sitter/common/joins.js`, which lets a join stand between any two
+characters of a terminal: regexes and token contents are rewritten so that a join may precede every
+character but the first, so no token starts or ends with a join, and a string of several characters
+becomes a pattern aliased to its own text, so `<<` keeps its node name. A join between tokens is an
+extra. The scanner steps over joins between tokens, in strings and in raw text. In NASM its word
+readers and line comments also step over them (`ASM_WORD_JOINS`, `ASM_COMMENT_JOINS`); in GNU
+syntax a word the scanner reads and a line comment end at a backslash.
 
-Composition decides what a dialect can contain. Symbol types written with `@` (`.type f, @function`)
-come from the x86 module. The ARM grammars have no such rule and read `@note` as a comment.
+Composition determines what a dialect contains: symbol types written with `@`
+(`.type f, @function`) come from the x86 module, and the ARM grammars read `@note` as a comment.
 
-Local labels are their own node, `local_identifier`. They are the names each assembler keeps out of
-the symbol table: `.L` names in the ELF assemblers, every NASM name that starts with `.` or `$.`,
-and `L` names in ARM (Apple), as Apple's clang reads them for Mach-O (checked: `Ltemp` never
-reaches the object file, `.Ldot` does). Other names such as `.text` stay ordinary identifiers. In
-ARM (Apple) an `L` name is local in operands too, except the seven words that are also a register,
-a condition or a shift (see "ARM operands").
+Local labels are the node `local_identifier`: the names each assembler keeps out of the symbol
+table. These are `.L` names for the ELF assemblers, NASM names that start with `.` or `$.`, and
+`L` names in ARM (Apple), as Apple's clang reads them for Mach-O (`Ltemp` never reaches the object
+file; `.Ldot` does). Other names, such as `.text`, are identifiers. In ARM (Apple) an `L` name is
+also local in operands, except the seven words that are also a register, a condition or a shift
+(see ARM operands).
 
-A module may also look at the dialect. The ARM module adds dollar labels only for Assembly and ARM,
-and Apple's positional macro arguments only for ARM (Apple). The scanner reads such a token wherever
-the grammar allows it, which keeps the dialect decision in one place.
+A module may also depend on the dialect: the ARM module adds dollar labels only for Assembly and
+ARM, and Apple's positional macro arguments only for ARM (Apple). The scanner reads such a token
+wherever the grammar allows it, so the dialect decision lives in one place.
 
-A global label starts a `label_block` that holds everything up to the next global label or the end
-of the file. That is the span objdump gives a symbol and the span `.size f, .-f` measures. Eclipse
-CDT, the only editor found that gives assembly labels an extent, ends them the same way. It also
-trims trailing comment and definition lines, which a grammar could do only by looking ahead across
-lines; here they stay in the block before them. Local labels, comments and preprocessor lines inside
-the span belong to the block. Lines before the first global label stay at the top level.
+A global label starts a `label_block`, which holds everything up to the next global label or the
+end of the file: the span objdump gives a symbol and `.size f, .-f` measures. Eclipse CDT ends label
+extents the same way and also trims trailing comment and definition lines; that needs lookahead
+across lines, so here such lines stay in the block before them. Local labels, comments and
+preprocessor lines inside the span belong to the block. Lines before the first global label stay at
+the top level.
 
-In the grammar the top level and every body are one list of statements and label blocks. A label
-block takes every statement after it (right precedence), so no statement ever follows a label block
-in the tree. Keeping one list lets tree-sitter reuse a whole block after an edit (see Performance).
-A second global label on the same line, after another label or after `;`, starts a block of its
-own. A label right after a statement on the same line (`nop main:`) is an error in the GNU syntax,
-as it is for the assemblers. nasm and yasm reject it too, but the grammar reads it as a segment with
-its operand missing, the reading `es:` needs while it is typed.
+The top level and every body are one list of statements and label blocks. A label block takes every
+statement after it (right precedence), so no statement follows a label block in the tree, and
+tree-sitter reuses a whole block after an edit (see Performance). A second global label on the same
+line, after another label or after `;`, starts its own block. A label after a statement on the same
+line (`nop main:`) is an error in GNU syntax, as for the assemblers. nasm and yasm reject it too,
+but the NASM grammar reads it as a segment with its operand missing, the reading `es:` needs while
+it is typed.
 
-Macros, conditionals and repeat blocks are blocks too, and in NASM so are structures (see Structures
-under NASM). Each block has a header, a `body` of statements and label blocks, and a closer:
+Macros, conditionals and repeat blocks are blocks, and in NASM structures too (see NASM,
+Structures). Each has a header, a `body` of statements and label blocks, and a closer:
 
 - `macro_definition`: `.macro` with the name and the parameters, closed by `.endm` or `.endmacro`.
-- `conditional`: any of the `.if` openers with its conditions and its body, then optional
-  `elseif_clause`s and an `else_clause`, each with its own body, closed by `.endif`.
+- `conditional`: an `.if` opener with its condition and body, then optional `elseif_clause`s and an
+  `else_clause`, each with its body, closed by `.endif`.
 - `repeat_block`: `.rept` with a count, or `.irp` and `.irpc` with a parameter and its values,
   closed by `.endr`.
 
 A body starts at the end of its header line, with the newline or `;` that ends the header, and runs
-to the next clause or the closer. Zed indents from ranges that start on the line above. Because
-every body starts on its header's line, the editor indents the lines of any block and clause the
-same way (see "Editor behavior").
+to the next clause or the closer. Zed indents from ranges that start on the line above; since every
+body starts on its header's line, the lines of every block and clause indent alike (see Editor
+behavior).
 
-The scanner reads the block words as whole words, in any case, as GNU as accepts them, so `.macros`
-and `.ifx` stay ordinary directives (see "ARM operands", Keywords). A global label in a body starts
-a block inside it, and a block between two global labels belongs to the label block before it. The
-header is a rule of its own. A name the header requires closes like a missing operand when the line
-ends early, so a header being typed never takes in the next line. A closer ends its block whatever
-follows it, and the rest of its line must be empty: `.endif nop` closes and then reports `nop`, as
-GNU as does. In a blank-separated list of parameters or values a blank ends each item, as in GNU as:
-`.irp r x0 #1` has the two values `x0` and `#1`, not one shifted register.
+The scanner reads block words as whole words in any case, as GNU as accepts them; `.macros` and
+`.ifx` are ordinary directives (see ARM operands, Keywords). A global label in a body starts a block
+inside it; a block between two global labels belongs to the label block before it. The header is a
+rule of its own. A name the header requires closes like a missing operand when the line ends early,
+so a header being typed never takes in the next line. A closer ends its block whatever follows it,
+and the rest of its line must be empty: `.endif nop` closes and then reports `nop`, as GNU as does.
+In a blank-separated parameter or value list a blank ends each item, as in GNU as: `.irp r x0 #1`
+has the two values `x0` and `#1`.
 
-A block still open at the end of the file ends there. The scanner ends it with a hidden zero-width
-token, as tree-sitter-python does for the dedents it owes at the end of a file. The token is hidden
-rather than an empty `.endm` because the tree should show a closer only where the text has one. The
-body it ends is an `unclosed_body`, which leaves `body` for bodies that a real closer or clause
-follows. Without the token, a block nested in a block of another kind and left open while its closer
-is being typed would turn the whole outer block into one error node: tree-sitter's recovery inserts
-at most one missing token. The tree has the shape the assemblers see, since they too end every open
-block at the end of the file. They also report it; the grammar does not.
+A block open at the end of the file ends there, with a hidden zero-width token from the scanner, as
+tree-sitter-python writes its dedents at the end of a file. The token is hidden so that the tree
+shows a closer only where the text has one. Its body is an `unclosed_body`; `body` is for bodies
+that a closer or clause follows. Without the token, a block nested in a block of another kind and
+left open while its closer is typed would turn the outer block into one error node: tree-sitter's
+recovery inserts at most one missing token. The assemblers also end every open block at the end of
+the file, and report it; the grammar does not report it.
 
-The assemblers read the body of a macro or a repeat block as text up to its closer, and only then
-run it. `.endm` ends a macro, and `.endr` a repeat block, even while a block opened inside is still
-open. Measured: a macro that leaves `.if` open is accepted by both assemblers when it is not called,
-and by clang when its caller closes the `.if`; a repeat block whose `.if` the caller closes is
-accepted by both. The scanner does the same. At `.endm` it ends every conditional and repeat block
-still open inside, at `.endr` every conditional, each with the same hidden token, and then reads the
-closer. `.endif` never ends a macro or a repeat block, because inside them it is text.
+The assemblers read the body of a macro or repeat block as text up to its closer, then run it:
+`.endm` ends a macro, and `.endr` a repeat block, even while a block opened inside is still open.
+Measured: a macro that leaves `.if` open is accepted by both assemblers when it is not called, and
+by clang when its caller closes the `.if`; a repeat block whose `.if` the caller closes is accepted
+by both. The scanner does the same: at `.endm` it ends every conditional and repeat block still open
+inside, at `.endr` every conditional, each with the hidden token, then reads the closer. `.endif`
+never ends a macro or a repeat block, since inside them it is text.
 
-The scanner cannot see whether a macro or repeat block really encloses the line. A stray `.endm` or
-`.endr` inside a conditional therefore ends that conditional too, where GNU as ignores it. Tracking
-the enclosing blocks would take a copy of the block states for each way they can nest, about twice
-the parser, and the stray closer changes only the rest of that one conditional. A closer outside any
-block, or `.else` outside a conditional, parses as an ordinary directive, because a macro can supply
-the other half: clang accepts a `.endif` or `.else` for a conditional a macro opened, and GNU as a
-stray `.endm` or `.endr`. The scanner reads `.else` and `.elseif` the way it reads closers, which
-tells it when one fits. A second `.else` in one conditional, or `.elseif` after `.else`, which both
-assemblers reject, becomes a token no rule accepts and parses with an error.
+Limit: the scanner does not see whether a macro or repeat block encloses the line, so a stray
+`.endm` or `.endr` inside a conditional also ends that conditional, where GNU as ignores it.
+Tracking the enclosing blocks would take a copy of the block states for each nesting, about twice
+the parser; the stray closer changes only the rest of that conditional. A closer outside any block,
+or `.else` outside a conditional, parses as an ordinary directive, because a macro can supply the
+other half: clang accepts `.endif` or `.else` for a conditional a macro opened, and GNU as a stray
+`.endm` or `.endr`. The scanner reads `.else` and `.elseif` like closers, to know where one fits. A
+second `.else` in a conditional, or `.elseif` after `.else`, which both assemblers reject, becomes a
+token no rule accepts and parses as an error.
 
 `\name`, `\@` and `\+` are `macro_argument` nodes. Text glued to an argument forms a
-`concatenation`, such as `no\s`, `\name\()_start` or `.Lx\@`, which may be a mnemonic, an operand or
-a label. A label named that way does not start a block: its name exists only once the macro expands.
-The scanner reads glued pieces only where nothing separates them from the piece before, and never
-during error recovery, so recovery cannot glue the next line onto a name. Macro calls take keyword
-arguments (`m b=2, a=1`). ARM (Apple) adds Apple's positional arguments `$0` to `$9` and `$n`, and
-requires commas between parameters, as its assembler does. Apple's clang substitutes a positional
-argument whatever follows it, so `$0.16b` and `$0abc` are the argument glued to text.
+`concatenation` (`no\s`, `\name\()_start`, `.Lx\@`), which may be a mnemonic, an operand or a label.
+A label named that way starts no block, since its name exists only after expansion. The scanner
+reads glued pieces only where nothing separates them from the piece before, and never during error
+recovery, so recovery cannot glue the next line onto a name. Macro calls take keyword arguments
+(`m b=2, a=1`). ARM (Apple) adds Apple's positional arguments `$0` to `$9` and `$n` and requires
+commas between parameters, as its assembler does. Apple's clang substitutes a positional argument
+whatever follows it: `$0.16b` and `$0abc` are the argument glued to text.
 
-The grammar is line oriented: a statement ends at a newline, at a statement separator or at the end
-of the file. GNU as reads a missing final newline as one ("end of file not at end of a line; newline
-inserted"). The scanner reads the end of the file as a zero-width terminator, and as the closer of
-each block still open there.
+A statement ends at a newline, a statement separator or the end of the file. GNU as reads a missing
+final newline as one ("end of file not at end of a line; newline inserted"); the scanner reads the
+end of the file as a zero-width terminator and as the closer of each block still open there.
 
-When the last line is broken and no newline follows it, the scanner still closes the innermost block
-at the end of the file. Error recovery then keeps every block, and only the broken line becomes an
-error node, as it would before a final newline.
-Without this, typing the `.` of `.endm` as the last line of a new file would turn the whole macro
-into one error node for a keystroke: its name would lose its color and the macro would leave the
-outline.
+When the last line is broken and no newline follows it, the scanner still closes the innermost
+block at the end of the file; error recovery then keeps every block, and only the broken line
+becomes an error node. Otherwise typing the `.` of `.endm` on the last line of a new file would turn
+the macro into one error node, and its name would lose its color and its outline entry.
 
-Two tree-sitter rules shape this. When the error shows only at the end of the file, as with `.`
+Two tree-sitter rules apply here. When the error appears only at the end of the file, as with `.`
 waiting for `= expr`, recovery keeps the block only if the scanner closes it there, because no state
 inside a block accepts the bare end of the file; with no block open, recovery skips the token. When
 the error comes earlier, as with a lone `1` or `\`, the parser is still recovering at the end of the
-file. tree-sitter then ignores a zero-width token unless the scanner's state changed
+file, and tree-sitter ignores a zero-width token unless the scanner state changed
 (`ignore_empty_external_token` in its `parser.c`). The tokens the scanner writes at the end of the
-input therefore carry a one-byte state that no other token has, and the first of them counts.
-Python's grammar relies on the same rule for the dedents it writes at the end of a file. The scanner
-reads the state back. During recovery it writes nothing when the token before already closed the
-input, so recovery ends on its own instead of relying on tree-sitter to ignore the repeat.
+input therefore carry a one-byte state that no other token has, and the first of them counts;
+Python's grammar relies on the same rule for its final dedents. During recovery the scanner writes
+nothing when the token before already closed the input, so recovery ends without relying on
+tree-sitter to ignore the repeat.
 
-While a line is being typed its last construct is often still open, and the scanner closes it with a
-zero-width token so that error recovery never pulls in the next line. An operand missing after a
-comma, an expression missing after an operator, `(`, `#` or `$`, and a parenthesis, a bracket, a
-register list or a GNU-syntax string left open all close at the end of the line, before a separator,
-or before any character that cannot continue them. Each missing piece and each open construct has a
-closing token of its own (see The external scanner). `mov x0, , x1` keeps both operands, and
-`ldr x0, [x1` closes its bracket at the end of the line. Character constants and strings end at the
-closing quote or at the end of the line, unless the line ends in a join, which continues them on
-the next line. A relocation may still lack its specifier and a register its name
-after `%`. In ARM a register range may lack its end, a `:lo12:` relocation its name or its second
-colon, and a `sym(GOT)` suffix its name or its `)`.
+While a line is typed its last construct is often open. The scanner closes it with a zero-width
+token, so error recovery never pulls in the next line. An operand missing after a comma, an
+expression missing after an operator, `(`, `#` or `$`, and a parenthesis, bracket, register list or
+GNU-syntax string left open close at the line end, before a separator, or before any character that
+cannot continue them. Each missing piece and each open construct has its own closing token (see The
+external scanner). `mov x0, , x1` keeps both operands; `ldr x0, [x1` closes its bracket at the line
+end. Character constants and strings end at the closing quote or the line end, unless the line ends
+in a join, which continues them. A relocation may lack its specifier, and a register its name after
+`%`. In ARM a register range may lack its end, a `:lo12:` relocation its name or its second colon,
+and a `sym(GOT)` suffix its name or its `)`.
 
-Three tests hold this. The first types every prefix of every line of the fixtures, with and without
-their final newline, and of all corpus examples, and requires every other line to parse exactly as
-before. Some constructs really span lines: a line that ends in a join (any line but a GNU-syntax
-line comment) takes in the lines it continues into, and an unclosed `/*` reaches
-its next `*/` or the end of the file. The test computes those lines from the text and lets them
-change, as part of the typed line. The other allowed change: typing a line that holds a block's
-opener, clause or closer may change how the other such lines of that block, and of the blocks around
-it, parse. The second types every printable character right after each kind of open construct, in
-every grammar, both before a next line and as the last line of a file with no newline after it. It
-does so inside a `.if` and a `.rept` (a label block in NASM) that the end of the file closes, and
-the lines before must parse as they did without it. The third, `test/grammar/closing.test.ts`,
-checks the scanner against the parse table in each generated `parser.c`. It parses a line that stops
-at an open construct, once for every grammar site that uses a closing token, and reads from
-tree-sitter's debug log the parse states the parser is in there before any error recovery. For every
-printable character followed by `a` or `=`, the scanner must close exactly when no token those
-states accept can start the text, and close with the token that site uses.
+Three tests cover this:
+
+1. `test/grammar/typing.test.ts` types every prefix of every fixture line, with and without the
+   final newline, and of every corpus example, and requires every other line to parse as before.
+   Exempt are the lines a typed line continues into through a join (any line but a GNU-syntax line
+   comment), the lines an unclosed `/*` reaches up to its `*/` or the end of the file, the lines an
+   unclosed C macro call takes up to its `)`, and, for a line that holds a block's opener, clause or
+   closer, the other such lines of that block and of the blocks around it.
+2. The same file types every printable character after each kind of open construct, in every
+   grammar, before a next line and as the last line of a file without a final newline, inside a
+   `.if` and a `.rept` (a label block in NASM) that the end of the file closes; the lines before
+   must parse unchanged.
+3. `test/grammar/closing.test.ts` checks the scanner against each generated `parser.c`. It parses a
+   line that stops at an open construct, once for every grammar site that uses a closing token, and
+   reads from tree-sitter's debug log the parse states before any error recovery. For every
+   printable character followed by `a` or `=`, the scanner must close exactly when no token those
+   states accept can start the text, and with the token that site uses.
 
 ## Query and test sources
 
-Query fragments live in `queries/<source>/` and corpus tests in `test/corpus/<source>/`. For each
+Query fragments are in `queries/<source>/`, corpus tests in `test/corpus/<source>/`. For each
 language the sources run from general to specific: `core`, the syntax family, each architecture,
-then `<arch>.<syntax>` for material that only holds for that pair (AT&T operands and `@` symbol
-types live in `x86.gas`). Corpus tests also include a directory named after the grammar for
-behavior that belongs to one dialect.
+then `<arch>.<syntax>` for material that holds for one pairing (AT&T operands and `@` symbol types
+are in `x86.gas`). Corpus tests also include a directory named after the grammar, for one dialect's
+behavior.
 
-Zed allows one file per query kind and paints a character with the last capture pushed for it, so
-the build concatenates fragments from general to specific and later patterns override earlier ones.
+Zed allows one file per query kind and paints a character with the last capture pushed for it. The
+build concatenates fragments from general to specific, so later patterns override earlier ones.
 
 ## The external scanner
 
@@ -295,18 +289,16 @@ What the scanner decides:
 | `{` where a decorator or prefix fits             | decorator or pseudo-prefix                                                                                 | -            | -                         | same        | -          |
 | `.req`, `.dn`, `.qn` after a first name          | register alias word                                                                                        | same         | same                      | -           | -          |
 
-In Assembly a `;` is a separator when a directive follows it and a comment otherwise. The file does
-not say whether it is written for GNU as and clang ELF, where `;` separates, or for Apple's clang,
-where it starts a comment. Nor can Zed route such a file by its content: it reads a language's
+In Assembly a `;` is a separator when a directive follows it, and a comment otherwise. A `.s` file
+does not state whether it targets GNU as and clang ELF, where `;` separates, or Apple's clang, where
+it starts a comment, and Zed cannot route a file by content: it reads a language's
 `first_line_pattern` only when no suffix matches, and Assembly owns `.s`. A modeline, or the ARM,
-ARM (Apple) and x86 (GAS) languages, give the exact reading. The rule holds for every `;` on a line,
-so a `;` comment ends where a later `;` is followed by a directive. `.rept 2; nop; .endr` closes its
-block, with `; nop` as a comment, and `mov w1, #0 ; =0x0` stays a comment to the end of the line. An
-earlier version let the first comment run to the end of the line and swallow the directive, which
-left one-line blocks open to the end of the file.
+ARM (Apple) and x86 (GAS) languages, give the exact reading. The rule applies to every `;` on a
+line, so a `;` comment ends where a later `;` is followed by a directive: `.rept 2; nop; .endr`
+closes its block with `; nop` as a comment, and `mov w1, #0 ; =0x0` is a comment to the line end.
 
-A `;` after an x86 prefix separates too (`rep; movsb`, `lock; incl %eax`). No prefix is an ARM
-mnemonic, so such a line is x86 code, and there `;` always separates. The prefixes are the x86 (GAS)
+A `;` after an x86 prefix also separates (`rep; movsb`, `lock; incl %eax`). No prefix is an ARM
+mnemonic, so such a line is x86 code, where `;` always separates. The prefixes are the x86 (GAS)
 prefix words (see x86 operands, Prefixes).
 
 The preprocessor ends a C macro call at its `)`. Inside a call, an assembler line comment (`@`, `#`,
@@ -318,72 +310,70 @@ comments.
 `%%` separates statements in ARM (Apple), as in Apple's clang (`SeparatorString` in LLVM's
 `AArch64MCAsmInfo.cpp`), and in Assembly. No x86 or GNU ARM operand starts with `%%`.
 
-A value can start with a letter, a digit or one of `_ . ( - + ~ ! ' :`. In Assembly `svc #0` has an
-immediate, while `nop # note` and `nop #*** banner ***` are comments.
+A value starts with a letter, a digit or one of `_ . ( - + ~ ! ' :`. In Assembly `svc #0` has an
+immediate; `nop # note` and `nop #*** banner ***` are comments.
 
-At the start of a statement the scanner reads the next word. If blanks and a colon follow, the word
-is a label name: local when the assembler keeps it out of the symbol table (`.L` in the ELF
-dialects, `L` in ARM (Apple), `.` in NASM), global otherwise. In the GNU syntax a word of digits is
-a numeric label, and in Assembly and ARM it may end in `$`, a dollar label of GNU as for 32-bit ARM.
-Inside a block, its closing word (`.endm`, `.endmacro`, `.endif` or `.endr`) is the closer. Left to
-the grammar, the parser would have to decide at the first letter of a line whether the current
-block ends, before it could see the colon. The word takes the characters of the grammar's names,
-and a test checks every printable character against `lexical.js`.
+At a statement start the scanner reads the next word. Followed by blanks and a colon, the word is a
+label name: local when the assembler keeps it out of the symbol table (`.L` in the ELF dialects, `L`
+in ARM (Apple), `.` in NASM), global otherwise. In GNU syntax a word of digits is a numeric label;
+in Assembly and ARM it may end in `$`, a dollar label of GNU as for 32-bit ARM. Inside a block, its
+closing word (`.endm`, `.endmacro`, `.endif` or `.endr`) is the closer. The scanner reads these
+words because the parser would otherwise have to decide at the first letter of a line whether the
+block ends, before it sees the colon. The word takes the characters of the grammar's names; a test
+checks every printable character against `lexical.js`.
 
 A statement inside a C macro call argument starts with a label or an item. The scanner reads the
 word once. Followed by a colon, blanks allowed, it is a label name; otherwise it takes its operand
-role. `X(r4: nop)` has a label, `cfi_rel_offset (r4, 0)` a register. GNU as drops the blanks
+role: `X(r4: nop)` has a label, `cfi_rel_offset (r4, 0)` a register. GNU as drops the blanks
 between a statement's first word and its colon (`app.c`). A label named by a call (`L(x):`) is
 decided at its colon, which the scanner reads as `_label_colon`. At a statement start the scanner
-looks past the parentheses for the colon instead, once per statement; inside calls that look would
+instead looks past the parentheses for the colon, once per statement; inside calls that look would
 repeat at every nested call and take quadratic time.
 
 The same word may be a directive that must match whole: a block opener or clause, `.loc` or `.file`,
 an ARM directive with register operands, or a NASM directive such as `section` or `db`. The words
-come from tables generated from the upstream sources, one table per architecture and dialect, and
-each language looks them up in one dictionary built from the tables of its architectures (see
-Generated tables). The scanner hashes a word once and reads every role it has from that one entry:
-directive, instruction, register, prefix and the rest, each with its architecture, token and flags.
-The indent pattern reads the block words from the tables. The flags say, for example, that a
-reserved word is never a label, and that in NASM a word can make the name before it a label
-(`x db 1`) or an assignment name (`len equ 5`). The scanner reads a word into a buffer one byte
-longer than the longest word of its dictionary, so a longer word is no keyword. tree-sitter's
-runtime gives a wasm grammar only a few C library functions, so the hash is the scanner's own.
+come from tables generated from the upstream sources, one table per architecture and dialect; each
+language looks them up in one dictionary built from the tables of its architectures (see Generated
+tables). The scanner hashes a word once and reads every role it has from that one entry: directive,
+instruction, register, prefix and the rest, each with its architecture, token and flags. The indent
+pattern reads the block words from the tables. The flags state, for example, that a reserved word
+is never a label, and that in NASM a word can make the name before it a label (`x db 1`) or an
+assignment name (`len equ 5`). The scanner reads a word into a buffer one byte longer than the
+longest word of its dictionary, so a longer word is no keyword. tree-sitter's runtime gives a wasm
+grammar only a few C library functions, so the hash is the scanner's own.
 
 During error recovery the scanner reads no label and no block closer. Every parse state that accepts
-one also accepts a newline, since a blank line may stand wherever a statement may. Recovery
-therefore reaches a statement start at the newline that ends the broken line, before the first word
-of the next line, and where that newline cannot end recovery, a label or closer could not either. A
-name with a colon read during recovery, written as a label would be, becomes one token that no rule
-accepts, and recovery skips it instead of starting a statement there. Operands the grammars do not
-parse yet, such as `ptr fs:[0x28]`, `%fs:sym@tpoff`, NASM's `[fs:0x28]` or `:lo12:sym` in ARM
-(Apple), never start a block. Refusing the word alone, as the grammar did until M2, was not enough:
-tree-sitter resumed a statement at the refused word and read it again, outside recovery, as a label.
-Valid code never enters recovery. A label after an error and a `;` still starts its block, because
-recovery resumes at the `;`.
+one also accepts a newline, since a blank line may stand wherever a statement may; recovery
+therefore reaches a statement start at the newline that ends the broken line, and where that newline
+cannot end recovery, a label or closer could not either. A name with a colon read during recovery
+becomes one token that no rule accepts, and recovery skips it instead of starting a statement there.
+Operands the grammars do not parse, such as `ptr fs:[0x28]`, `%fs:sym@tpoff`, NASM's `[fs:0x28]` or
+`:lo12:sym` in ARM (Apple), never start a block. Refusing only the word, as in M2, is not enough:
+tree-sitter resumes a statement at the refused word and reads it again, outside recovery, as a
+label. Valid code never enters recovery. A label after an error and a `;` still starts its block,
+because recovery resumes at the `;`.
 
-The scanner never asks for the column during recovery. tree-sitter works out an unknown column by
-walking back to the start of the line, and while it skips characters no token accepts, it forgets
-the column after every scanner call. Asking for it at each word made one long broken line cost time
-in proportion to the square of its length. With that earlier rule a line of `nop a a a` took 16 ms
-at 4,000 characters and 44 ms at 8,000; it now takes 10 and 19.
+The scanner never asks for the column during recovery. tree-sitter computes an unknown column by
+walking back to the line start, and while it skips characters no token accepts, it forgets the
+column after every scanner call; asking at each word made a long broken line cost quadratic time.
+Measured on `nop a a a`: 16 ms at 4,000 characters and 44 ms at 8,000 with column requests, 10 and
+19 ms without.
 
-String text is read before any comment rule, so `.asciz "# of args"` stays a string in every
-dialect. In ARM (Apple) an `@` that is not a relocation is an error, as it is for Apple's clang.
-`;` alone and `nop;;nop` are empty statements in the dialects where `;` separates.
+String text is read before any comment rule, so `.asciz "# of args"` is a string in every dialect.
+In ARM (Apple) an `@` that is not a relocation is an error, as for Apple's clang. `;` alone and
+`nop;;nop` are empty statements in the dialects where `;` separates.
 
-Assembly has to guess between ARM and x86, which costs these cases: `mov rax, rdi #copy` reads
-`#copy` as an immediate and `nop @note` reads `@note` as a symbol type. ARM register names are
-registers in x86 code too (`movl sp, %eax`, `call a1`). Assembly reads AT&T until a `.intel_syntax`
-line, so before one, Intel's `dword ptr [rbx+4]` parses as the symbols `dword` and `ptr` and an ARM
-lane; after one, it is a typed memory operand, as in x86 (GAS). A bare `#` at the end of a line is a
-comment there, since no value follows it. The exact languages read all of these correctly. An ARM
-role slot also takes x86 operands, so `blcs %eax, %ebx` (AMD TBM) parses, though `blcs` is also
-ARM's `bl` with the condition `cs`.
+Assembly guesses between ARM and x86. Limits: `mov rax, rdi #copy` reads `#copy` as an immediate,
+and `nop @note` reads `@note` as a symbol type. ARM register names are registers in x86 code too
+(`movl sp, %eax`, `call a1`). Assembly reads AT&T until a `.intel_syntax` line; before one, Intel's
+`dword ptr [rbx+4]` parses as the symbols `dword` and `ptr` and an ARM lane, after one as a typed
+memory operand, as in x86 (GAS). A bare `#` at a line end is a comment there, since no value follows
+it. The exact languages read all of these correctly. An ARM role slot also takes x86 operands, so
+`blcs %eax, %ebx` (AMD TBM) parses, though `blcs` is also ARM's `bl` with the condition `cs`.
 
-The scanner sees only which of its own tokens the parser accepts. So each closing token stands for
-one kind of construct, and the scanner knows what may continue it. A missing piece closes before
-any character that cannot start it:
+The scanner sees only which of its own tokens the parser accepts. Each closing token therefore
+stands for one kind of construct, with a fixed set of characters that continue it. A missing piece
+closes before any character that cannot start it:
 
 | Token                        | The missing piece                                                                         | Starts with                                                    |
 | ---------------------------- | ----------------------------------------------------------------------------------------- | -------------------------------------------------------------- |
@@ -399,14 +389,14 @@ any character that cannot start it:
 | `_missing_symbol`            | an `.loh` argument, a NASM structure name                                                 | a letter, `_`, or `.` before a letter                          |
 | `_missing_relocation`        | the name or second colon of `:lo12:`, the name in `sym(GOT)`                              | nothing the parser reads; the scanner reads the name and colon |
 
-An expression starts with a letter, a digit or one of `_ . ( - + ~ !`, in the GNU syntax also
-`' " \`, in Assembly and ARM `:` (a relocation), and in NASM `? $`. A value starts as an expression
-does, and in the GNU syntax also with `%` (an x86 register or a symbol type such as `%function`)
+An expression starts with a letter, a digit or one of `_ . ( - + ~ !`; in GNU syntax also with
+`' " \`, in Assembly and ARM with `:` (a relocation), and in NASM with `? $`. A value starts as an
+expression does, in GNU syntax also with `%` (an x86 register or a symbol type such as `%function`),
 and in x86 with `$`. In Intel operands an expression has no relocation `:` and also starts with `%`
 or `[`; an operand also starts with `$`. Wherever the parser takes an x86 register, `%` starts one.
 
-An open construct closes before any character that cannot continue it. Each one also continues
-with an operator where the parser takes one:
+An open construct closes before any character that cannot continue it, and also continues with an
+operator where the parser takes one:
 
 | Token                 | The open construct                         | Continues with                                                  |
 | --------------------- | ------------------------------------------ | --------------------------------------------------------------- |
@@ -418,33 +408,32 @@ with an operator where the parser takes one:
 | `_unclosed_address`   | an Intel bracket                           | `]`                                                             |
 | `_unclosed_arguments` | the arguments of a macro call              | `)` and `,`                                                     |
 
-Where a character means different things, the scanner reads the token itself, and only where the
+Where a character has several meanings, the scanner reads the token itself, and only where the
 parser expects it: the comma right after an AT&T `(` (`(,%rax,8)`), the colon of an ARM alignment
 or index range, the colon of an Intel segment (`fs:[0x28]`), the `[` after an Intel displacement
 (`sym[rip]`), the dash of a register range, the `!` of an ARM writeback, the `^` after a register
-list, the `)` of a C macro call and the colon of a label named by a call inside a call, a
+list, the `)` of a C macro call and, inside a call, the colon of a label named by a call, a
 relocation name after `:` and the colon after it, a pseudo-prefix and a decorator. Before a `(` it
 writes a zero-width marker of what the parentheses open (see Expressions). At the start of an ARM
 bracket element a colon begins an alignment when a digit follows (`[r0, :64]`) and a relocation
-otherwise (`[x0, :lo12:sym]`). The first colon of `:lo12:` stays the parser's own token, since a
+otherwise (`[x0, :lo12:sym]`). The first colon of `:lo12:` is the parser's own token, since a
 label's colon is the same character (`\name\()_start:`). When a missing piece and an open construct
-could both close, the construct closes as it stands, so `.word (` at the end of a line holds an
-empty parenthesis. Inside a C macro call a line end closes nothing; a construct nested in the call
-closes at the line end only when the first character of the next line cannot continue it.
+can both close, the construct closes as it stands: `.word (` at the end of a line holds an empty
+parenthesis. Inside a C macro call a line end closes nothing; a construct nested in the call closes
+at the line end only when the first character of the next line cannot continue it.
 
-Comments are read first, so the decision is made on the next real character. `==` and `!=` need a
-second character (`!` alone is an operator in the GNU-syntax languages except ARM (Apple), where
-`a !b` in a call argument is two items), and so
-does a NASM `$`, which starts a name only before a letter, `_`, `?` or `.`, and a `.` where only a
-name fits. The only word that may be glued to a complete operand is a relocation
-specifier after `@`, and the scanner reads that itself, so any other glued word closes like any
-character that cannot continue: `[0x` (a hex number being typed) closes its bracket before the `x`
-and the error stays on its line. M2 left every glued word open instead, which let tree-sitter's
-recovery carry an Intel bracket over to the next line.
+Comments are read first, so the decision is made on the next character that is not a comment. Where
+an operator may continue, `=` in GNU syntax and `!` in ARM (Apple) and NASM decide only with a
+second `=` (`==`, `!=`); in the other GNU-syntax languages `!` alone is an operator, and in ARM
+(Apple) `a !b` in a call argument is two items. A GNU-syntax `\` needs a name, `@` or `+` after it,
+a NASM `?` a name character, and a `.` where only a name fits a letter or `_`. The only word that
+may be glued to a complete operand is a relocation specifier after `@`, which the scanner reads
+itself; any other glued word closes like any character that cannot continue, so `[0x` (a hex number
+being typed) closes its bracket before the `x`, and the error stays on its line.
 
 The open tokens are valid only where the construct may end. After `[` or `{` an element is
 required, so a bracket never closes before its first element; a rule based only on the next
-character would otherwise close `[x1]` before the `x`.
+character would close `[x1]` before the `x`.
 
 The scanner is strict ISO C11. Dialect settings are 0/1 macros used in ordinary `if` statements, so
 every branch compiles and type-checks in all five dialects.
@@ -452,10 +441,10 @@ every branch compiles and type-checks in all five dialects.
 ## Generated tables
 
 Every word list that decides how a line parses is generated. `scripts/keywords.ts` reads the
-upstream sources and writes `tree-sitter/common/keywords.h`, which is checked in, so building the
+upstream sources and writes `tree-sitter/common/keywords.h`, which is committed, so building the
 parsers needs no upstream source. Each table is an X-macro named `ASM_<scope>_<kind>`. The scope is
-an architecture that has an `ASM_<scope>_KEYWORDS` setting in `scanner.h`, or `GNU` for the tables
-every GNU-syntax language reads.
+an architecture with an `ASM_<scope>_KEYWORDS` setting in `scanner.h`, or `GNU` for the tables every
+GNU-syntax language reads.
 
 | Tables                                                                 | Read from                         |
 | ---------------------------------------------------------------------- | --------------------------------- |
@@ -470,34 +459,32 @@ every GNU-syntax language reads.
 | `ASM_GNU_MACHO_SECTION_TYPES`                                          | binutils, LLVM                    |
 | `ASM_GNU_CPP_DIRECTIVES`                                               | clang                             |
 
-Assembly reads the AArch64 GNU, AArch64 Apple, AArch32 and x86 GAS tables, ARM the AArch64 GNU and
-AArch32 tables, ARM (Apple) the AArch64 Apple tables, and x86 (GAS) and x86 (NASM) their own; the
+Assembly reads the AArch64 GNU, AArch64 Apple, AArch32 and x86 GAS tables; ARM the AArch64 GNU and
+AArch32 tables; ARM (Apple) the AArch64 Apple tables; x86 (GAS) and x86 (NASM) their own. The
 GNU-syntax languages also read the `GNU` tables. `bun run build` merges a language's tables into one
-dictionary in `tree-sitter/common/words.h`, a section per language. Each word appears once, with one
-role for every table that lists it, in the order `scanner.h` lists its `ASM_*_KEYWORDS` settings.
-That is the order the lookups prefer, AArch64 GNU, AArch64 Apple, AArch32, x86 GAS, then NASM, so a
+dictionary in `tree-sitter/common/words.h`, one section per language. Each word appears once, with
+one role for every table that lists it, in the order `scanner.h` lists its `ASM_*_KEYWORDS`
+settings: AArch64 GNU, AArch64 Apple, AArch32, x86 GAS, NASM. Lookups prefer the earlier role, so a
 directive both AArch64 and x86 define reads as AArch64's in Assembly.
 
-The dictionary is a minimal perfect hash built the way nasm builds its token table
-(`perllib/phash.ph`): two seeded 32-bit hashes of the word name two vertices of a graph, and the
-values stored at the two add up to the word's index. A lookup costs one hash of the word, two reads,
-and one string compare, which also rejects a word that is no keyword. The build tries seeds until
-the graph has no conflict and checks that every word finds itself. `check:c` builds
-`test/c/words.c` for each language and checks the same in C: every word finds its own entry, and
-the empty word and each word with a character no word holds find none.
+The dictionary is a minimal perfect hash built as nasm builds its token table (`perllib/phash.ph`):
+two seeded 32-bit hashes of the word name two vertices of a graph, and the values stored at the two
+add up to the word's index. A lookup costs one hash, two reads and one string compare; the compare
+also rejects a word that is no keyword. The build tries seeds until the graph has no conflict and
+checks that every word finds itself. `check:c` builds `test/c/words.c` for each language and checks
+the same in C: every word finds its own entry, and the empty word and each word with a character no
+word holds find none.
 
-The tables follow the upstream heads, not the installed releases, so a word the next release
-accepts already reads. The installed tools only cross-check them. A table is a superset: a word
-reads if any assembler of the dialect takes it. Where sources disagree about a word, what one of
-them allows counts (a register that takes a suffix in either), and a restriction holds only if
-every source that lists the word imposes it (a word stays case-limited only if all of them limit
-it). Each reader tags what its source says, and `scripts/lib/keywords/shapes.ts` merges the tags
-into scanner tokens and flags.
+The tables follow the upstream heads, not the installed releases; the installed tools only
+cross-check them. A table is a superset: a word reads if any assembler of the dialect takes it.
+Where sources disagree about a word, what one of them allows counts (a register that takes a suffix
+in either), and a restriction holds only if every source that lists the word imposes it (a word is
+case-limited only if all of them limit it). Each reader tags what its source states, and
+`scripts/lib/keywords/shapes.ts` merges the tags into scanner tokens and flags.
 
-nasm's token classes (registers, prefixes, operand words, decorators) come from nasm alone, because
-where nasm and yasm read a word differently the grammar follows nasm. Statement words stay the
-union with yasm, since nasm rejects the yasm-only lines outright rather than reading them another
-way.
+nasm's token classes (registers, prefixes, operand words, decorators) come from nasm alone: where
+nasm and yasm read a word differently, the grammar follows nasm. Statement words are the union with
+yasm, since nasm rejects the yasm-only lines rather than reading them differently.
 
 To regenerate, keep clones named `binutils`, `llvm`, `nasm` and `yasm` in one directory and run:
 
@@ -509,16 +496,16 @@ scripts/dev bun run generate
 The first command builds `llvm-tblgen` once under `.build/tblgen`, which takes a few minutes, and
 runs each project's own table generators. The second regenerates the parsers.
 `ASM_KEYWORD_SOURCES` in `keywords.h` records the commit of each source, so a change of upstream
-shows in the diff of that one file.
+shows in the diff of that file.
 
-A reader checks the shape of the source it reads and stops the generator when it no longer fits: a
-new handler, token type or operator it has no form for, or a guard it relies on that has gone (a
-name compared in any case, a word that must follow another). A reader cannot see a word written in
-a form it has never met, but a change of form usually removes what it matched, and then it stops.
-`test/unit/keywords-*.test.ts` run each reader on small inline sources, with no upstream source, and
-check its names, its tags and each of its stops.
+A reader checks the shape of the source it reads and stops the generator when the shape no longer
+fits: a new handler, token type or operator it has no form for, or a guard it relies on that is gone
+(a name compared in any case, a word that must follow another). A reader cannot detect a word
+written in a form it has never met; a change of form usually removes what it matched, and then it
+stops. `test/unit/keywords-*.test.ts` run each reader on small inline sources, without upstream
+sources, and check its names, its tags and each of its stops.
 
-What stays hand-written is what upstream has no list of:
+Hand-written, because upstream has no list of them:
 
 - Which token a word becomes: the handler and word maps in `shapes.ts`, and the instruction roles in
   `tree-sitter/common/roles.js`. Signatures that fit no role stop the generator.
@@ -527,21 +514,20 @@ What stays hand-written is what upstream has no list of:
   the AArch64 arrangements and element sizes, the letters of `APSR_nzcvq` and the local label
   prefixes.
 
-A word reads by its table even when a macro redefines it, since the definition may live in another
+A word reads by its table even when a macro redefines it, since the definition may be in another
 file. GNU as and clang let a macro take an instruction's name; clang, nasm and yasm also let it take
-a directive's, while GNU as warns and ignores the macro. `add 1, 2` after `.macro add a b` then
-reads as an instruction, and `add 1 2`, blank separated, is an error on that line though the
-assemblers take it.
+a directive's, while GNU as warns and ignores the macro. Limit: `add 1, 2` after `.macro add a b`
+reads as an instruction, and `add 1 2`, blank separated, is an error on that line, though the
+assemblers accept it.
 
 ## C preprocessor lines
 
 A line that starts with a C preprocessor directive, indented or not, is a `preproc_line`, or a
 `preproc_define` for `#define`. After a label or a `;`, a `#` follows the dialect's comment rules,
-because the preprocessor recognizes directives only at the start of a line.
+since the preprocessor recognizes directives only at the start of a line.
 
-The directives are the generated table `ASM_GNU_CPP_DIRECTIVES`. It reads the cases of clang's
-`HandleDirective` (`clang/lib/Lex/PPDirectives.cpp`), and the handler each word calls gives its
-form:
+The directives are the generated table `ASM_GNU_CPP_DIRECTIVES`, read from the cases of clang's
+`HandleDirective` (`clang/lib/Lex/PPDirectives.cpp`); the handler each word calls gives its form:
 
 | Form                               | Words                                                                                                                                                                                |
 | ---------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
@@ -550,80 +536,83 @@ form:
 | A header name or string, then text | `include`, `include_next`, `import`, `embed`                                                                                                                                         |
 | Text                               | `ifdef`, `ifndef`, `elifdef`, `elifndef`, `else`, `endif`, `undef`, `line`, `error`, `warning`, `pragma`, `ident`, `sccs`, `assert`, `unassert`, `__public_macro`, `__private_macro` |
 
-GCC's directives are a subset of these, measured with GCC 16.2, so no GCC source is needed. Two rows
-are directives to one preprocessor only. clang names `assert` and `unassert` but leaves them
-unimplemented, so it passes them to the assembler; GCC implements them. clang reads `__public_macro`
-and `__private_macro` when modules are on; GCC passes them on.
+GCC's directives are a subset of these (measured with GCC 16.2), so no GCC source is read. Two rows
+are directives to one preprocessor only: clang names `assert` and `unassert` but leaves them
+unimplemented and passes them to the assembler, while GCC implements them; clang reads
+`__public_macro` and `__private_macro` when modules are on, while GCC passes them on.
 
-clang's other words are left out, and those lines read as comments, as the assembler reads them.
+clang's other words are left out, and those lines read as comments, as the assembler reads them:
 `module` and `__preprocessed_module` are directives only after a C++ `module` keyword, never after
-`#`. `__preprocessed_import` needs C++ modules. `__include_macros` is an error outside clang's own
+`#`; `__preprocessed_import` needs C++ modules; `__include_macros` is an error outside clang's own
 buffers, and GCC does not know it. The generator stops if any of these facts changes, and on a
 handler it has no form for.
 
-The word is compared as written, so `#DEFINE` is a comment. It ends where a C identifier ends. `.`
-and `$` are not identifier characters in assembler-with-cpp mode, so `#endif.x` is `#endif` with the
-argument `.x`.
+The directive word is compared as written, so `#DEFINE` is a comment. It ends where a C identifier
+ends; `.` and `$` are not identifier characters in assembler-with-cpp mode, so `#endif.x` is
+`#endif` with the argument `.x`.
 
-After the directive the scanner reads the rest of the line the way the preprocessor does in
-assembler-with-cpp mode, measured with GCC 16.2 and clang 22.1 (`-E -x assembler-with-cpp`):
+After the directive the scanner reads the rest of the line as the preprocessor does in
+assembler-with-cpp mode (measured with GCC 16.2 and clang 22.1, `-E -x assembler-with-cpp`):
 
-- Only `//` and `/*` start comments. `#`, `@` and `;` are ordinary text: `#define SEP ;` and
+- Only `//` and `/*` start comments. `#`, `@` and `;` are text: `#define SEP ;` and
   `#define STR(x) #x` keep their arguments.
-- `"` starts a literal that ends at the next unescaped `"` or at the end of the line. `'` starts one
-  that ends at the next `'` or at the end of the line.
+- `"` starts a literal that ends at the next unescaped `"` or at the line end; `'` starts one that
+  ends at the next `'` or at the line end.
 - After `#include`, `#include_next`, `#import` and `#embed`, `<...>` is one header name, and the
-  `//` in `<a//b.h>` is not a comment. An unclosed `<` is read as a header name being typed.
+  `//` in `<a//b.h>` is no comment. An unclosed `<` is a header name being typed.
 - A backslash before a newline joins the two lines everywhere, including inside literals and `//`
   comments, also with blanks between the backslash and the newline. Outside literals a backslash
-  does nothing else.
+  has no other effect.
 
-A `preproc_define` has the macro's `name`, its `parameters` when a `(` follows the name with no
-blank between, and its `value`, the rest of the line as above. The name takes the characters of a
-C identifier, so `#define a.b 1` defines `a` with the value `.b 1`, `#define a$b 1` defines `a` with
-the value `$b 1`, and `#define P (x)`, with a blank before the parenthesis, defines `P` as `(x)`.
+A `preproc_define` has the macro's `name`, its `parameters` when `(` follows the name without a
+blank, and its `value`, the rest of the line as above. The name takes the characters of a C
+identifier: `#define a.b 1` defines `a` with the value `.b 1`, `#define a$b 1` defines `a` with the
+value `$b 1`, and `#define P (x)`, with a blank before the parenthesis, defines `P` as `(x)`.
 Parameters are names, `...`, or GNU's named variadic form `args...`. A `#define` without a name is
-complete while it is typed, and one whose name is not an identifier (`#define 1 2`, `#define $x 1`)
-is an error, as it is for the preprocessor. The argument of `#if` and `#elif` is a
-`preproc_condition`, a C expression.
+complete while it is typed; one whose name is not an identifier (`#define 1 2`, `#define $x 1`) is
+an error, as for the preprocessor. The argument of `#if` and `#elif` is a `preproc_condition`, a C
+expression.
 
-Comments after the directive become `preproc_comment` children of the line, and trailing blanks
-belong to the line too. The comments keep their color, and a cursor at the end of `#endif /* X */`,
-even after trailing blanks, stays in the `preproc` scope.
+Comments after the directive are `preproc_comment` children of the line, and trailing blanks belong
+to the line; a cursor at the end of `#endif /* X */`, also after trailing blanks, is in the
+`preproc` scope.
 
-Four cases are not modeled. A comment opener split by a backslash-newline (`/`, backslash, newline,
-`*`) is joined by the preprocessor but not by the scanner. A directive word split that way, and a
-comment between the `#` and the word (`# /* c */ define N`), are directives to the preprocessor and
-comment lines here. No real code writes these three. A `// note` ending in a backslash on a code
-line swallows the next line in a `.S` file, which goes through the preprocessor, but not in a `.s`
-file, which GNU as reads directly. Both open as the same language, so the grammar ends that comment
-at the end of its line.
+Not modeled:
+
+- a comment opener split by a backslash-newline (`/`, backslash, newline, `*`), which the
+  preprocessor joins;
+- a directive word split that way, and a comment between `#` and the word
+  (`# /* c */ define N`), both directives to the preprocessor and comment lines here;
+- a `// note` that ends in a backslash on a code line: in a `.S` file it continues the comment on
+  the next line, in a `.s` file, which GNU as reads directly, it does not. Both open as the same
+  language, and the grammar ends the comment at its line end.
 
 The preprocessor joins code lines the same way: in a `.S` file every line that ends in a backslash,
 also with blanks before the newline, continues on the next, and a join inside a word splices it
 (GCC's manual: "you may split a line anywhere, even in the middle of a word"). GNU as and clang
-reject a backslash-newline in the code of a `.s` file, so every GNU-syntax language joins code
-lines as the preprocessor does, and no valid `.s` file reads differently. A join is a blank
-between tokens, a splice inside a name, a number or an operator, and a string continues past it:
-`.long A | \` and `B` on the next line is one directive. A backslash that no newline follows keeps
-its GNU meaning, a macro argument (`\reg`) or `\()`. A word the scanner reads, a mnemonic, a
-directive, a register, a prefix or a statement's label, ends at a backslash. The scanner cannot see
-the character after a backslash without reading it, and tree-sitter gives it one token end and no
-way back, so it cannot tell `push\width`, a word and a macro argument, from `.lo\` and `ng` on the
-next line, one word. None of the 7,245 joins in the pinned Linux, glibc and FFmpeg sources splits
-such a word. When the scanner meets a backslash that is no join between two tokens, it hands the
-rest of the scan a lexer that offers the backslash again, so every token is decided as without
-joins.
+reject a backslash-newline in the code of a `.s` file, so every GNU-syntax language joins code lines
+as the preprocessor does without misreading any valid `.s` file. A join is a blank between tokens
+and a splice inside a name, a number or an operator, and a string continues past it: `.long A | \`
+followed by `B` on the next line is one directive. A backslash that no newline follows keeps its GNU
+meaning: a macro argument (`\reg`) or `\()`.
+
+Limit: a word the scanner reads (a mnemonic, a directive, a register, a prefix or a statement's
+label) ends at a backslash. The scanner cannot see the character after a backslash without reading
+it, and tree-sitter gives it one token end and no way back, so `push\width`, a word and a macro
+argument, and `.lo\` followed by `ng` on the next line, one word, cannot be told apart. None of the
+7,245 joins in the pinned Linux, glibc and FFmpeg sources splits such a word. At a backslash that is
+no join between two tokens, the scanner hands the rest of the scan a lexer that offers the backslash
+again, so every token is decided as without joins.
 
 ## Blocks, labels and directive forms
 
 Measured with GNU as 2.46.1 (x86-64, AArch64) and 2.45 (AArch32) and clang 22.1 (x86-64, AArch64,
-AArch32, Apple arm64). Every one of them accepts:
+AArch32, Apple arm64). All of them accept:
 
 - `.macro` with the parameters `a, b`, `a=1`, `a = 1`, `a:req` and `rest:vararg`, keyword calls
   such as `m b=2, a=1`, `.exitm` and `.purgem`.
-- In a macro body: `\name`, the counter `\@`, the separator `\()`, `\+`, all of them glued to
-  other text (`no\s`, `\name\()_end`), as the mnemonic (`\op`) or as a label (`\name:`).
+- In a macro body: `\name`, the counter `\@`, the separator `\()` and `\+`, each glued to other
+  text (`no\s`, `\name\()_end`), as the mnemonic (`\op`) or as a label (`\name:`).
 - `.if`, `.elseif`, `.else`, `.endif` and the conditions `.ifdef`, `.ifndef`, `.ifnotdef`, `.ifb`,
   `.ifnb`, `.ifc`, `.ifnc`, `.ifeqs`, `.ifnes`, `.ifeq`, `.ifne`, `.ifge`, `.ifgt`, `.ifle`,
   `.iflt`.
@@ -641,7 +630,7 @@ AArch32, Apple arm64). Every one of them accepts:
 - `.2byte`, `.4byte` and `.8byte`, which compilers write in debug information. `.1byte`, `.3byte`
   and `.16byte` are errors.
 
-Where they differ:
+Differences:
 
 |                                                   | GNU as x86-64 | GNU as AArch64 | GNU as AArch32                                  | clang ELF                                                          | clang Apple arm64    |
 | ------------------------------------------------- | ------------- | -------------- | ----------------------------------------------- | ------------------------------------------------------------------ | -------------------- |
@@ -661,23 +650,23 @@ Where they differ:
 | Macro call `m 1 -2`                               | two arguments | one argument   | one argument                                    | one argument                                                       | one argument         |
 
 GNU as takes any of `f`, `d`, `e`, `r`, `s`, `x`, `h`, `p` and `b`, in either case, as the letter of
-a prefixed float, and inside a float directive it reads `0x10` as 10.0: the prefix, then a decimal
+a prefixed float, and inside a float directive reads `0x10` as 10.0: the prefix, then a decimal
 number. clang reads `.MACRO` but ends a macro body only at a lower-case `.endm` or `.endmacro`, and
 a repeat body only at a lower-case `.endr`.
 
-A construct parses in a language when at least one of that language's assemblers accepts it. So far
-the grammar reads:
+A construct parses in a language when at least one of that language's assemblers accepts it. The
+grammar reads:
 
 - Numeric labels as `numeric_label`, defined (`1:`) or referenced (`1b`, `1f`). Only lower-case `b`
   and `f` count, so `0b101` and `0x1f` stay integers.
 - An `integer` in decimal, octal, `0x` or `0b` form with the suffixes its assemblers ignore: `U`,
-  then `L` or `LL`, in any case. GNU as also takes a `U` after the `L`s (`1LU`), which clang
-  rejects, so ARM (Apple) does not read that as one integer.
+  then `L` or `LL`, in any case. ARM (Apple) does not read GNU as's `U` after the `L`s (`1LU`) as
+  part of the integer, since clang rejects it.
 - Dollar labels (`1$:`, `1$`) in Assembly and ARM only.
 - `NAME = expr`, `NAME == expr` and `. = expr` as `assignment`. `.equ`, `.set`, `.equiv` and `.eqv`
-  stay directives whose first argument is the name, which keeps `.set noreorder` a plain directive.
-- A `float` in any of the three forms: decimal, prefixed and hexadecimal. A prefixed float with `x`
-  or `b` needs a point; `0x10` and `0b11` stay integers.
+  stay directives whose first argument is the name, so `.set noreorder` is a plain directive.
+- A `float` in the decimal, prefixed and hexadecimal forms. A prefixed float with `x` or `b` needs a
+  point; `0x10` and `0b11` stay integers.
 - Blank-separated integers, strings, names and negated values after `.loc` and `.file` (GCC writes
   `view -0`). Every other directive separates its arguments with commas and may leave one empty.
 - Macro definitions with the parameters `a`, `a=default`, `a:req` and `a:vararg`, separated by
@@ -688,46 +677,45 @@ the grammar reads:
   repeat blocks with `.rept`, `.irp` and `.irpc`, closed by `.endr`. `.irp` values are separated
   by commas or blanks (only commas in ARM (Apple)).
 
-A macro call looks like an instruction, and its arguments may be separated by blanks. GNU as
+A macro call has the form of an instruction, and its arguments may be separated by blanks: GNU as
 ("Multiple arguments can be separated by blanks or commas") and clang ELF split `m 1 2` into two
 arguments, Apple's clang joins it into the one argument `12`, and nasm and yasm pass `1 2` as one
 argument. The generated instruction and directive tables tell a call from an instruction (see
-Macro calls), so only a call takes blank-separated arguments. An instruction separates its operands
-with commas, as every assembler requires: `movl %eax %ebx`, `add x0, x1 x2`, and NASM's `mov eax 1`
-and `push 1 2` are errors. In NASM a name or a macro token before an operand is the exception, since
-it may be a macro that expands first (see NASM, Macro calls and macro words). A macro named like
-an instruction (`.macro mov a b`, then `mov 1 2`) reads as the instruction, a limit. Directive
-arguments and `.if` conditions need commas too (`.byte 1 2` is an error).
+Generated tables); only a call takes blank-separated arguments. Instruction operands are separated
+by commas, as every assembler requires: `movl %eax %ebx`, `add x0, x1 x2`, and NASM's `mov eax 1`
+and `push 1 2` are errors. Exception: in NASM a name or a macro token before an operand may be a
+macro that expands first (see NASM, Macro calls and macro words). Directive arguments and `.if`
+conditions are separated by commas (`.byte 1 2` is an error). Limit: a macro named like an
+instruction (`.macro mov a b`, then `mov 1 2`) reads as the instruction.
 
-The blank must be there. The scanner reads it as a zero-width token, only after real blanks and
-before a character that starts an operand and cannot continue the one before. `1B` stays an error,
-and `1 -2` stays one expression, which is how the assemblers read an instruction's operand. In
-Assembly the scanner does not do this before `#`, which after code is x86's comment
-(`movq %rax, %rbx #save`). An ARM shift joins its amount (`lsl #2`). The shift words are the ones
-the assemblers take with an amount (`lsl lsr asr ror asl msl` and the extends `uxtb`...`sxtx`,
-measured); such a word alone is an ordinary symbol, and `m x0 #1` has the two operands `x0` and
-`#1`. A blank-separated `.irp` list or macro parameter list never holds a shift, since GNU as ends
-each item at a blank. C macro call arguments follow their own rule (see Expressions, C macro
-calls).
+The separating blank is a zero-width scanner token, written only after real blanks and before a
+character that starts an operand and cannot continue the one before. So `1B` stays an error, and
+`1 -2` stays one expression, as the assemblers read an instruction's operand. In Assembly the token
+is never written before `#`, which after code is x86's comment (`movq %rax, %rbx #save`). An ARM
+shift joins its amount (`lsl #2`). The shift words are the ones the assemblers take with an amount
+(`lsl lsr asr ror asl msl` and the extends `uxtb`...`sxtx`, measured); such a word alone is an
+ordinary symbol, and `m x0 #1` has the two operands `x0` and `#1`. A blank-separated `.irp` list or
+macro parameter list holds no shift, since GNU as ends each item at a blank. C macro call arguments
+follow their own rule (see Expressions, C macro calls).
 
 NASM names follow what nasm 3.02 and yasm 1.3.0 accept: an optional `$`, which turns a reserved word
 into a name (`$eax` is a symbol, not the register), then a letter, `_`, `?`, `@` or `.`, then
 letters, digits and `_ $ # @ ~ . ?`. Both assemblers take `@` first (`@x:`, `@:`, `mov eax, @x`), as
-nasm's own lexer does, although the NASM manual leaves it out. After the escaping `$` any name
-character may follow, `$` included, so `$$foo` is the name `$foo`; `$$` alone is the start of the
-section. A name that starts with `.` or `$.` is local. Both assemblers accept `.1:`, `.$x:`, `.#x:`,
-`.@x:`, `$.y:` and `$eax:`. Only nasm accepts the bare `.:` (yasm: "label or instruction
-expected"), and only yasm accepts `..x:` and `....:` (nasm: "unrecognised special symbol"). The
-grammar reads all of them, as labels and in operands, since each is valid for one of the language's
-assemblers. A `$` starts a name only before a letter, `_`, `?`, `@`, `.` or another `$`, so the
-scanner looks at the next character before it closes an open operand at a `$`.
+nasm's lexer does; the NASM manual leaves it out. After the escaping `$` any name character may
+follow, `$` included, so `$$foo` is the name `$foo`; `$$` alone is the start of the section. A name
+that starts with `.` or `$.` is local. Both assemblers accept `.1:`, `.$x:`, `.#x:`, `.@x:`, `$.y:`
+and `$eax:`. Only nasm accepts the bare `.:` (yasm: "label or instruction expected"), and only yasm
+accepts `..x:` and `....:` (nasm: "unrecognised special symbol"). The grammar reads all of them, as
+labels and in operands, since each is valid for one of the language's assemblers. A `$` starts a
+name only before a letter, `_`, `?`, `@`, `.` or another `$`. A `$` alone is the current position,
+so an operand may start at any `$`.
 
 ## Expressions
 
-GNU as and clang group operators by GNU's precedence, not C's, on every ELF target, x86 and ARM
-alike. clang uses a third order on Apple targets, and nasm and yasm use C's. Measured with fifteen
-`.if` probes per assembler (`2 + 3 << 1` is 8 with GNU's order, 10 with Apple's and nasm's), from
-the highest level to the lowest:
+GNU as and clang group operators by GNU's precedence, not C's, on every ELF target, x86 and ARM.
+clang uses a third order on Apple targets; nasm and yasm use C's. Measured with fifteen `.if` probes
+per assembler (`2 + 3 << 1` is 8 in GNU's order, 10 in Apple's and nasm's), levels from the highest
+to the lowest:
 
 | Level | GNU syntax on ELF | Apple (clang) | NASM and yasm |
 | ----- | ----------------- | ------------- | ------------- |
@@ -741,35 +729,33 @@ the highest level to the lowest:
 | 8     |                   |               | `&&`          |
 | 9     |                   |               | `\|\|`        |
 
-Assembly, ARM and x86 (GAS) use the first column, ARM (Apple) the second and x86 (NASM) the third.
-Operators on one level group from the left. The binary `!` (or-not: `1 ! 2` is `1 | ~2`) reads
-wherever GNU as reads it; clang takes it for x86 and AArch64 ELF and rejects it for AArch32 and
-Apple. `%` is the remainder in every GNU-syntax language; in x86 code a `%` that starts a register
-name is a register instead (see x86 operands). In Intel syntax GNU as keeps its own order and reads
-`shl`, `shr` and `mod` at level 1, `and`, `or` and `xor` at level 2 and `eq`, `ne`, `lt`, `le`, `gt`
-and `ge` with the comparisons, while clang's Intel mode switches to C's order (`2 + 3 shl 1` is 8 in
-GNU as and 10 in clang). The grammar follows GNU as there. Precedence shapes the tree only, never a
-color.
+Assembly, ARM and x86 (GAS) use the first column, ARM (Apple) the second, x86 (NASM) the third.
+Operators of one level group from the left. Assembly, ARM and x86 (GAS) read the binary `!`
+(or-not: `1 ! 2` is `1 | ~2`), as GNU as does on every target; clang takes it for x86 and AArch64
+ELF and rejects it for AArch32 and Apple. `%` is the remainder in every GNU-syntax language; in x86
+code a `%` that starts a register name is a register (see x86 operands). In Intel syntax GNU as
+keeps its own order and reads `shl`, `shr` and `mod` at level 1, `and`, `or` and `xor` at level 2
+and `eq`, `ne`, `lt`, `le`, `gt` and `ge` with the comparisons; clang's Intel mode uses C's order
+(`2 + 3 shl 1` is 8 in GNU as, 10 in clang). The grammar follows GNU as. Precedence shapes the tree
+only, never a color.
 
 A quoted name is a symbol where a symbol is needed: as a label (`"a b":`), in an operand, after `$`,
 with `@PLT` or `:lo12:`, and in memory operands. GNU as and clang accept all of these on every
-target, and gcc's Intel output quotes every symbol. A quoted operand on its own stays a string,
-since GNU macros take string arguments (`ALTERNATIVE "", "lfence", X86_FEATURE_LFENCE`).
+target, and gcc's Intel output quotes every symbol. A quoted operand alone stays a string, since GNU
+macros take string arguments (`ALTERNATIVE "", "lfence", X86_FEATURE_LFENCE`).
 
 A `symbol_type` is `%` and a name or a number in every GNU dialect, and `@` and a name or an
 `integer` in x86 (GAS) and Assembly: `.type f, %function`, `.type f, %STT_FUNC`, `.type f, %2`,
 `.section .c,"a",@0x70000001`. Any name reads, as both assemblers parse one before they check it:
 GNU as rejects `%Function` and warns on LLVM's `%llvm_lto`, clang rejects GNU as's `%exidx`. GNU as
-reads a number for both directives, clang for a section type only (`%2` is an error to clang). Until
-M5 the grammar listed the ELF type names, which changed no tree, since any other `%` name read as a
-symbol type too.
+reads a number for both directives, clang for a section type only (`%2` is an error to clang). No
+list of ELF type names is kept.
 
-Mach-O section types are names: `regular`, `cstring_literals`, `symbol_stubs` read as identifiers.
-The ones the identifier cannot read, because they start with a digit (`4byte_literals`,
-`8byte_literals`, `16byte_literals`), are scanner words: the table is generated from GNU as's
-`bfd_mach_o_section_type_name` and clang's `SectionTypeDescriptors` and keeps the names the
-identifier pattern of `lexical.js` does not match. Both assemblers compare the type as written, so
-`4BYTE_LITERALS` is no type.
+Mach-O section types are names: `regular`, `cstring_literals` and `symbol_stubs` are identifiers.
+The types that start with a digit (`4byte_literals`, `8byte_literals`, `16byte_literals`), which the
+identifier pattern of `lexical.js` does not match, are scanner words, from a table generated from
+GNU as's `bfd_mach_o_section_type_name` and clang's `SectionTypeDescriptors`. Both assemblers
+compare the type as written, so `4BYTE_LITERALS` is no type.
 
 ### C macro calls
 
@@ -796,26 +782,25 @@ rules:
 GCC's manual: arguments "can cross as many lines in the source file as you wish", and a blank may
 stand between the macro name and `(`. The rules for instruction names and for blanks inside
 arguments are preferences by shape, since the preprocessor's reading depends on `#define`s the
-parser does not see. Their limits: `push(%rax)` reads as a call, and `X(a -1)` as two items.
-`.macro` arguments follow GNU as instead (see Blocks, labels and directive forms).
+parser does not see. Limits: `push(%rax)` reads as a call, and `X(a -1)` as two items. `.macro`
+arguments follow GNU as instead (see Blocks, labels and directive forms).
 
 The glued text of a pp-number takes the dialect's name characters, `$` included in GNU syntax; GCC
 and clang in assembler mode end a pp-number at `$`. A sign ends the glued text, so `0x1e+2` is an
 expression.
 
-The scanner keeps the number of open calls in its state. A call marker raises it; the call's `)`,
-which the scanner reads, and the call's zero-width closing token lower it. While the count is
-positive, a line end is a blank before the next item of a run, otherwise a hidden extra token.
-Error recovery writes no such token, and a statement start resets the count to zero. An unclosed
-call takes the following lines as arguments up to the next `)`, as an unclosed `/*` takes them as a
-comment.
+The scanner state holds the number of open calls. A call marker raises it; the call's `)`, read by
+the scanner, and the call's zero-width closing token lower it. While the count is positive, a line
+end is a blank before the next item of a run, otherwise a hidden extra token. Error recovery writes
+no such token, and a statement start resets the count to zero. An unclosed call takes the following
+lines as arguments up to the next `)`, as an unclosed `/*` takes them as a comment.
 
 ## ARM operands
 
 Measured with GNU as 2.46.1 for AArch64 (`-march=armv9.6-a+sve2+sme2+cmpbr`) and 2.45 for AArch32
 (ARMv7-A with NEON, Thumb, and Armv8.1-M with MVE), and with clang 22.1 for the same targets and
-for Apple arm64. An `.arch` or `.arch_extension` line turns on SVE, SME and MVE inside a file for
-every one of them, so one grammar reads all of it.
+for Apple arm64. In every one of them an `.arch` or `.arch_extension` line turns on SVE, SME and MVE
+inside a file, so one grammar reads all of it.
 
 ### Registers
 
@@ -843,16 +828,16 @@ Both assemblers accept the same arrangements: a count of 1, 2, 4, 8 or 16 lanes 
 is 64 or 128, `.1q`, and the dot-product shapes `.2b`, `.4b` and `.2h`; GNU as also takes leading
 zeros in the count (`v0.016b`). A NEON type is `.8`, `.16`, `.32` or `.64`, optionally after `i`,
 `s`, `u`, `p` or `f`, or `.f` (32 bits), `.d` (64 bits) or `.bf16`, in any case. GNU as takes it on
-every register of its table (`r0.i32`, `fpscr.f32`, `p15.f32`). Some positions still reject it: a
+every register of its table (`r0.i32`, `fpscr.f32`, `p15.f32`) and rejects it in some positions: a
 memory base, a core register list, and a type also given in the mnemonic
-(`vadd.i32 q0.i32, q1, q2`); the grammar reads it wherever a register goes. A suffix no rule takes
+(`vadd.i32 q0.i32, q1, q2`). The grammar reads it wherever a register goes. A suffix no rule takes
 leaves the whole word a symbol: `d0.x32`, `v0.q`, `za1.b`.
 
 ### System registers
 
-A system register reads as a `register` only in the operand slots that take one, the system roles
-in the table below; elsewhere it is a symbol, as both assemblers read it (`b tpidr_el0` branches to
-a symbol). The names are generated:
+A system register is a `register` only in the operand slots that take one, the system roles in the
+table below; elsewhere it is a symbol, as both assemblers read it (`b tpidr_el0` branches to a
+symbol). The names are generated:
 
 - AArch64: GNU as's `aarch64-sys-regs.def` and PSTATE fields, LLVM's system register, PSTATE and
   SVCR tables.
@@ -867,7 +852,7 @@ Rules add the forms no table lists:
 - The control registers of `sys`, `sysl` and `sysp`: `c` and a number from 0 to 15. clang reads
   decimal digits (`c7`, `c07`); GNU as reads an expression there, of which the grammar takes one
   integer in any GNU form (`c0x7`, `c016`, `c7u`). An expression such as `c(3+4)`, which GNU as
-  also takes, does not read as a register.
+  also takes, is no register.
 - AArch32 APSR bits after `apsr`, `iapsr`, `eapsr`, `psr` and `xpsr`: `n`, `z`, `c`, `v` and `q`
   all or none, and `g`, in any order (`apsr_nzcvq`, `apsr_gnzcvq`, `xpsr_g`).
 - `APSR_` with `nzcv` in any order, which GNU as reads in `vmrs` and the CDE instructions.
@@ -875,14 +860,14 @@ Rules add the forms no table lists:
 A `cpsr` or `spsr` field takes lower case only (`CPSR_fc`, not `CPSR_FC`), as both assemblers
 require, and so do the `APSR_` flags in an order other than clang's `nzcv`.
 
-Every system slot of a language reads every form, so a name valid in one system slot reads as a
-register in all of them: `mrs x0, c7` reads `c7` as a register, though no assembler takes it there.
-This changes no valid program, since no assembler takes a symbol in a system slot. Which names a
-slot takes depends on the instruction (readable registers for `mrs`, writable ones for `msr`,
-128-bit ones for `mrrs` and `msrr`, PSR masks per instruction), and both assemblers check that after
-parsing: clang's `tryParseSysReg` takes any word in a system register slot and leaves unknown names
-to its matcher. Splitting the slots by kind would still not be exact, so the grammar leaves the
-check to the assembler, as it does for every operand.
+Every system slot of a language reads every form, so a name valid in one system slot is a register
+in all of them: `mrs x0, c7` reads `c7` as a register, though no assembler takes it there. No valid
+program changes, since no assembler takes a symbol in a system slot. The names a slot takes depend
+on the instruction (readable registers for `mrs`, writable ones for `msr`, 128-bit ones for `mrrs`
+and `msrr`, PSR masks per instruction), and both assemblers check them after parsing: clang's
+`tryParseSysReg` takes any word in a system register slot and leaves unknown names to its matcher.
+The grammar leaves that check to the assembler, as for every operand; slots split by kind would
+still not be exact.
 
 ### Where a word is a register
 
@@ -893,7 +878,7 @@ branch to the symbol `eq`, and `csel x0, x1, x2, lt` as a condition even when a 
 `mov x0, x1` reads `x1` as the register even when a symbol `x1` exists. Apple's clang reads `b LT`
 as a branch to a local label.
 
-The grammar follows this with roles: `tree-sitter/common/roles.js` lists the positions where an
+The grammar models this with roles: `tree-sitter/common/roles.js` lists the positions where an
 instruction takes a label, a condition or a system register, and each generated instruction carries
 the role its operand types fit. Every word may take any case.
 
@@ -919,22 +904,26 @@ the role its operand types fit. Every word may take any case.
 
 The roles come from the operand types upstream gives each instruction: GNU as's AArch64 operand
 kinds and AArch32 operand codes, and the operand classes of LLVM's AArch64 matcher, in which a
-register pair (`x0, x1`) counts as two operands. A label slot reads a bare word as a symbol,
-whatever it is named; brackets, `#`, `=`, relocations and expressions read the same as anywhere. A
-system slot reads system registers as `register` and anything else as anywhere. A condition slot
-reads condition words as `condition`. Everywhere else register words are registers and system
-register and condition words are symbols. Operands before and after the slot read normally, and a
-slot may stay empty while a line is typed. At a position with an optional register the grammar reads
-the register when another operand follows and the label
-otherwise, as GNU as does: `le r1` and `ldrd r0, r2` branch to and load from labels named `r1` and
-`r2`, and `le lr` branches to a label named `lr`. `blx`, which takes a register or a label, is not
-in the table. A table of every instruction's operands would add thousands of entries for each Arm
-release and would still be wrong for macros, which can take an instruction's name. A role mnemonic
+register pair (`x0, x1`) counts as two operands.
+
+- A label slot reads a bare word as a symbol, whatever it is named; brackets, `#`, `=`, relocations
+  and expressions read as anywhere.
+- A system slot reads system registers as `register` and anything else as anywhere.
+- A condition slot reads condition words as `condition`.
+- Everywhere else register words are registers, and system register and condition words are
+  symbols.
+
+Operands before and after the slot read normally, and a slot may stay empty while a line is typed.
+At a position with an optional register the grammar reads the register when another operand follows
+and the label otherwise, as GNU as does: `le r1` and `ldrd r0, r2` branch to and load from labels
+named `r1` and `r2`, and `le lr` branches to a label named `lr`. `blx`, which takes a register or a
+label, has no role. No table lists every instruction's operands: it would add thousands of entries
+for each Arm release and still misread macros, which can take an instruction's name. A role mnemonic
 glued to a macro argument (`b\cond`, `ldr\size`) is one `concatenation`, as at the start of any
-statement; the grammar cannot know which instruction it becomes, so its operands read normally.
+statement; the instruction it becomes is unknown, so its operands read normally.
 
 Directive arguments are symbols: `.quad x0, lr` stores two addresses. The exceptions are the
-directives that take registers, below.
+directives with register operands (see Directives with register operands).
 
 ### Operand forms
 
@@ -953,19 +942,19 @@ directives that take registers, below.
 | `literal_pool`     | `=expr`, in any operand: `ldr x0, =sym`, `ldr q0, =sym` (clang)                                                                                                     | `value`                         |
 | `shift`            | a shift with an immediate or register amount (`lsl #3`, `lsl 3`, `lsl r2`), an extend with an optional amount (`sxtw`, `uxtw #2`), `rrx`, SVE `mul vl` and `mul #4` | `operator`, `amount`            |
 | `condition`        | a condition word in a condition slot                                                                                                                                | -                               |
-| `relocation`       | `:lo12:sym`, `#:lower16:sym`, `sym(GOT)`, and as before `sym@PAGE`                                                                                                  | `specifier`, `value`, `symbol`  |
+| `relocation`       | `:lo12:sym`, `#:lower16:sym`, `sym(GOT)`, `sym@PAGE`                                                                                                                | `specifier`, `value`, `symbol`  |
 | `register_alias`   | `name .req x0`, `name .dn d0`, `name .qn q0`                                                                                                                        | `name`, `directive`, `register` |
 
-After `[` or `{` an element is required. `[]` reads a missing element, `{}` a missing register and
-`d0[]` a missing expression, the hidden tokens that close constructs being typed, which is also how
-`d0[]`, a valid lane, parses. The scanner closes `[` and `{` at the end of a line, before a
-separator and before any character that cannot continue them (see The external scanner).
+After `[` or `{` an element is required. `[]` holds a missing element, `{}` a missing register and
+`d0[]` a missing expression: the hidden tokens that close constructs being typed. `d0[]`, a valid
+lane, parses the same way. The scanner closes `[` and `{` at the end of a line, before a separator
+and before any character that cannot continue them (see The external scanner).
 
 ### Relocations
 
 A `:name:` relocation reads in Assembly and ARM. Apple's clang parses it but cannot encode it for
-Mach-O ("unknown AArch64 fixup kind"), so ARM (Apple) keeps `@PAGE` and `@PAGEOFF`. The names are
-generated: GNU as's `reloc_table` in `tc-aarch64.c`, and `group_reloc_table` and the words
+Mach-O ("unknown AArch64 fixup kind"), so ARM (Apple) reads `@PAGE` and `@PAGEOFF` only. The names
+are generated: GNU as's `reloc_table` in `tc-aarch64.c`, and `group_reloc_table` and the words
 `parse_half` reads in `tc-arm.c`; clang's `parseSymbolicImmVal` (AArch64) and `parsePrefix`
 (AArch32).
 
@@ -979,10 +968,10 @@ generated: GNU as's `reloc_table` in `tc-aarch64.c`, and `group_reloc_table` and
 
 Both accept a name with blanks around it (`: lo12 :`), and both reject an unknown name (`:foo:`).
 GNU as takes every name in any case, and so does clang for AArch64; clang's AArch32 names are lower
-case only. The value after the second colon is any expression. clang 22.1 does not read `dtprel` and
-`tprel` yet; they come from LLVM's current source.
+case only. The value after the second colon is any expression. The clang column follows LLVM's
+current source; clang 22.1 does not read `dtprel` and `tprel`.
 
-AArch32 code writes a relocation after its operand instead, in parentheses: `.word sym(GOT)` or
+AArch32 code also writes a relocation after its operand, in parentheses: `.word sym(GOT)`,
 `bl sym(PLT)`. The names are generated from GNU as's `reloc_names` in `tc-arm.c` and clang's
 `AtSpecifierDefs` in `ARMMCAsmInfo.cpp`. Both assemblers accept `got`, `gotoff`, `got_prel`,
 `target1`, `target2`, `sbrel`, `tlsgd`, `tlsldm`, `tlsldo`, `gottpoff`, `tpoff`, `tlscall`,
@@ -991,15 +980,15 @@ AArch32 code writes a relocation after its operand instead, in parentheses: `.wo
 `secrel32` clang. clang takes any case; GNU as only the lower and upper case spellings its table
 lists (`sym(Got)` is an error), and its table spells the upper case of `gottpoff_fdpic` as
 `GOTTPOFF_FDIC`, which the grammar reads too. Both take a blank before `(` and an addend after it
-(`sym(GOT)+4`). GNU as also applies the name to the whole expression before it (`sym+4(GOT)`),
-which the grammar reads the same way. In a blank-separated `.irp` list `a (b)` stays two values, as
-GNU as reads it. This form reads in Assembly and ARM. The scanner owns its names: after `(` it reads
+(`sym(GOT)+4`). GNU as also applies the name to the whole expression before it (`sym+4(GOT)`), and
+the grammar reads it the same way. In a blank-separated `.irp` list `a (b)` stays two values, as GNU
+as reads it. This form reads in Assembly and ARM. The scanner reads its names: after `(` it reads
 the name as a whole word, and it does not split a blank-separated operand before `(` and a name, so
 `bl sym (PLT)` is one operand, as both assemblers read it.
 
 ### Directives with register operands
 
-A few directives take registers, and there register words are registers:
+In these directives register words are registers:
 
 - CFI: `.cfi_def_cfa`, `.cfi_def_cfa_register`, `.cfi_llvm_def_aspace_cfa`, `.cfi_offset`,
   `.cfi_val_offset`, `.cfi_rel_offset`, `.cfi_register`, `.cfi_restore`, `.cfi_undefined`,
@@ -1023,27 +1012,27 @@ instruction named `sum`.
 Both assemblers accept an alias wherever a register goes, also in register lists, ranges,
 writeback, lanes and before an arrangement (`src.16b`). The same positions take a macro argument
 (`{\r0\().16b, \r1\().16b}`, `\v\().s[1]`, `ldm \base!, {\a}`), and ARM (Apple) a positional
-argument (`{$0.16b}`), which FFmpeg's and dav1d's NEON macros use throughout. The grammar reads
+argument (`{$0.16b}`); FFmpeg's and dav1d's NEON macros use these throughout. The grammar reads
 `.req`, `.dn` and `.qn` lines as a `register_alias`. A name or macro argument in a register list, a
-range, a writeback or before a lane is an `identifier`, a `macro_argument` or a `concatenation`,
-which also keeps a register name still being typed (`{d8-d`) from breaking the line. A
-concatenation there starts with a register, a name or a macro argument, never a dot name: GNU as
-and clang read `.foo .req r1` as an unknown directive and reject `{.foo}`, so a register list
-closes before `.foo` and the error stays on its line. x86 register positions use the same rule
-with their own heads, a register or a `%` name (`%xmm\i`).
+range, a writeback or before a lane is an `identifier`, a `macro_argument` or a `concatenation`, so
+a register name being typed (`{d8-d`) does not break the line. A concatenation there starts with a
+register, a name or a macro argument, never a dot name: GNU as and clang read `.foo .req r1` as an
+unknown directive and reject `{.foo}`, so a register list closes before `.foo` and the error stays
+on its line. x86 register positions use the same rule with their own heads, a register or a `%`
+name (`%xmm\i`).
 
 ### Keywords
 
 Every listed word is a scanner word: the scanner reads it whole and looks it up in its generated
-table, only where the parser expects that kind of word. That holds for instructions, directives,
-registers, relocation names, and since M5 for conditions, shift and extend words and the predicate
-qualifier, which were grammar keywords before. tree-sitter's lexer stops at a token of higher
-precedence instead of going on to a longer token of lower precedence, so a word as an ordinary
-token splits a longer word (`lsls` read as `lsl` and `s`, M2's `.macros` as `.macro` and `s`).
-Keywords of a word token avoided that but brought rules of their own: one shared precedence, no two
-keywords matching the same string, and an Apple `L` pattern that had to leave out every `L`
-keyword. With every word in the scanner, no grammar declares a word token, and
-`test/grammar/keywords.test.ts` checks that no grammar has a case-insensitive token.
+table, only where the parser expects that kind of word. This holds for instructions, directives,
+registers, relocation names, conditions, shift and extend words and the predicate qualifier.
+
+No grammar declares a word token. tree-sitter's lexer stops at a token of higher precedence instead
+of going on to a longer token of lower precedence, so a word as an ordinary token splits a longer
+word (`lsls` as `lsl` and `s`, `.macros` as `.macro` and `s`). Keywords of a word token require one
+shared precedence, no two keywords matching the same string, and an Apple `L` pattern that leaves
+out every `L` keyword. `test/grammar/keywords.test.ts` checks that no grammar has a
+case-insensitive token.
 
 The words come from upstream:
 
@@ -1065,23 +1054,23 @@ any case for these, so a word clang knows takes any case and GNU as's `ul` takes
 only (`Ul` is a symbol). clang's AArch32 `uxtw` comes from `parseMemRegOffsetShift`, which lists
 `uxtw` and `UXTW` only.
 
-The relocation specifier after `@` is read by the scanner, which accepts it only right after the
-`@`. The relocation names of `:lo12:` and `sym(GOT)` are scanner words too, because the scanner
-must know them to close `:lo` or `sym(G` while they are typed.
+The scanner reads the relocation specifier after `@` and accepts it only right after the `@`. The
+relocation names of `:lo12:` and `sym(GOT)` are scanner words too, since the scanner closes `:lo`
+and `sym(G` while they are typed.
 
 Words that start with `.` cannot be identifiers, so the scanner reads them whole as well: the block
 openers, `.loc` and `.file`, the register directives above and the alias words `.req`, `.dn` and
-`.qn`, which it matches in lower case only for `.dn` and `.qn`.
+`.qn`, the last two in lower case only.
 
 ### Apple `L` names
 
 In ARM (Apple) an `L` name is a `local_identifier` in operands too: `adrp x0, Ltmp0@PAGE`,
 `b LBB0_2`, `.quad Ltmp0 - Lfunc_begin0`, also glued to a macro argument (`Lskip\@:`) and as an
 assigned name. At the start of a statement it may also be a mnemonic, so `LDP x0, x1, [sp]` and a
-macro named `Lmacro` read as instructions. A register, condition or shift word reads as one where
-the parser expects it and as a local name elsewhere, since the scanner reads those words before
-the grammar's `L` pattern: `mov x0, LR` reads a register, `b LR` and `.quad LR` the local symbol
-`LR`, and `b LDR` the local symbol `LDR`. `csel x0, x1, x2, LT` reads a condition and
+macro named `Lmacro` read as instructions. The scanner reads register, condition and shift words
+before the grammar's `L` pattern applies, so such a word reads as one where the parser expects it
+and as a local name elsewhere: `mov x0, LR` reads a register, `b LR` and `.quad LR` the local
+symbol `LR`, and `b LDR` the local symbol `LDR`. `csel x0, x1, x2, LT` reads a condition and
 `add x0, x1, x2, LSL #2` a shift, while `b LT`, `b LSL` and `mov x0, LSL` read local symbols, as
 Apple's clang does.
 
@@ -1114,17 +1103,17 @@ bare register name is a register. Assembly follows the same lines.
 | `.att_syntax`, `.att_syntax prefix` | AT&T                       | both       |
 | `.att_syntax noprefix`              | AT&T, bare register names  | GNU as     |
 
-`.intel_syntax` alone follows clang, which reads bare names as registers there; GNU as on ELF wants
-`%` until `noprefix`, so the two differ only on code GNU as rejects. With bare register names, every
-register name is a register in every operand, even where a symbol of that name exists, as both
-assemblers read it; a quoted `"rbx"` is the symbol, and the same holds in directive arguments
-(`.cfi_offset rbp, -16`). In Intel mode the scanner reads the Intel keywords below, in operands and,
-as GNU as does, in directive expressions (`.long 1 shl 2`; clang rejects them there). Everywhere
-else they are symbols, so `movq byte, %rax` loads the symbol `byte`.
+`.intel_syntax` alone follows clang, which reads bare names as registers there; GNU as on ELF
+requires `%` until `noprefix`, so the two differ only on code GNU as rejects. With bare register
+names, every register name is a register in every operand, even where a symbol of that name exists,
+as both assemblers read it; a quoted `"rbx"` is the symbol, and the same holds in directive
+arguments (`.cfi_offset rbp, -16`). In Intel mode the scanner reads the Intel keywords below in
+operands and, as GNU as does, in directive expressions (`.long 1 shl 2`; clang rejects them there).
+Everywhere else they are symbols, so `movq byte, %rax` loads the symbol `byte`.
 
-tree-sitter reuses no subtree whose preceding scanner state differs. Changing or deleting a mode
-line therefore reads everything after it again, and every other edit costs what it did before. The
-state is one byte, and none at all in a file that never leaves AT&T.
+tree-sitter reuses no subtree whose preceding scanner state differs, so changing or deleting a mode
+line reparses everything after it; no other edit is affected. The mode takes one byte of the
+serialized state, and none in a file that never leaves AT&T.
 
 ### Operand forms
 
@@ -1163,7 +1152,7 @@ The register names are generated from GNU as's `i386-reg.tbl`, LLVM's register m
 Every assembler reads every name in any case. In AT&T syntax a register is `%` and a name, with
 blanks allowed after `%` (`% rax`). An index follows `st`, `mm`, `xmm` or `ymm` in parentheses, with
 blanks allowed anywhere (`% st ( 1 )`), and is an integer below the register's count: 8 for `st` and
-`mm`, 16 for `xmm` and `ymm`. GNU as reads one digit there, clang and yasm an integer token, so the
+`mm`, 16 for `xmm` and `ymm`. GNU as reads one digit there, clang and yasm an integer token; the
 grammar takes clang's integer, suffixes included: `%st(0x1)` and `%st(1u)` are `%st(1)`.
 
 ### Intel keywords
@@ -1188,11 +1177,11 @@ calls, and `ParseIntelMemoryOperandSize`):
 GNU as reads them in any case, clang in lower or upper case, so the words only clang reads take
 lower or upper case only: `Float ptr` and `Imagerel` are symbols. clang errors on its size words
 without `ptr`, and GNU as reads them as symbols, so `mov eax, float` loads the symbol `float`.
-`imagerel` comes from LLVM's current source; clang 22.1 does not read it yet. `tword`, `type`,
-`size`, `length`, `seg`, `dup` and the other MASM words are ordinary symbols in both: clang reads
-them only for MASM and Microsoft inline assembly. `ptr` and `bcst` alone are symbols too
-(`call ptr`). A size word alone is a value in GNU as: `mov eax, byte` loads 1. Every one of these
-words can still name a label (`byte:`).
+`imagerel` is in LLVM's current source; clang 22.1 does not read it. `tword`, `type`, `size`,
+`length`, `seg`, `dup` and the other MASM words are ordinary symbols in both: clang reads them only
+for MASM and Microsoft inline assembly. `ptr` and `bcst` alone are symbols too (`call ptr`). A size
+word alone is a value in GNU as: `mov eax, byte` loads 1. Every one of these words can name a label
+(`byte:`).
 
 ### Prefixes
 
@@ -1212,11 +1201,11 @@ says whether that assembler's table lists the word:
 | `{load}`, `{store}`, `{disp16}`, `{nooptimize}`, `{noimm8s}`                                                             | yes    | no    | no   |
 
 Prefixes take any case. A pseudo-prefix in braces takes blanks inside and needs none after it
-(`{vex}vpdpbusd`), and several may stand in a row (`{load} {disp32} movq`, GNU as). One prefix
-word may come before them and any number after them (`lock {disp32} addl`, GNU as), as GNU as
-measures; a pseudo-prefix after a second prefix word, or after a word that follows another
-pseudo-prefix, is an error in both. A prefix alone on a line applies to the next instruction, and
-`rep; movsb` separates the two with `;` (see The external scanner).
+(`{vex}vpdpbusd`), and several may stand in a row (`{load} {disp32} movq`, GNU as). One prefix word
+may precede them and any number follow them (`lock {disp32} addl`, GNU as); a pseudo-prefix after a
+second prefix word, or after a word that follows another pseudo-prefix, is an error in both. A
+prefix alone on a line applies to the next instruction, and `rep; movsb` separates the two with `;`
+(see The external scanner).
 
 ### Decorators
 
@@ -1248,27 +1237,27 @@ that starts neither closes what is open.
   text does not show the mode.
 - The mode follows the text: across `#if` branches the later line wins, and a macro body reads in
   the mode where it is written.
-- A statement's first word is a mnemonic even when it names a C macro, as GNU as cannot tell without
-  the definitions.
+- A statement's first word is a mnemonic even when it names a C macro, since GNU as cannot tell
+  without the definitions.
 - Apple's x86-64 output parses, but its `L` temporaries are ordinary labels: the x86 languages
-  follow ELF's `.L`, and there is no Apple x86 language.
+  follow ELF's `.L`, and no language targets Apple x86.
 - The grammar reads operand shapes, not instructions: `movq %al, %rbx` parses.
 
 ## NASM
 
 x86 (NASM) reads what nasm 3.02 and yasm 1.3.0 accept, measured with `-f elf64`, `-f elf32` and
 `-f bin`, and for format-specific directives with `-f obj`, `-f win32`, `-f win64` and
-`-f macho64`. The grammar accepts what either assembler accepts, and the tables say which one does.
+`-f macho64`. The grammar accepts what either assembler accepts; the tables say which one does.
 Where the two read the same text differently, the grammar follows nasm, the maintained assembler:
 `rip` is a symbol, the AVX-512, AMX and MPX registers are registers, `bnd` is a prefix, braces are
-decorators and pseudo-prefixes, and `!` is logical not. The parser can't see the output format, so
+decorators and pseudo-prefixes, and `!` is logical not. The output format is not in the text, so
 every format's directives are directives in every file.
 
 ### Registers
 
-The register names are nasm's, generated from `x86/regs.dat` by nasm's own `regs.pl`. yasm reads no
-register that nasm lacks the same way: its `rip` and its register groups (`st(1)`, `xmm(3)`) are
-symbols to nasm, so they are symbols here.
+The register names are nasm's, generated from `x86/regs.dat` by nasm's own `regs.pl`. The registers
+yasm reads and nasm does not, its `rip` and its register groups (`st(1)`, `xmm(3)`), are symbols to
+nasm and therefore symbols here.
 
 | Family              | Names                                                                                             | nasm                          | yasm                                                                  |
 | ------------------- | ------------------------------------------------------------------------------------------------- | ----------------------------- | --------------------------------------------------------------------- |
@@ -1283,9 +1272,8 @@ symbols to nasm, so they are symbols here.
 | AMX, MPX            | `tmm0`-`tmm7`, `bnd0`-`bnd3`                                                                      | yes                           | no: symbols                                                           |
 | instruction pointer | `rip`                                                                                             | no: a symbol                  | yes, in `[rip+8]`                                                     |
 
-Names are case-insensitive. A register name can't be a label (`eax:` is rejected by both), and `$`
-escapes it (`$eax:`). `st(0)`, a bare `st`, `r8l`, `db0`, `eiz`, `riz`, `ip` and `eip` are not
-nasm registers.
+Names are case-insensitive. A register name cannot be a label (both reject `eax:`); `$` escapes it
+(`$eax:`). `st(0)`, a bare `st`, `r8l`, `db0`, `eiz`, `riz`, `ip` and `eip` are not nasm registers.
 
 ### Prefixes
 
@@ -1307,7 +1295,7 @@ yasm 1.3.0; nasm parses `segr6 nop` with `segr6` as a prefix and then refuses to
 | `{vex}` `{vex2}` `{vex3}` `{evex}` `{rex}` `{rex2}` `{nf}` `{zu}` `{pt}` `{pn}`, any case | yes                 | no: yasm skips `{` |
 
 Prefix words are reserved in any case, except the words nasm takes only in braces: `rex nop` is a
-colonless label `rex` and `nop`. `notrack`, `data16` and `addr32` are not NASM prefixes either:
+colonless label `rex` and `nop`. `notrack`, `data16` and `addr32` are not NASM prefixes:
 `notrack jmp rax` assembles as a colonless label and `jmp rax`. GNU's `{load}`, `{store}`,
 `{disp8}` and `{disp32}` are not valid brace tokens in nasm, and neither are `{nd}`, `{cf}` or
 `{nooc}`.
@@ -1341,20 +1329,20 @@ that name a token, which spell the function words without `?` (`__utf16__`):
 
 All of these are reserved in any case. A memory operand is `[` expression `]` with the base, index,
 scale and displacement in any order (`[rcx*4+rbx]`, `[-8+rbp]`), blanks anywhere, and a segment
-inside (`[fs:0x28]`, both) or before it (`fs:[0x28]`, nasm only). Nested brackets are rejected by
-both. Far pointers are `0x10:0x1000`. nasm also takes the MPX split form, a base, a comma and an
-index (`[rax+3, rbx]`, `[, rcx*1]`), read with the index in an `index` field, and an address-size
-prefix first inside a bracket (`[a32 foo]`). `abs` also stands before an operand (`jmp abs x`),
-the only one of the three nasm takes there; with no operand after it, as in `default abs`, it is a
-plain argument.
+inside (`[fs:0x28]`, both) or before it (`fs:[0x28]`, nasm only). Both reject nested brackets. Far
+pointers are `0x10:0x1000`. nasm also takes the MPX split form, a base, a comma and an index
+(`[rax+3, rbx]`, `[, rcx*1]`), read with the index in an `index` field, and an address-size prefix
+first inside a bracket (`[a32 foo]`). `abs` also stands before an operand (`jmp abs x`), the only
+one of the three nasm takes there; with no operand after it, as in `default abs`, it is a plain
+argument.
 
 nasm also opens a memory operand at `&` or `__?masm_ptr?__`, with no closing bracket: `&x + 4`,
 `dword &x`, `&rel x` and `dword __?masm_ptr?__ x` load from memory as `[x + 4]` and the others do,
 and the reference runs to the end of the operand. It is the same `memory_operand`, with the same
-modifiers. `%use masm` defines `ptr` and `flat` as these two tokens; the grammar cannot expand the
-macro, so `dword ptr foo` reads `ptr` as a word before an operand (see Macro calls and macro
-words). `__?masm_flat?__` reads as the segment `register`, as GAS's
-`FLAT:` does. yasm takes neither.
+modifiers. `%use masm` defines `ptr` and `flat` as these two tokens; the grammar does not expand
+macros, so `dword ptr foo` reads `ptr` as a word before an operand (see Macro calls and macro
+words). `__?masm_flat?__` reads as the segment `register`, as GAS's `FLAT:` does. yasm takes
+neither.
 
 Special symbols start with `..`: `..plt`, `..got`, `..gotpcrel`, `..sym`, `..gottpoff`, `..tlsie`,
 `..gotoff` and `..gotpc` for ELF, `..start` for obj, `..imagebase` for win64, each valid in its own
@@ -1434,7 +1422,7 @@ counts, so `%rep .nolistx` repeats by the symbol `.nolistx`.
 Preprocessor words are case-insensitive, and `%` must touch the word: `% define` is rejected. A
 directive counts only as the first token of its line, after blanks: both assemblers reject
 `f: %macro m 0` and `%%l: %rep 2` ("instruction expected"), and the grammar reports them, as GNU's C
-preprocessor lines start their line too. A raw value ends at a `;` outside quotes, so
+preprocessor lines also start their line. A raw value ends at a `;` outside quotes, so
 `%define A 1 ; comment` defines `1` and `%define A ';'` defines `';'`. `//` and `/*` start no
 comment, so `%define D 10 // 3` keeps the signed division in its value. Text after a closer or
 `%else`, and after a complete condition, `%rep` count or macro reference with its parameter count,
@@ -1446,12 +1434,12 @@ A line that ends with a backslash continues on the next line, in both assemblers
 backslash and the newline are deleted with no space left, in operands, in `%define` values, in
 strings and inside `;` comments, so `; note \` comments out the line after it. A blank after the
 backslash, or the end of the file, prevents the join; a CRLF line end joins. The grammar reads a
-join as a blank between tokens, as tree-sitter-c does, comments, strings and raw text continue past
+join as a blank between tokens, as tree-sitter-c does; comments, strings and raw text continue past
 it, and a join inside a token splices it as nasm does (`d\` and then `b 4` is `db 4`; see Grammar
 modules). A word that ends right before a join, with a character that cannot continue it on the next
 line, keeps the join inside its node: the scanner cannot see past the line end without reading it,
 and its zero-width tokens rule out marking the end early. A directive after a line that holds only a
-backslash still starts its line, and one after `nop \` does not. GNU syntax joins lines as the C
+backslash still starts its line; one after `nop \` does not. GNU syntax joins lines as the C
 preprocessor does (see C preprocessor lines).
 
 | Token              | Meaning                                                                                                    | yasm |
@@ -1470,11 +1458,11 @@ preprocessor does (see C preprocessor lines).
 
 ### Macro calls and macro words
 
-nasm expands single-line macros anywhere on a line, and the parser cannot see their definitions, so
-it reads the shapes a macro can take. Measured with nasm 3.02 and yasm 1.3.0, and with the test
-suites of both: 522 of the 525 upstream test files either assembler accepts parse clean. The other
-three hold deliberate errors in `%ifdef ERROR` or dead code. libjpeg-turbo's `simd/` parses with
-no errors.
+nasm expands single-line macros anywhere on a line, and the parser does not see their definitions,
+so it reads the shapes a macro can take. Measured with nasm 3.02 and yasm 1.3.0 and with the test
+suites of both: 522 of the 525 upstream test files either assembler accepts parse with no errors;
+the other three hold deliberate errors in `%ifdef ERROR` or dead code. libjpeg-turbo's `simd/`
+parses with no errors.
 
 | Form                                       | Example                                        | Node                                |
 | ------------------------------------------ | ---------------------------------------------- | ----------------------------------- |
@@ -1490,20 +1478,19 @@ no errors.
 | a glued name, with or without blanks       | `%%top_%$x:`, `_t_ %+ %1:`                     | `concatenation`                     |
 | a bare `%word` where an operand fits       | `dir %iffile`, `dir [%iffile]`                 | `macro_expansion`                   |
 
-A word followed by `(` has no other meaning in an expression, so the call needs no blank rule. At
-the start of a statement the parentheses make a call only when they end the line; otherwise they
-open the first of a multi-line macro's arguments (`m (1) + 2, 3`). Any `%word(` is a function, so
-a new nasm function reads without a table. A bare `%word` is valid only as a macro argument, so it
-never starts a statement: `f: %define X 1` stays an error.
+A word followed by `(` has no other meaning in an expression, so a call needs no blank rule. At the
+start of a statement the parentheses make a call only when they end the line; otherwise they open
+the first of a multi-line macro's arguments (`m (1) + 2, 3`). Any `%word(` is a function, so a new
+nasm function reads without a table. A bare `%word` is valid only as a macro argument and never
+starts a statement: `f: %define X 1` stays an error.
 
-A name or a macro token followed by an operand is a macro that the assembler expands first: a size
+A name or a macro token followed by an operand is a macro the assembler expands first: a size
 (`%define XMMWORD`), an operator, or `ptr` under `%use masm`. Both assemblers reject the same text
-when the word is no macro, but the parser cannot see that, so it reads the word as the `type` of a
-`typed_operand`, like `dword`. This replaces the earlier rule that only a comma separates operands:
-a register or a number before an operand is never a macro, so `mov eax 1` and `push 1 2` stay
-errors. `x[ebx]` and `8 [ebx]` stay displacements; with a blank, `x [ebx]` reads `x` as a type,
-since that is how a macro-defined size is written. nasm itself reads a symbol there as a
-displacement. That is a limit: the blank decides.
+when the word is no macro; the parser does not see the definition, so it reads the word as the
+`type` of a `typed_operand`, like `dword`. A register or a number before an operand is never a
+macro, so `mov eax 1` and `push 1 2` stay errors. `x[ebx]` and `8 [ebx]` stay displacements; with a
+blank, `x [ebx]` reads `x` as a type, the form of a macro-defined size. Limit: nasm reads a symbol
+there as a displacement; here the blank decides.
 
 A macro token names whatever a symbol names: defines, assignments, labels with or without a colon,
 macros, structures, declared symbols and `equ`. A dot name or a `$` name alone on its line is a
@@ -1527,8 +1514,8 @@ operand, so `ccmpl {dfv=of} rdx, r30` needs no comma, as in nasm's parser.
 ### Structures
 
 `struc`, `endstruc`, `istruc`, `at` and `iend` are standard macros in both assemblers, not syntax.
-The generated table reads them from `macros/standard.mac` and its yasm counterpart, and they take
-any case.
+The generated table reads them from `macros/standard.mac` and its yasm counterpart; they take any
+case.
 
 | Node                 | Form                                  | Fields                   |
 | -------------------- | ------------------------------------- | ------------------------ |
@@ -1539,17 +1526,17 @@ any case.
 A name is a symbol, a `.name` or a macro token (`%1`, `%%a`, `%$a`, `%1_b`). The offset and the
 field are expressions, and a comma with nothing after it is accepted. The body of a `structure` is a
 `structure_body`, in which `.x: resd 1` and `mt_long: resd 1` are both a `label` and a `directive`.
-A label there opens no block, because a field does not own the lines after it.
+A label there opens no block, since a field does not own the lines after it.
 
-The data of an `at` line is a line of its own, because the macro expands it as `%2` on its own line.
-So it may be an instruction, a data directive, another directive, a macro call, `times`, `equ`, a
-structure or an instance, with a label in front (`at s.x, l: dd 1`). It sits in a `statement` field,
-as in `times` and `align`. More data may follow on the next lines, as siblings of the `at` line.
+The data of an `at` line is a line of its own, since the macro expands it as `%2` on its own line:
+an instruction, a data directive, another directive, a macro call, `times`, `equ`, a structure or an
+instance, with a label in front (`at s.x, l: dd 1`). It sits in a `statement` field, as in `times`
+and `align`. More data may follow on the next lines, as siblings of the `at` line.
 
-Because these are macros, the blocks need not balance where they are written. Both assemblers accept
-each of these, so the grammar does too:
+As macros, the blocks need not balance where they are written. Both assemblers accept each of these
+cases, and the grammar reads them:
 
-- An `at` line reads anywhere, not only in an instance, because a macro or a `%if` may hold it.
+- An `at` line reads anywhere, not only in an instance, since a macro or a `%if` may hold it.
 - A closer with no open block of its kind is a plain `directive`. `%macro f 0` with `endstruc` in
   its body is valid, and so is `endstruc` in both branches of a `%if`.
 - `%endmacro`, `%endrep`, `%endif`, `%else` and `%elif` end a structure or instance opened inside
@@ -1558,15 +1545,15 @@ each of these, so the grammar does too:
 
 A label may stand before each of the five words, with or without a colon. `iend`, `endstruc`,
 `use16` and the other standard macros that take no parameters may also name a label (`iend: nop`),
-which both assemblers accept with a warning. The table reads that from the macro's parameter count.
-Any other standard macro is reserved, since `at: nop` would be a call of `at`.
+which both assemblers accept with a warning; the table reads that from the macro's parameter count.
+Every other standard macro is reserved, since `at: nop` would be a call of `at`.
 
 Limits:
 
 - A body takes any statement. `mov eax, 1` in a `struc` body parses, though both assemblers reject
   code in an absolute section.
 - A stray `endstruc`, or `endstruc` closing an `istruc`, is no error here, though both assemblers
-  reject it outside a macro. The grammar cannot tell it from the valid forms above.
+  reject it outside a macro; the grammar cannot tell it from the valid forms above.
 - A `%` directive as the data of an `at` line (`at s.x, %define y 1`) is an error here, though both
   assemblers accept it: a directive counts only as the first token of its line.
 - `iend nop` reads as a directive with an argument, and `istruc: nop` as an error. Both assemblers
@@ -1599,7 +1586,7 @@ operand, parenthesized or not. Each also has a spelling without `?` (`__float32_
 `.5` is a local label, not a float, and `$af` is the symbol `af`, not a number: `$` makes a number
 only before a digit. `$` alone is the current position and `$$` the start of the section. `?x` is a
 name, so `1 ?x : 3` is an error; the conditional needs a blank after `?`. Floats are accepted in
-data directives; nasm rejects them as instruction operands, yasm doesn't.
+data directives; nasm rejects them as instruction operands, yasm does not.
 
 Operators bind as in C, measured with `dd` values (`2 + 3 << 1` is 10, `1 | 2 ^ 3` is 1,
 `3 & 1 == 1` is 1, `1 ? 0 ? 5 : 6 : 7` is 6). From the loosest: `?:` (nasm only, right-associative),
@@ -1621,16 +1608,16 @@ is unsigned (`-7 / 2` is -4 in 32 bits in nasm), `//` and `%%` signed.
 | `at field` with no data, `at field, times 4 db 0`                        | accepted                  | accepted |
 | blocks nested in any order, `struc` inside `%if`, `%macro` inside `%rep` | accepted                  | accepted |
 
-The grammar closes every open block at the end of the file, as it does for GAS, so that typing an
-opener never breaks the lines below it.
+The grammar closes every open block at the end of the file, as for GNU syntax, so typing an opener
+never breaks the lines below it.
 
 ### Limits
 
-The parser reads the text as written and expands no macro, so a few valid files read with errors:
+The parser reads the text as written and expands no macro, so some valid files read with errors:
 
 - A macro named like an instruction or directive reads as that instruction or directive. After
   `%macro mov 1`, both assemblers accept `mov 1 2` as a call with the one argument `1 2`; here it is
-  a `mov` with a missing comma. The definition may sit in another file, which a parser cannot open.
+  a `mov` with a missing comma. The definition may be in another file, which the parser cannot open.
 - Both branches of a `%if` parse, since choosing one needs the condition's value: `mov eax 1` inside
   `%if 0` is an error here, and both assemblers skip it.
 - A macro body parses where it is written, not as it expands: `mov eax, 1 %1` in a body is an error
@@ -1643,17 +1630,17 @@ The parser reads the text as written and expands no macro, so a few valid files 
 
 ## Editor behavior
 
-Every language lists as comment markers exactly the characters its assemblers accept at the start of
-a line: `//`, `#` and `@` in ARM, `//`, `#` and `;` in ARM (Apple), `//` and `#` in x86 (GAS), all
+Each language's comment markers are exactly the characters its assemblers accept at the start of a
+line: `//`, `#` and `@` in ARM, `//`, `#` and `;` in ARM (Apple), `//` and `#` in x86 (GAS), all
 four in Assembly, and `;` in NASM. Enter after a full-line comment starts the next line with the
 same marker; a comment after code does not continue. Toggle comment inserts `//`, which GNU as and
 clang accept at the start of a line on every target, and `;` in NASM.
 
 A `#` line that is a C preprocessor directive is not a comment. There the `preproc` scope limits
-the markers to `//`, and Enter after `#define X 1` or `#endif /* X */` inserts nothing. Zed has one
-limitation here. When nothing follows the cursor, at the very end of a file, Zed ignores scopes and
-uses the base markers, so Enter after `#define X 1` inserts `#` and a space, and `/*` closes inside
-a comment. Zed's own languages have the same limitation.
+the markers to `//`, and Enter after `#define X 1` or `#endif /* X */` inserts nothing. Limit: at
+the end of a file, with nothing after the cursor, Zed ignores scopes and uses the base markers, so
+Enter after `#define X 1` inserts `#` and a space, and `/*` closes inside a comment. Zed's own
+languages behave the same.
 
 GNU as and clang accept `/* */` block comments. `/*` followed by Enter adds the closing `*/` and
 starts the new line with a space, `*` and a space. NASM has no block comments.
@@ -1663,28 +1650,27 @@ comments: clang accepts only `'a'`, GNU as accepts `'a` and `'a'`, and in a comm
 an apostrophe. `/*` closes outside strings and comments. NASM closes all three of its string quotes,
 `"`, `'` and backquote. A pair closes only when a space, the end of the line or one of `,` `;` `)`
 `]` `}` follows, the characters that can come after a closing bracket in assembly; typing `(` before
-`.Lend` inserts no `)`. Enter between a pair gives a plain new line, because an assembly statement
-ends at the end of its line and no bracket spans lines. In the ARM languages `[ ]` and `{ }` are
-bracket pairs, so Zed highlights the partner and Move to Enclosing Bracket jumps between them; in
-NASM `[ ]`, the `{ }` of a brace argument and the `%(` of a data list with its `)` are.
+`.Lend` inserts no `)`. Enter between a pair gives a plain new line. In the ARM languages `[ ]` and
+`{ }` are bracket pairs, so Zed highlights the partner and Move to Enclosing Bracket jumps between
+them; in NASM `[ ]`, the `{ }` of a brace argument and the `%(` of a data list with its `)` are.
 
 Double-click selects what the grammar reads as one name. `.` joins `.Lloop` and `b.eq`, `$` joins
 `foo$1`, and `%` joins `%rax` and `%function`. NASM adds `?`, `@` and `#`, which its names may
 contain.
 
 Enter after a label indents one level, and typing `name:` on an indented line moves it back one
-level: labels stay at the level of the block around them and code sits one level in. Both come from
-the parse. A label opens an indent range from its end to the end of the file, label block or block
-body that holds it, and moves back by cutting the range around it. Only what the parser reads as a
-label counts, so a reserved word (`eax:` in NASM), a `name:` inside a comment, and a macro-call
-label nested to any depth (`L(a(b(x))):`) behave as the parser reads them. Tab size and hard tabs
-come from the user's Zed settings.
+level: labels stay at the level of the block around them, and code sits one level in. Both come
+from the parse. A label opens an indent range from its end to the end of the file, label block or
+block body that holds it, and moves back by cutting the range around it. Only what the parser reads
+as a label counts, so a reserved word (`eax:` in NASM), a `name:` inside a comment, and a
+macro-call label nested to any depth (`L(a(b(x))):`) behave as the parser reads them. Tab size and
+hard tabs come from the user's Zed settings.
 
-A label in a NASM `struc` is a field, and stays where it is typed. A new line follows the field
-above it, so a structure keeps its layout: the nasm manual and nasm's tests indent fields,
-libjpeg-turbo and yasm's tests keep them at column 0. Nothing moves a field, so a field typed on its
-own line (`.x:`) indents the next line through the pattern below, and a field typed there stays at
-that level.
+A label in a NASM `struc` is a field and stays where it is typed. A new line follows the field above
+it, so a structure keeps its layout: the nasm manual and nasm's tests indent fields, libjpeg-turbo
+and yasm's tests keep them at column 0. Nothing moves a field, so a field typed on its own line
+(`.x:`) indents the next line through the pattern below, and a field typed there stays at that
+level.
 
 Enter after a line that opens a block (`.macro`, any `.if` opener, `.elseif`, `.else`, `.rept`,
 `.irp`, `.irpc`; in NASM `%macro`, `%imacro`, any `%if` or `%elif` opener, `%else`, `%rep`, `struc`,
@@ -1693,10 +1679,10 @@ it, so no label comes before it. Typing a clause or a closer aligns it with the 
 block, whatever the indentation of the body; a body may also stay flush with its opener, as in the
 Linux sources. A block opened and closed on one line (`.rept 2; nop; .endr`) does not indent the
 next line, except in ARM (Apple) and NASM, where `;` starts a comment. Section directives such as
-`.text` stay where they are typed. Hand-written GNU code indents them in 81 of 97 surveyed lines
-(Linux, glibc and FreeBSD indent, musl does not) and compiler output always does; leaving them alone
-keeps both styles. `#if` and `#ifdef` bodies get no indentation and no structure, since real `.S`
-files keep them at the indentation of the code around them (Linux, glibc).
+`.text` keep the indentation they are typed with, so both styles stay: hand-written GNU code
+indents them in 81 of 97 surveyed lines (Linux, glibc and FreeBSD indent, musl does not), and
+compiler output always does. `#if` and `#ifdef` bodies get no indentation and no structure, since
+`.S` files keep them at the indentation of the code around them (Linux, glibc).
 
 Two mechanisms do this, as in Zed's own languages:
 
@@ -1705,14 +1691,13 @@ Two mechanisms do this, as in Zed's own languages:
   (`@start`) to the end of the node that holds it. Every label is also an `@outdent`, which cuts the
   innermost range holding it, so a label moves back to the opener of that range and ends the range
   of the label before it. A `structure_body` has an indent range too, and its labels have neither
-  capture. A clause or a real closer always ends a `body`. Zed aligns a line with the
-  start row of a range that ends at the start of that line, so each clause and closer goes to its
-  own opener, also after a closed inner block at the same column. Zed's `decrease_indent_patterns`,
-  which its Bash and Python use, align with the nearest opener at or left of the line whether it is
-  closed or not. That is right for Python, whose blocks are columns, and wrong for keyword blocks;
-  the extension does not use them.
+  capture. A clause or a real closer always ends a `body`. Zed aligns a line with the start row of a
+  range that ends at the start of that line, so each clause and closer goes to its own opener, also
+  after a closed inner block at the same column. The extension sets no `decrease_indent_patterns`:
+  with them Zed, as in its Bash and Python, aligns a matching line with the nearest opener at or
+  left of it, closed or not, which fits Python's column blocks and not keyword blocks.
 - A pattern. Zed indents from a tree range only when the range ends after the start of the new line.
-  No range can do that on the last line of a file, where a block or label still being typed ends, so
+  No range does that on the last line of a file, where a block or label still being typed ends, so
   Enter after an opener or a label uses `increase_indent_pattern`, as Zed's Ruby, Bash and Python
   do. `scripts/lib/indent.ts` generates it. Its label part takes the label forms in `lexical.js`: in
   GNU syntax plain and dot names, digits (`1$` too in ARM and Assembly), quoted names, names built
@@ -1723,23 +1708,23 @@ Two mechanisms do this, as in Zed's own languages:
   `scanner.h`: each syntax's block words, and each dialect's strings, comments and reading of `;`,
   `#` and `@`. A kind with no opener word in a dialect of its syntax stops the build. The block part
   matches a line that holds an opener with no closer of the same kind in a later statement of the
-  line, and it reads strings, character constants and comments the way the scanner does.
+  line, and it reads strings, character constants and comments as the scanner does.
 
   The label part leaves out a label followed by a word that ends the label's range on its own line,
   read from the generated tables as a word complement. In every syntax that is a block closer or
   clause (`a: .endm`, `b: .else`): the closer ends the body that holds the label, and a clause still
   indents through the block part. In NASM it is also a word that names its statement: the data and
   reserve words, `times`, `at`, the structure words, and `equ`, after which the parser reads an
-  assignment and no label at all (`.x: resd 1`, `.a: times 4 resd 1`, `n: equ 3`). A pattern match
-  outranks nearly every tree range and cannot know it is inside a structure, so without this each
-  new field would indent, and `endstruc` right after a field would land too deep. So at the end of a
-  file Enter after `buf: resb 4` stays level; elsewhere the label's tree range still indents the
+  assignment and no label (`.x: resd 1`, `.a: times 4 resd 1`, `n: equ 3`). A pattern match
+  outranks nearly every tree range and does not see the enclosing structure; without the exclusion
+  each new field would indent, and `endstruc` right after a field would land too deep. At the end of
+  a file Enter after `buf: resb 4` keeps the level; elsewhere the label's tree range indents the
   next line. A test parses every label form with each grammar, followed by nothing, by code and by
   each of these words, and checks that the label part matches a line exactly when the parser reads
   a label at its start whose range goes on past the line.
 
-The pattern cannot follow the parser in five cases, since each needs more than a regular expression.
-Each changes only whether the next line starts indented:
+Limits: the pattern differs from the parser in five cases, each beyond a regular expression. Each
+changes only whether the next line starts indented:
 
 - The same block kind opened twice and closed once on one line (`.if A; .if B; .endif`).
 - In ARM, a `#` comment on an opener line that contains `; .endr`. The scanner reads `#` as an
@@ -1751,14 +1736,13 @@ Each changes only whether the next line starts indented:
 - A clause after `.endr` or `.endm` on its line. The pattern reads it as the end of the clause's
   conditional, while the closer may instead close a repeat block or macro inside that conditional.
 
-Zed looks for indentation ranges within 16 KB around the edited line. A closer typed more than about
-8 KB below its opener is therefore not re-aligned; Zed's C does the same for `}`. At the end of a
-file, a line typed after a blank line starts at column 0, since Zed applies the pattern only to the
-line right after the one it matches, and it takes the indentation of its label or block from the
-tree as soon as its first character is typed. Zed's Python and Bash set
-`auto_indent_using_last_non_empty_line = false`, but then Enter on an empty line of saved code,
-whose blanks Zed strips on save, goes to column 0. The assembly languages keep Zed's default, as its
-C does.
+Zed looks for indentation ranges within 16 KB around the edited line, so a closer typed more than
+about 8 KB below its opener is not re-aligned; Zed's C does the same for `}`. At the end of a file,
+a line typed after a blank line starts at column 0, since Zed applies the pattern only to the line
+right after the one it matches; it takes the indentation of its label or block from the tree as
+soon as its first character is typed. The assembly languages keep Zed's default
+`auto_indent_using_last_non_empty_line`, as its C does. Zed's Python and Bash set it to `false`,
+with which Enter on an empty line of saved code, whose blanks Zed strips on save, goes to column 0.
 
 While `.elseif` is typed, the line passes through `.else`: it moves out, back in at `.elsei`, and
 out again at `.elseif`. `.endm` to `.endmacro` does the same, as Zed's Bash does with `fi` and
@@ -1771,7 +1755,7 @@ and `.equ`, `.set`, `.equiv` and `.eqv` with a name and a value; `.set noreorder
 lists `%macro m`, the `%define` family (`%define N`, `%define F( )`, `%assign K`), the name of
 `x equ 1`, and structures (`struc point`) with their fields. Universal Ctags, Eclipse CDT, asm-lsp,
 ASM Code Lens and Emacs nasm-mode list the same kinds, and none of them lists sections. Numeric
-labels are reused many times and stay out, as in ctags. Sections stay out too: compilers switch
+labels are reused many times and stay out, as in ctags. Sections stay out: compilers switch
 sections inside a function (`-ffunction-sections`, jump tables in `.rodata`), so a section would cut
 a function in two. Breadcrumbs show the label block around the cursor, and the comments right above
 an item are its annotation, as in Zed's C.
@@ -1781,7 +1765,7 @@ statements after the label; `ac` and `ic` select a macro and its body, and in NA
 or an instance; `gc` selects a comment, with consecutive line comments as one, as in Zed's Rust.
 
 The condition of `#if` and `#elif` is injected as C, so Zed's C grammar colors it. `#define`
-values stay plain, because in `.S` files they are often assembly (`#define SAVE push %rbp`).
+values stay plain, since in `.S` files they are often assembly (`#define SAVE push %rbp`).
 
 The debuggers are CodeLLDB, then GDB. CodeLLDB runs on Linux and macOS; GDB does not run on Apple
 silicon.
@@ -1838,38 +1822,38 @@ silicon.
 
 `!` after a memory operand or a register, `^` after a register list and `-` in a range are
 operators, and so are `*` before an x86 indirect operand and `%` as a remainder. A label named by a
-macro call (`L(loop):`) looks like the call where it is used, since a use cannot be told from any
-other call. Planned: control-flow instructions as `@keyword.control`, branch targets as `@function`,
-data labels.
+macro call (`L(loop):`) takes the call's capture, since its uses look like any other call.
+Planned: control-flow instructions as `@keyword.control`, branch targets as `@function`, data
+labels.
 
 ## Checks
 
-The tooling is TypeScript that Bun runs, and the scripts in `package.json` are its commands. Every
-command runs in a container that `scripts/dev` and `scripts/zed` start with `--network=none`, so no
-check, test or script can reach the network. Only the image build and `scripts/fetch-sources`,
-which run on the host, download anything. The image
-pins Bun, its npm tools and dprint with its plugins, and `bunfig.toml` turns off Bun's automatic
-package installs, so importing a package the image lacks fails at once. `scripts/dev --sources DIR`
-also mounts DIR read-only at `/sources`, for the command that reads upstream sources
-(`bun run keywords`). Podman would relabel a tree mounted with `z` for SELinux, rewriting the label
-of every file in it (about 150,000 in LLVM) on each run, so that container runs with
-`--security-opt label=disable` instead and DIR stays untouched. `test/unit/commands.test.ts`
-requires a row in the table below for every script, `--network=none` as the only network option of
-both launchers, and a read-only `/sources` mount that is never relabeled.
+The tooling is TypeScript run by Bun; the scripts in `package.json` are its commands. Every command
+runs in a container that `scripts/dev` and `scripts/zed` start with `--network=none`, so no check,
+test or script reaches the network. Only the image build and `scripts/fetch-sources`, which run on
+the host, download anything. The image pins Bun, its npm tools and dprint with its plugins, and
+`bunfig.toml` turns off Bun's automatic package installs, so importing a package the image lacks
+fails at once. `scripts/dev --sources DIR` also mounts DIR read-only at `/sources`, for the
+commands that read upstream sources and real code. Podman relabels a tree mounted with `z` for
+SELinux, rewriting the label of every file in it (about 150,000 in LLVM) on each run, so that
+container runs with `--security-opt label=disable` instead and DIR stays untouched.
+`test/unit/commands.test.ts` requires a row in the table below for every script, `--network=none`
+as the only network option of both launchers, and a read-only `/sources` mount that is never
+relabeled.
 
 All hand-written code and configuration, and what the generators write, is indented with four
 spaces; only test data keeps hard tabs, and `.editorconfig` tells editors the same. dprint formats
 TypeScript, JavaScript, JSON, Markdown and YAML to 100 columns, with single quotes and braces on
 every block. clang-format formats the C by `.clang-format`: 100 columns, a function's brace on its
 own line, a line break before a binary operator, one `&&` or `||` operand per line once a condition
-breaks, and aligned macros. It needs clang-format 23, which is the first to read the per-operator
+breaks, and aligned macros. It needs clang-format 23, the first to read the per-operator
 `BreakBinaryOperations` setting. oxlint fails on every correctness rule of its eslint, typescript,
 unicorn, oxc and import plugins and on the further rules in `.oxlintrc.json`, among them `curly`
-for every block, `eqeqeq`, and `import/extensions`, which wants the file extension in every
-relative `import` and `require`. A disable comment that hides nothing is an error too. `tsc` from
+for every block, `eqeqeq`, and `import/extensions`, which requires the file extension in every
+relative `import` and `require`. A disable comment that hides nothing is an error. `tsc` from
 TypeScript 7 checks every TypeScript file in `scripts/` and `test/` with `strict` and the
-unused-name, switch-fallthrough and `override` checks, and with `skipLibCheck` off it checks the
-type packages as well.
+unused-name, switch-fallthrough and `override` checks, and, with `skipLibCheck` off, the type
+packages as well.
 
 | Command                   | What it does                                                                                                                                                                                                                                                                                  |
 | ------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -1877,7 +1861,7 @@ type packages as well.
 | `bun run build`           | writes the files generated from `languages.config.cjs` and `queries/`                                                                                                                                                                                                                         |
 | `bun run generate`        | runs `build`, then regenerates all five parsers                                                                                                                                                                                                                                               |
 | `bun run set-grammar-rev` | pins the commit Zed fetches the grammars from (`bun run set-grammar-rev <sha>`) and runs `build`                                                                                                                                                                                              |
-| `bun run keywords`        | not a check: regenerates `tree-sitter/common/keywords.h` from the upstream sources at `/sources` (`scripts/dev --sources DIR`); see "Generated tables"                                                                                                                                        |
+| `bun run keywords`        | not a check: regenerates `tree-sitter/common/keywords.h` from the upstream sources at `/sources` (`scripts/dev --sources DIR`; see Generated tables)                                                                                                                                          |
 | `bun run real-code`       | every file of every file set in `test/real-code/sources.gitconfig` parses without an error in each of its languages, from the clones at `/sources` (`scripts/dev --sources DIR`); `--summary` counts every error line by its first word                                                       |
 | `bun run fmt`             | formats with dprint, and the C scanner with clang-format                                                                                                                                                                                                                                      |
 | `bun run lint`            | oxlint                                                                                                                                                                                                                                                                                        |
@@ -1901,11 +1885,11 @@ type packages as well.
 `scripts/zed` builds the `zed` stage of the Containerfile: Xvfb, xdotool, Mesa's software Vulkan,
 and Zed from its official install script, always the latest release. It compiles each grammar to
 wasm with the flags the tree-sitter CLI uses, installs the result as an ordinary extension folder
-and drives Zed with keystrokes. Each check then compares the saved file, or what a step copied, read
+and drives Zed with keystrokes. Each check compares the saved file, or what a step copied, read
 with xclip. The vim checks run last, after vim mode is turned on in the settings. The network is
 off and each run starts from an empty Zed profile. The files Zed opens live in the container's home,
 outside the repository, so Zed never reads the repository's git data. The run prints each result as
-it finishes, records a check that throws as failed and goes on, and keeps the Zed log either way.
+it finishes, records a check that throws as failed and continues, and keeps the Zed log either way.
 
 Zed loads every grammar as wasm through tree-sitter's wasm runtime, which supplies a module with 25
 C library functions only (`lib/src/wasm-stdlib/imports.txt` at the tree-sitter revision Zed pins:
@@ -1937,23 +1921,23 @@ all files.
 `bun run budgets` measures each grammar's parse of its two bench inputs, `basics` and the fixtures
 joined, under callgrind's cache simulation, and writes the cost to `test/budgets.json` with the
 states, the parser.c size and a hash of each input. The cost is gungraun's estimated cycles: L1 hits
-plus 5 times LL hits plus 35 times RAM accesses. Instruction counts alone rate the x86 (GAS) parser
-0.3% cheaper than M4's, where wall-clock timing shows it about 3% slower; the estimate, which sees
-the cache misses of the keyword dictionary, rates it 0.9% dearer. Callgrind collects inside
+plus 5 times LL hits plus 35 times RAM accesses. Measured on the x86 (GAS) parser against M4's:
+instruction counts rate it 0.3% cheaper, wall-clock time about 3% slower, and the estimate, which
+includes the cache misses of the keyword dictionary, 0.9% dearer. Callgrind collects inside
 `ts_parser_parse` only, with a fixed cache model (32 KiB 8-way L1 caches, a 16 MiB 16-way LL, 64 B
-lines) and `LD_BIND_NOW=1`, so that dynamic linking stays outside. Each library and input is
-copied to one fixed path first, since a longer path moves the buffers and with them the cache
-misses; the same parser on the same input then repeats its count exactly.
+lines) and `LD_BIND_NOW=1`, which keeps dynamic linking outside. Each library and input is copied
+to one fixed path first, since a longer path moves the buffers and with them the cache misses; the
+same parser on the same input then repeats its count exactly.
 
 The count still moves with the image's compilers and glibc, which CI rebuilds weekly, so the check
 compares within one image. `bun run check:budgets DIR` measures the baseline tree at DIR and this
 one, and each change in cost must match the change `test/budgets.json` declares between the two,
-within 1 point plus a tenth of the declared change. An undeclared speedup fails as well as a
-slowdown, so the declared costs stay exact. An input the baseline declares no cost for, or measured
-with other text, has no baseline and passes. The states, parser.c size and input hashes are the
-same anywhere, and a unit test requires them to match the tree. CI exports the push's previous
-head, or a pull request's base, with `git archive`; locally,
-`git archive HEAD | tar -x -C .build/budgets-baseline` gives the last commit.
+within 1 point plus a tenth of the declared change. An undeclared speedup fails as a slowdown does,
+so the declared costs stay exact. An input the baseline declares no cost for, or measured with other
+text, has no baseline and passes. The states, parser.c size and input hashes are the same anywhere,
+and a unit test requires them to match the tree. CI exports the push's previous head, or a pull
+request's base, with `git archive`; locally, `git archive HEAD | tar -x -C .build/budgets-baseline`
+gives the last commit.
 
 The fixtures live in `test/fixtures/<dialect>/`, and every assembler of the dialect must accept each
 file there. Forms that only one assembler accepts, such as `.eqv` and `0f1.5` in GNU as or
@@ -1968,20 +1952,19 @@ and `.arch` lines turn on SVE and SME in the AArch64 files; `t32-gnu/mve.s` cove
 The highlight tests run `tree-sitter query --captures` and apply Zed's two rules: a character takes
 the last capture that covers it, and the scope at a cursor comes from the smallest capture that
 contains it (edges count only for `.inclusive` captures). Offsets are compared in bytes, as
-tree-sitter reports them. tree-sitter's own highlight tests use a different rule and would report
-the wrong result.
+tree-sitter reports them. tree-sitter's own highlight tests use another rule than Zed's.
 
 The tree tests compare parse trees. UTF-8 text must parse exactly like ASCII text of the same kind,
 and every fixture must parse the same with CRLF line endings and without its final newline. A parse
 counts as clean only if tree-sitter never entered error recovery, which its debug log shows even
-when the recovery left no visible node. The rejection test goes the other way. Syntax that every
+when the recovery left no visible node. The rejection test is the converse: syntax that every
 assembler of a language rejects, such as `.loc 1, 2, 3`, `1B`, `nop main:` or `.word sym(FOO)`,
 must parse in that language with an error on exactly the offending lines. The test reads each
-file's parse status as well as its tree, because tree-sitter does not always mark a missing node
-in the printed tree. Operands that parse with errors, such as `:lo12:.LC0` in ARM (Apple) or
+file's parse status as well as its tree, since tree-sitter does not always mark a missing node in
+the printed tree. Operands that parse with errors, such as `:lo12:.LC0` in ARM (Apple) or
 `qword ptr fs:[0x28]` in AT&T mode, must leave the function around them one label block.
 `test/grammar/keywords.test.ts` checks that no grammar has a word token or a case-insensitive token
-(see "Keywords" under "ARM operands").
+(see ARM operands, Keywords).
 
 The structure tests replay typing in `test/lib/zed.ts`, a model of what Zed's editor does with this
 extension's settings and queries. It covers autoindent (`suggest_autoindents` and
@@ -1989,15 +1972,15 @@ extension's settings and queries. It covers autoindent (`suggest_autoindents` an
 re-indents, Enter with comment continuation, the `/*` prefix and the closing indent of a block
 comment, and bracket auto-close. The model knows the Zed features the generated configs and queries
 use and refuses a config or query that uses any other, so it cannot silently disagree with Zed. Zed
-finds the closing indent of a block comment through the node around its `*/`. In these grammars that
-node is always the comment token the overrides query captures, and the model takes that capture. It
-reads scopes from the assembly layer only; the C layer inside `#if` conditions would need
-tree-sitter-c, which the toolchain does not include. Each case types code key by key and compares
-the text Zed would show. Two more tests hold the indent pattern. One parses 5,280 opener lines in
-each GNU-syntax language and 3,756 in NASM, and requires the pattern to agree with the parser on
-each; the cases that parse with an error are not compared, and their number per grammar is fixed.
-The other runs the patterns through tree-sitter, whose `#match?` uses the Rust regex engine Zed
-uses, and requires the same answers.
+finds the closing indent of a block comment through the node around its `*/`; in these grammars
+that node is always the comment token the overrides query captures, and the model takes that
+capture. It reads scopes from the assembly layer only; the C layer inside `#if` conditions would
+need tree-sitter-c, which the toolchain does not include. Each case types code key by key and
+compares the text Zed would show. Two more tests hold the indent pattern. One parses 5,280 opener
+lines in each GNU-syntax language and 3,756 in NASM, and requires the pattern to agree with the
+parser on each; the cases that parse with an error are not compared, and their number per grammar
+is fixed. The other runs the patterns through tree-sitter, whose `#match?` uses the Rust regex
+engine Zed uses, and requires the same answers.
 
 The same model builds the outline (items, their text and nesting, and the comment annotation Zed
 attaches), the breadcrumbs at a cursor and the vim text objects `af`, `if`, `ac`, `ic` and `gc`,
@@ -2008,29 +1991,29 @@ x86-64 and Apple arm64, at `-O0`, `-O2` and `-O2 -g`. It parses each result in e
 reads it and derives the expected outline from the assembly text with the assemblers' rules: every
 symbol owns the lines up to the next one, and a temporary label (`.L` in ELF, `L` in Apple arm64)
 or an assigned name belongs to the symbol above it. Apple x86-64's `L` labels are ordinary labels,
-as the x86 languages read them (see Limits under x86 operands). The outline must match exactly.
-Jump tables that GCC puts in `.rodata` in the middle of a function must stay inside it. A second
-test parses the same output in every language that reads it and requires no error at all; the
-sample adds a thread-local variable, a conditional select and a loop that vectorizes, so the
-output holds TLS relocations, `sym(TPOFF)`, `.save`, `.cfi_offset`, `.loh` and vector register
-lists. Both Apple targets name macOS 11 (`-apple-macos11`), the first macOS on arm64, since clang
-refuses thread-local storage without a version. For this the dev image carries GCC for AArch64
-(`gcc-aarch64-linux-gnu`) and for bare-metal ARM (`arm-none-eabi-gcc-cs`).
+as the x86 languages read them (see x86 operands, Limits). The outline must match exactly. Jump
+tables that GCC puts in `.rodata` in the middle of a function must stay inside it. A second test
+parses the same output in every language that reads it and requires no error; the sample adds a
+thread-local variable, a conditional select and a loop that vectorizes, so the output holds TLS
+relocations, `sym(TPOFF)`, `.save`, `.cfi_offset`, `.loh` and vector register lists. Both Apple
+targets name macOS 11 (`-apple-macos11`), the first macOS on arm64, since clang refuses
+thread-local storage without a version. The dev image carries GCC for AArch64
+(`gcc-aarch64-linux-gnu`) and for bare-metal ARM (`arm-none-eabi-gcc-cs`) for this test.
 
-The typing and closing tests are described under grammar modules. The performance tests compare
+The typing and closing tests are specified under Grammar modules. The performance tests compare
 timings taken on the same machine, so they hold on any computer. When its size doubles, an input
 may at most triple its time. That covers 31 inputs (garbage, one very long line, deep or unclosed
 parentheses, an unclosed `/*`, unterminated strings, binary bytes, joined preprocessor lines,
 nested, unclosed and broken blocks, thousands of clauses, glued macro arguments, long parameter and
 `.irp` lists, stray labels; in NASM unclosed `%if` lines, a long `%define` value, macro-local
 labels, `%+` glues with and without blanks, a long call statement, nested argument groups and
-braces, words before an operand; and more), every query of every language on one function,
-macro, `.if` or `.rept` body, and a line of any printable character repeated, alone, before a blank
-or before a letter, in every grammar. A character whose time grows more than 2.5 times when its
-line doubles is measured again before it fails. A one-character edit may cost at most half a full
-parse, in the middle of a large file, inside one large block, and typed at the end of a file inside
-an open block. An edit in the middle of a file must also lex the same number of tokens when the
-file holds twice as many functions, at the top level and inside a block.
+braces, words before an operand; and more), every query of every language on one function, macro,
+`.if` or `.rept` body, and a line of any printable character repeated, alone, before a blank or
+before a letter, in every grammar. A character whose time grows more than 2.5 times when its line
+doubles is measured again before it fails. A one-character edit may cost at most half a full parse,
+in the middle of a large file, inside one large block, and typed at the end of a file inside an open
+block. An edit in the middle of a file must also lex the same number of tokens when the file holds
+twice as many functions, at the top level and inside a block.
 
 The unit tests also enforce the repository rules: ASCII only, LF line endings, a final newline and
 an SPDX license line in every hand-written source file.
@@ -2039,17 +2022,19 @@ CI runs `bun run test`, `bun run sanitize` and `bun run check:budgets` in the sa
 every push and for pull requests from forks. Building the 3.0 GB image compiles tree-sitter and
 dprint from source, so CI saves it in the Actions cache under the image tag and the ISO week
 (`scripts/dev --image` prints the tag, a hash of the Containerfile) and loads it instead of
-building, until the Containerfile changes or the week ends; Fedora's package updates still reach CI
+building, until the Containerfile changes or the week ends; Fedora's package updates reach CI
 within a week. The unit tests run their files in parallel, except the performance tests, which run
-alone afterwards because they compare timings. Compiled parsers are cached in `.build/lib` of their
+alone afterwards, since they compare timings. Compiled parsers are cached in `.build/lib` of their
 tree under a hash of their sources and the tree-sitter version, so the test, query and fixture
 checks build each grammar once.
 
 ## Performance
 
-Measured on 600 KB inputs with tree-sitter 0.27, median of seven runs (nine for the M1
-comparison). The first table runs the M1 and M2 parsers on the same code, compiler-style functions
-built from `basics`, in one session; the M1 parsers were rebuilt from the last M1 commit:
+Measured on 600 KB inputs with tree-sitter 0.27, median of seven runs (nine for the M1 comparison).
+Each comparison table runs two parsers on the same inputs in one session; the older parsers are
+built from their milestone commit (`git archive` into `.build/`).
+
+M1 and M2 on compiler-style functions built from `basics`:
 
 | Grammar       | Parse (ms)   | One-character edit (ms) | Highlight query (ms) | States     | parser.c         |
 | ------------- | ------------ | ----------------------- | -------------------- | ---------- | ---------------- |
@@ -2059,37 +2044,35 @@ built from `basics`, in one session; the M1 parsers were rebuilt from the last M
 | asm_x86_gas   | 58.3 -> 56.6 | 14.4 -> 2.3             | 35.5 -> 33.0         | 135 -> 464 | 159 KB -> 529 KB |
 | asm_x86_nasm  | 52.1 -> 45.1 | 17.2 -> 3.5             | 30.6 -> 24.5         | 87 -> 72   | 85 KB -> 87 KB   |
 
-M2 has three and a half times the states and still parses the same code within 2% of M1 or faster.
-It edits that code four to six times faster, because every function is one `label_block` that
-tree-sitter reuses whole after an edit. On code without labels (`basics` without its label, x86
-GAS, three runs) the two parse and highlight alike, and M2 edits about 5% slower, 14.6 -> 15.4 ms,
-or 12% when one line in ten holds two statements joined by `;`, 13.7 -> 15.4 ms.
+M2 has three and a half times M1's states, parses the same code within 2% of M1 or faster, and
+edits it four to six times faster: every function is one `label_block`, which tree-sitter reuses
+whole after an edit. On code without labels (`basics` without its label, x86 GAS, three runs) both
+parse and highlight alike, and M2 edits about 5% slower (14.6 -> 15.4 ms), 12% when one line in ten
+holds two statements joined by `;` (13.7 -> 15.4 ms).
 
-The edit time depends on how tree-sitter reuses a list. The generator keeps the ambiguity of a
-`repeat` in the parse table as a second action that the runtime never takes. The runtime marks every
-node reduced beside a second action as fragile and never reuses it whole, so after an edit it walks
-a list one element at a time: the statements outside label blocks, the label blocks, and the
-statements of the edited block. That holds in M1 and M2 alike, at about 0.5 microseconds an element.
+Edit time depends on how tree-sitter reuses a list. The generator keeps the ambiguity of a `repeat`
+in the parse table as a second action the runtime never takes, and the runtime marks every node
+reduced beside a second action as fragile and never reuses it whole. After an edit it therefore
+walks a list one element at a time: the statements outside label blocks, the label blocks, and the
+statements of the edited block, at about 0.5 microseconds an element, in M1 and M2 alike.
 
-A label block is reused whole only if its label was read in a parse state that lexes the same
-tokens as the state the parser is in when it meets the block again. The label is read at a
-statement start inside the block before it. An earlier M2 grammar listed the label blocks after the
-statements (`seq(repeat(_item), repeat(label_block))`). After a block the parser was then in a state
-that takes only a label or the end of the file, so tree-sitter read every label again and walked
-every block statement by statement, about 10 ms an edit. With one list of statements and label
-blocks, the state after a block takes what a statement start takes. An edit now lexes the same 2 to
-7 tokens whatever the size of the file, which `test/performance/performance.test.ts` checks at two
-sizes.
+A label block is reused whole only if its label was read in a parse state that lexes the same tokens
+as the state the parser is in when it meets the block again. The label is read at a statement start
+inside the block before it, so statements and label blocks form one list, and the state after a
+block takes what a statement start takes. An edit lexes the same 2 to 7 tokens whatever the size of
+the file, which `test/performance/performance.test.ts` checks at two sizes. Measured alternative:
+label blocks listed after the statements (`seq(repeat(_item), repeat(label_block))`) leave the
+parser after a block in a state that takes only a label or the end of the file, so tree-sitter reads
+every label again and walks every block statement by statement, about 10 ms an edit.
 
 The two differences on label-free code are per element. M2 reuses a statement with its terminator,
-where M1 reused a whole line, because a block header and its body may share a line
-(`.rept 2; nop; .endr`); a `nop; nop` line is two elements. And the state the walk runs through
-accepts everything that can start a statement, 42 entries against M1's 19, now that labels, blocks,
-macro arguments and `#define` lines start one; tree-sitter finds an entry in such a state by a
-linear scan.
+where M1 reused a whole line, since a block header and its body may share a line
+(`.rept 2; nop; .endr`); a `nop; nop` line is two elements. The state the walk runs through accepts
+everything that can start a statement, 42 entries against M1's 19, since labels, blocks, macro
+arguments and `#define` lines start one; tree-sitter finds an entry in such a state by a linear
+scan.
 
-The second table runs the M3 and M4 parsers on the same `basics` code in one session, median of
-seven runs; the M3 parsers were built from the M3 commit (`git archive` into `.build/`):
+M3 and M4 on `basics`:
 
 | Grammar       | Parse (ms)   | One-character edit (ms) | States      | parser.c           |
 | ------------- | ------------ | ----------------------- | ----------- | ------------------ |
@@ -2100,17 +2083,17 @@ seven runs; the M3 parsers were built from the M3 commit (`git archive` into `.b
 | asm_x86_nasm  | 46.6 -> 46.4 | 3.5 -> 3.4              | 72 -> 71    | 90 KB -> 106 KB    |
 
 x86 (GAS) parses 10% slower and edits as fast; Assembly parses 12% faster. x86 (GAS) has four times
-the states of M3: AT&T and Intel operands, the mode words, prefixes, decorators and macro calls.
-Taking one change out of a scratch copy at a time, the Intel operator words in directive expressions
-cost x86 (GAS) 70 states, the marker before an AT&T memory `(` 51, empty macro arguments 45, the
-closing categories after a blank 31 and a scale without an index 4. The closing categories cost the
-ARM grammars about 50 states each, 2 to 4%. M3's ARM languages parse 9 to 12% slower than M2's,
-because of the keyword check after every identifier and a larger lexer.
+M3's states: AT&T and Intel operands, the mode words, prefixes, decorators and macro calls. Removing
+one change at a time from a scratch copy: the Intel operator words in directive expressions cost x86
+(GAS) 70 states, the marker before an AT&T memory `(` 51, empty macro arguments 45, the closing
+categories after a blank 31 and a scale without an index 4. The closing categories cost the ARM
+grammars about 50 states each, 2 to 4%. M3's ARM languages parse 9 to 12% slower than M2's, from
+the keyword check after every identifier and a larger lexer.
 
-The third table is M4 on all fixtures of each grammar repeated, which hold blocks, macros,
-directives, preprocessor lines and the operand fixtures, with every query the language ships
-(`bun run bench`). Each fixture is a file of its own, which both assemblers start in AT&T mode, so
-the bench ends every x86 fixture with `.att_syntax`:
+M4 on all fixtures of each grammar repeated (blocks, macros, directives, preprocessor lines and the
+operand fixtures), with every query the language ships (`bun run bench`). Each fixture is a file of
+its own, which both assemblers start in AT&T mode, so the bench ends every x86 fixture with
+`.att_syntax`:
 
 | Grammar       | Parse | Edit | brackets | highlights | indents | injections | outline | overrides | textobjects |
 | ------------- | ----- | ---- | -------- | ---------- | ------- | ---------- | ------- | --------- | ----------- |
@@ -2122,10 +2105,9 @@ the bench ends every x86 fixture with `.att_syntax`:
 
 Times are in milliseconds for the whole file; Zed runs most queries on the visible rows only.
 
-The fourth table runs the M4 and M5 parsers on the same inputs in one session, median of seven
-runs; the M4 parsers were built from the M4 commit (`git archive` into `.build/`). For NASM the
-fixtures are M4's set, which both parsers read without errors. On M5's own NASM fixtures, which add
-seven denser files, NASM parses in 122.9 ms and edits in 2.6 ms.
+M4 and M5 on `basics` and the fixtures. For NASM the fixtures are M4's set, which both parsers read
+without errors; on M5's own NASM fixtures, which add seven denser files, NASM parses in 122.9 ms and
+edits in 2.6 ms.
 
 | Grammar       | Basics parse (ms) | Fixtures parse (ms) | States       | parser.c           |
 | ------------- | ----------------- | ------------------- | ------------ | ------------------ |
@@ -2135,84 +2117,86 @@ seven denser files, NASM parses in 122.9 ms and edits in 2.6 ms.
 | asm_x86_gas   | 64.4 -> 66.3      | 86.3 -> 88.7        | 1806 -> 2165 | 1752 KB -> 2184 KB |
 | asm_x86_nasm  | 45.3 -> 77.9      | 64.5 -> 102.9       | 71 -> 4341   | 108 KB -> 5939 KB  |
 
-M5 looks up every statement's first word in the generated instruction and directive tables, which
-is how it tells a macro call from an instruction (see Macro calls). It first bisected each table
-of the language, up to six in Assembly at about 100 cycles each. That made Assembly 13% and x86
-(GAS) 9% slower than M4 on the fixtures, and a file of `nop` lines 11 to 39% slower in every
-GNU-syntax language. One perfect-hashed dictionary per language (see Generated tables) makes each
-word one hash and one compare. Assembly now parses 3% faster than M4, ARM 9% and ARM (Apple) 11%
-faster, and x86 (GAS) 3% slower, with 20% more states for Intel operands, prefixes and decorators. A
-file of nothing but `nop` lines, which M4 read without any lookup, still parses 4 to 23% slower.
-One-character edits are as fast as in M4 or faster.
+M5 looks up every statement's first word in the generated instruction and directive tables to tell
+a macro call from an instruction (see Generated tables), in one perfect-hashed dictionary per
+language: one hash and one compare per word. Assembly parses 3% faster than M4, ARM 9% and ARM
+(Apple) 11% faster, and x86 (GAS) 3% slower, with 20% more states for Intel operands, prefixes and
+decorators. A file of only `nop` lines, which M4 read without a lookup, parses 4 to 23% slower.
+One-character edits are as fast as in M4 or faster. Measured alternative: bisecting each table of
+the language, up to six in Assembly at about 100 cycles each, made Assembly 13% and x86 (GAS) 9%
+slower than M4 on the fixtures, and a file of `nop` lines 11 to 39% slower in every GNU-syntax
+language.
 
-A callgrind profile of x86 (GAS) against M4, with the cache model of the budgets, shows where the
-time goes. The scanner and lexer now spend about 1,250 fewer instructions per statement than M4's;
-tree-sitter's runtime spends more. M4 lexed the mnemonic as an internal `identifier`, which
-tree-sitter keeps inline in the tree. M5's instruction word is a scanner token, and tree-sitter
-heap-allocates every token an external scanner returns: about 375 instructions per statement for
-the allocation and the last-external-token bookkeeping. Parse-table lookups are as many as in M4
-but cost about 470 more per statement, from the layout `tree-sitter generate` gives the larger
-table. In estimated cycles x86 (GAS) is 1.7% cheaper than M4 on `basics`, 1.0% dearer on the
-fixtures and 3.4% dearer on `nop` lines; the wall-clock gap above is larger, and the estimate models
-the caches but not branch prediction. The scanner token is what tells `movl` from a macro call such
-as `SAVE_ALL`, so it stays.
+A callgrind profile of x86 (GAS) against M4, with the cache model of the budgets: the scanner and
+lexer spend about 1,250 fewer instructions per statement than M4's, and tree-sitter's runtime spends
+more. M4 lexed the mnemonic as an internal `identifier`, which tree-sitter keeps inline in the tree.
+M5's instruction word is a scanner token, and tree-sitter heap-allocates every token an external
+scanner returns: about 375 instructions per statement for the allocation and the
+last-external-token bookkeeping. Parse-table lookups are as many as in M4 but cost about 470 more
+instructions per statement, from the layout `tree-sitter generate` gives the larger table. In
+estimated cycles x86 (GAS) is 1.7% cheaper than M4 on `basics`, 1.0% dearer on the fixtures and
+3.4% dearer on `nop` lines; the wall-clock gap above is larger, and the estimate models the caches,
+not branch prediction. The instruction word stays a scanner token, since it tells `movl` from a
+macro call such as `SAVE_ALL`.
 
 tree-sitter-generate (`render.rs`) puts `#pragma GCC optimize ("O0")`, with its clang and MSVC
 forms, at the top of `parser.c` when the main lexer has more than 300 states. The GNU-syntax lexers
-stay below that limit: Assembly 264 states, ARM 263, ARM (Apple) 258, x86 (GAS) 262. A pp-number
-as one regex token added 82 states to each and 31% to x86 (GAS) on `basics`, nearly all of it in
-`ts_lex`; the pp-number is therefore a number token followed by glued text. x86 (NASM) has 415
-lexer states and compiles under the pragma.
+stay below that limit: Assembly 264 states, ARM 263, ARM (Apple) 258, x86 (GAS) 262. A pp-number as
+one regex token added 82 states to each and 31% to x86 (GAS) on `basics`, nearly all of it in
+`ts_lex`, so the pp-number is a number token followed by glued text. x86 (NASM) has 415 lexer
+states and compiles under the pragma.
 
-NASM parses 60% slower than M4 on the fixtures and 72% on `basics`, because its grammar grew from
-71 states to 4341 to read the preprocessor, macro calls and structures. Taking one rule out of a
-scratch copy at a time, split memory operands cost 532 states, `macro_reference` 318, calls in
-expressions 247, macro tokens as mnemonics 172 and as labels 168, a list that stays open while it
-is typed 167, the argument group read by GLR 141, the nested-list rule 127 and words before an
-operand 57.
+NASM parses 60% slower than M4 on the fixtures and 72% on `basics`: its grammar grew from 71 states
+to 4341 to read the preprocessor, macro calls and structures. Removing one rule at a time from a
+scratch copy: split memory operands cost 532 states, `macro_reference` 318, calls in expressions
+247, macro tokens as mnemonics 172 and as labels 168, a list that stays open while it is typed 167,
+the argument group read by GLR 141, the nested-list rule 127 and words before an operand 57.
 
-What keeps it there:
+Rules for parse cost:
 
-- No grammar declares a word token. M2 measured edits at 56 to 105% of a full parse with one
-  declared in an earlier version of its grammar. M3 to M5 gave ARM one for its condition and shift
-  keywords; since M5 the scanner reads those words, and dropping the word token and its keyword
-  lexer took 9 to 14 states off each ARM grammar with parse and edit times unchanged (fixtures
-  94.4 ms Assembly, 91.0 ARM, 79.9 ARM (Apple); edits 1.1 to 1.2 ms).
+- No grammar declares a word token. With one declared, an M2 grammar measured edits at 56 to 105% of
+  a full parse. Removing the word token ARM had from M3 to M5 for its condition and shift keywords,
+  with its keyword lexer, took 9 to 14 states off each ARM grammar with parse and edit times
+  unchanged (fixtures 94.4 ms Assembly, 91.0 ARM, 79.9 ARM (Apple); edits 1.1 to 1.2 ms).
 - Each statement and the newline or `;` after it form one node. After an edit tree-sitter reuses a
   node only if its first token was read in the same parse state as before. A node that starts with
-  its statement meets that; one that starts with a newline does not, because that newline was read
-  in the middle of the statement before it. In a 120,000-line NASM file a one-character edit cost
-  67% of a full parse with the newline first, and 35% with it last.
+  its statement meets that; one that starts with a newline does not, since that newline was read in
+  the middle of the statement before it. In a 120,000-line NASM file a one-character edit cost 67%
+  of a full parse with the newline first, and 35% with it last.
 - The end of the file is a terminator token, not an optional last line without one. That optional
-  line was a second context for every statement, which doubled most expression states, and it let a
-  label follow a statement (`nop main:`). The token took x86 GAS from 205 states to 119.
+  line is a second context for every statement, which doubles most expression states, and it lets a
+  label follow a statement (`nop main:`). x86 GAS measured 205 states with the optional line and 119
+  with the token.
 - Rules that only name a choice (`_line_content`, `_statement`, `_mnemonic`, `_operand`, `_value`,
   `_symbol`) are inlined. `_mnemonic` alone saves a node per instruction, 4 to 9% of parse time.
   Inlining `_expression` too parses 5 to 10% faster in the GNU-syntax grammars but doubles their
   parse tables.
 - A block's header is a rule of its own. tree-sitter turns every `optional` and `choice` in a rule
-  into separate productions, and a macro body after an inline header was copied for each header
+  into separate productions, and a macro body after an inline header is copied for each header
   shape; the header rule took x86 GAS from 284 states to 240.
 - Every kind of block has its own closer. tree-sitter does not merge parse states whose valid
   scanner tokens differ, so each kind keeps its own copy of the statement states, about 100 states
   apiece. One shared closer would merge them but let `.endif` close a macro. Headers end like any
   statement, which lets their expressions share the states of instruction operands, and all blocks
   share one body rule; together these took x86 GAS from 456 states to 399. ARM (Apple) has fewer
-  states because its lists take commas only.
-- Local labels are a node rather than a regular-expression predicate in the queries, which saved 10%
-  of highlight time on label-dense code such as compiler output.
+  states, since its lists take commas only.
+- Local labels are a node, not a regular-expression predicate in the queries, which saves 10% of
+  highlight time on label-dense code such as compiler output.
 - A missing expression is one more alternative of `_expression`, which lets every operator, `(`, `#`
   and `$` share one parse state for it. Writing it into each of those rules cost 17% more states and
   10% more parser for the same trees.
 - Text objects capture only the first and the last child of a function or macro body
   (`. (_) @function.inside (_)? @function.inside .`). Zed joins the captures of one match into one
-  range, the same range that capturing every child gives. `(_)* @function.inside` made tree-sitter
-  keep a candidate per child: 1 s for a function of 10,000 lines and 16 s for 40,000, now 5 and
+  range, the same range that capturing every child gives. `(_)* @function.inside` makes tree-sitter
+  keep a candidate per child: 1 s for a function of 10,000 lines and 16 s for 40,000, against 5 and
   22 ms.
-- The scanner allocates one byte per parser, stores no state on any token before the end of the
-  input, and reads at most to the end of the line. It asks for the column in one case only: for a
-  `#` at the start of a statement, since the preprocessor reads a directive only when the `#` starts
-  its line.
+- The scanner state is three values (see The external scanner), serialized to zero bytes while all
+  hold their initial values, so no token before the first mode line, open call or end of input
+  stores state. The scanner reads past a line end only across a backslash-newline join, through a
+  `/*` comment, and inside a C macro call, where it reads the first character after the line end and
+  its blanks. It asks for the column only where a directive must start its line: for a `#` at a
+  statement start in GNU syntax and a `%` word in NASM, and at a join, to know whether only blanks
+  precede it on its line.
 - The scanner reads a word once and looks it up once in its language's dictionary: one hash, two
   reads and one compare give every role the word has, and the entry is passed to each check that
   needs it. Bisecting the per-architecture tables, once per table and question, cost Assembly
@@ -2222,20 +2206,20 @@ What keeps it there:
   a parse: the price of labels as tokens.
 
 Error recovery is slower than parsing valid code (0.4 to 2 MB/s on garbage against about 10 MB/s)
-but stays linear. It is slowest in NASM, whose identifiers may start with `?` or `$` and contain
-`#`, `@`, `~` and `$`, so recovery keeps finding plausible statement starts inside garbage.
+and stays linear. It is slowest in NASM, whose identifiers may start with `?` or `$` and contain
+`#`, `@`, `~` and `$`, so recovery finds plausible statement starts inside garbage.
 
 One query costs more than linear time, in a shape real code rarely has. The `gc` comment object,
-`(line_comment)+ @comment.around`, written the way Zed's built-in languages write `(comment)+`,
-costs the square of one uninterrupted run of comment lines: about 2 ms for 1,000 lines and 0.2 s for
-10,000, also in the narrow range Zed queries around the cursor. The only linear form would be one
-token for a whole run of comment lines, and every keystroke in a comment would then read the whole
-run again; for typing's sake the token stays per line.
+`(line_comment)+ @comment.around`, written as Zed's built-in languages write `(comment)+`, costs the
+square of one uninterrupted run of comment lines: about 2 ms for 1,000 lines and 0.2 s for 10,000,
+also in the narrow range Zed queries around the cursor. The only linear form is one token for a
+whole run of comment lines, with which every keystroke in a comment reads the whole run again, so
+the token is per line.
 
 The indents query is linear. Each `body` is one node that a pattern matches alone, and tree-sitter
-keeps no candidate open while it walks the lines inside a block. With patterns that had to see the
-closer after each body, 2,700 nested unclosed `.if` lines in Zed's 16 KB window took 1 s per query;
-they now take under 2 ms.
+keeps no candidate open while it walks the lines inside a block. Patterns that see the closer after
+each body took 1 s per query on 2,700 nested unclosed `.if` lines in Zed's 16 KB window; the body
+patterns take under 2 ms.
 
 ## Adding an architecture
 

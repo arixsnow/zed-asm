@@ -1,45 +1,40 @@
 # Asm
 
-A [Zed](https://zed.dev) extension for ARM and x86 assembly, with grammars that know each
-assembler's dialect.
+A [Zed](https://zed.dev) extension for ARM and x86 assembly. Each grammar follows the dialect of
+the assemblers it covers.
 
 ## Languages
 
-The extension covers two architectures, ARM and x86, in the syntax of the assemblers that read
-them. Zed lists them as five languages:
+| Language             | Covers                                                        | File types                       |
+| -------------------- | ------------------------------------------------------------- | -------------------------------- |
+| Assembly             | ARM and x86 in GNU syntax                                     | `.s` `.S` `.sx`                  |
+| ARM Assembly         | AArch64 and AArch32 (A32 and Thumb), for GNU as and clang     | none; chosen per file or project |
+| ARM Assembly (Apple) | Apple arm64, where `;` starts a comment                       | none; chosen per file or project |
+| x86 Assembly (GAS)   | x86 in GNU syntax, AT&T or Intel flavor, for GNU as and clang | none; chosen per file or project |
+| x86 Assembly (NASM)  | x86 in NASM syntax, for nasm and yasm                         | `.asm` `.ASM` `.nasm` `.yasm`    |
 
-| Language             | Covers                                                        | Used for                      |
-| -------------------- | ------------------------------------------------------------- | ----------------------------- |
-| Assembly             | ARM and x86 in GNU syntax                                     | `.s` `.S` `.sx`               |
-| ARM Assembly         | AArch64 and AArch32 (A32 and Thumb), for GNU as and clang     | chosen per file or project    |
-| ARM Assembly (Apple) | Apple arm64, where `;` starts a comment                       | chosen per file or project    |
-| x86 Assembly (GAS)   | x86 in GNU syntax, AT&T or Intel flavor, for GNU as and clang | chosen per file or project    |
-| x86 Assembly (NASM)  | x86 in NASM syntax, for nasm and yasm                         | `.asm` `.ASM` `.nasm` `.yasm` |
+Assembly reads both architectures. Each other language reads one dialect exactly; the dialects
+differ in a few characters, such as `;`, which starts a comment on Apple platforms and separates
+statements in GNU as.
 
-Assembly handles both architectures without any setup. The other languages follow one dialect
-exactly, which matters for the few characters the dialects disagree on. On Apple platforms `;`
-starts a comment; with GNU as it separates two statements.
-
-To use one by default, add this to `settings.json`:
+To set a language for a file type, add it to `settings.json`:
 
 ```json
 { "file_types": { "ARM Assembly": ["s", "S"] } }
 ```
 
-For a single file, put a modeline on its first line: `// -*- mode: arm -*-`, or the Vim form
-`// vim: ft=arm`. The names each language answers to are listed under Languages in
+To set it for one file, put a modeline on the first line: `// -*- mode: arm -*-`, or
+`// vim: ft=arm`. The names each language accepts are listed under Languages in
 [docs/architecture.md](docs/architecture.md#languages).
 
-If the older `assembly` extension is installed, uninstall it so the two do not both claim `.s`
-files.
+Uninstall the older `assembly` extension; it also claims `.s` files.
 
-This is an early release. Code the grammars do not read yet shows up as an error, but an error never
-spreads past its own line, so the rest of the file keeps its colors and its outline. The roadmap
-lists what comes next.
+Syntax the grammars do not read parses as an error confined to its own line; the rest of the file
+keeps its highlighting and outline.
 
 ## Roadmap
 
-| Milestone       | Status        | What it adds                                                                                                                                                                                                                                                                                                                                                                                     |
+| Milestone       | Status        | Adds                                                                                                                                                                                                                                                                                                                                                                                             |
 | --------------- | ------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
 | Foundation      | done          | five languages for ARM and x86; comments, `#` immediates and `@` relocations read per dialect; C preprocessor lines; highlighting; comment continuation; label indentation; typing never breaks later lines                                                                                                                                                                                      |
 | Structure       | done          | outline and breadcrumbs of functions with their local labels, macros and named constants; vim text objects for functions, macros and comments; indentation of `.macro`, `.if` and `.rept` blocks as you type; numeric labels `1:` and `b 1b`; full GNU directive forms; C colors in `#if` conditions                                                                                             |
@@ -48,19 +43,17 @@ lists what comes next.
 | NASM            | this release  | directives such as `section`, `bits` and `times`; the `%` preprocessor with `%define` and `%assign`, and `%macro`, `%if` and `%rep` blocks; macro calls like `[GOTOFF(eax, PW_ONE)]`, local labels like `%%loop` and names glued with `%+`; `struc` and `istruc` blocks; memory like `[rbx+rcx*4+8]` and `wrt ..plt`; data lists like `db 2 dup (0)`; outline, breadcrumbs and block indentation |
 | Hardening       | next          | Linux, glibc and FFmpeg sources parse without errors; benchmark budgets checked in CI                                                                                                                                                                                                                                                                                                            |
 | Release         | planned       | the stable release: snippets, screenshots, a listing in the Zed extension registry                                                                                                                                                                                                                                                                                                               |
-| RISC-V and MIPS | after release | a RISC-V and a MIPS language: registers like `x0`, `a0` and `$t0`, `%hi()` and `%lo()` relocations, memory operands like `8(sp)`; not part of Assembly, where `$t0` would read as an x86 immediate                                                                                                                                                                                               |
+| RISC-V and MIPS | after release | a RISC-V and a MIPS language: registers like `x0`, `a0` and `$t0`, `%hi()` and `%lo()` relocations, memory operands like `8(sp)`; not part of Assembly, where `$t0` reads as an x86 immediate                                                                                                                                                                                                    |
 
 ## Development
 
-Everything runs in a Podman container built from `Containerfile`, so your machine only needs
-`podman` and `git`. The container pins tree-sitter 0.27.0, Bun 1.4.3, TypeScript 7.0.2, oxlint
-1.88.0, dprint 0.63.0 and its four plugins exactly. The C toolchain, the assemblers, ShellCheck,
-valgrind, and the Perl, Python, CMake and Ninja that regenerating the keyword tables needs come from
-Fedora 45's repositories as they are when the image is built. CI builds it fresh whenever the
-Containerfile changes and in the first run of each week, and reuses that image for the rest of the
-week;
-`scripts/dev` rebuilds it locally whenever the Containerfile changes. Only the image build and
-`scripts/fetch-sources` download anything: the container itself runs without a network.
+All tools run in a Podman container built from `Containerfile`; the host needs `podman` and
+`git`. The image pins tree-sitter 0.27.0, Bun 1.4.3, TypeScript 7.0.2, oxlint 1.88.0, and dprint
+0.63.0 with its four plugins. The C toolchain, the assemblers, ShellCheck, valgrind, and the Perl,
+Python, CMake and Ninja that regenerate the keyword tables come from Fedora 45's repositories at
+build time. CI rebuilds the image when `Containerfile` changes and on its first run each week;
+`scripts/dev` rebuilds it locally when `Containerfile` changes. The container has no network
+access; only the image build and `scripts/fetch-sources` download.
 
 ```sh
 scripts/dev bun run test       # every check except the sanitizers
@@ -74,15 +67,14 @@ scripts/dev                    # a shell inside the toolchain
 scripts/zed                    # the docs/qa.md checks in Zed, inside Podman
 ```
 
-The hand-written sources are `languages.config.cjs`, `queries/`, `tree-sitter/common/`, `scripts/`
-and `test/`. `extension.toml`, `languages/`, `tree-sitter/tree-sitter.json`,
-`tree-sitter/common/words.h` and each grammar's `grammar.js` and `src/` are generated, and
-`bun run test` fails when any of them is out of date. `tree-sitter/common/keywords.h` is generated
-from the upstream sources (see Generated tables in the architecture doc).
+Hand-written sources: `languages.config.cjs`, `queries/`, `tree-sitter/common/`, `scripts/` and
+`test/`. Generated: `extension.toml`, `languages/`, `tree-sitter/tree-sitter.json`,
+`tree-sitter/common/words.h`, and each grammar's `grammar.js` and `src/`; `bun run test` fails when
+any of them is out of date. `tree-sitter/common/keywords.h` is generated from the upstream sources
+(see Generated tables in [docs/architecture.md](docs/architecture.md)).
 
-Commits that change only layout are listed in `.git-blame-ignore-revs`, so that blame shows the
-commit that last changed each line. GitHub's blame view reads the file on its own; for `git blame`,
-run once per clone:
+`.git-blame-ignore-revs` lists the commits that change only layout. GitHub's blame view reads it;
+`git blame` reads it after this command, once per clone:
 
 ```sh
 git config blame.ignoreRevsFile .git-blame-ignore-revs
@@ -96,12 +88,12 @@ scripts/fetch-sources ../references            # the pinned commits
 scripts/fetch-sources --update ../references   # move each pin to its branch head, then fetch
 ```
 
-`scripts/zed` runs the editor checks from [docs/qa.md](docs/qa.md) in Zed inside Podman, on your
-uncommitted tree. To install a change in your own Zed, push it, run
+`scripts/zed` runs the editor checks of [docs/qa.md](docs/qa.md) in Zed inside Podman, on the
+uncommitted tree. To install a change in your own Zed: push it, run
 `scripts/dev bun run set-grammar-rev <pushed commit>`, push again, then use **Extensions > Install
 Dev Extension** on a local clone.
 
-See [docs/architecture.md](docs/architecture.md) for how the grammars fit together.
+[docs/architecture.md](docs/architecture.md) describes how the grammars are built.
 
 ## License
 
