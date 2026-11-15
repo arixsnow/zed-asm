@@ -28,6 +28,7 @@ interface Tree {
     nodes: Node[];
     blocks: Block[];
     comments: { startRow: number; endRow: number }[];
+    calls: { startRow: number; endRow: number }[];
 }
 
 const LEXING = statementLexing(
@@ -53,6 +54,7 @@ const CONTAINER_TYPES = new Set([
 ]);
 const HEADER = /^( *)(?:\w+: )?\((\w+) \[(\d+), \d+\] - \[(\d+), (\d+)\]/;
 const COMMENT = /\((?:block_comment|preproc_comment) \[(\d+), \d+\] - \[(\d+), (\d+)\]/g;
+const CALL = /\(macro_call \[(\d+), \d+\] - \[(\d+), (\d+)\]/g;
 
 function lastRow(range: RegExpMatchArray, first: number): number {
     const [startRow, endRow, endColumn] = [0, 1, 2].map((offset) => Number(range[first + offset]));
@@ -102,11 +104,12 @@ function lineNodes(tree: string): Tree {
         nodes.push(node);
         current = { depth, node };
     }
-    const comments = [...tree.matchAll(COMMENT)].map((match) => ({
-        startRow: Number(match[1]),
-        endRow: lastRow(match, 1),
-    }));
-    return { nodes, blocks, comments };
+    const spans = (pattern: RegExp) =>
+        [...tree.matchAll(pattern)].map((match) => ({
+            startRow: Number(match[1]),
+            endRow: lastRow(match, 1),
+        }));
+    return { nodes, blocks, comments: spans(COMMENT), calls: spans(CALL) };
 }
 
 function parseAll(grammar: string, sources: string[]): Tree[] {
@@ -181,6 +184,11 @@ function reach(grammar: string, tree: Tree, lines: string[], row: number): numbe
                 index > comment.startRow && line.includes('*/')
             );
             end = closing === -1 ? lines.length - 1 : closing;
+            extended = true;
+        }
+        const call = tree.calls.find((range) => range.startRow <= end && range.endRow > end);
+        if (call !== undefined) {
+            end = call.endRow;
             extended = true;
         }
     }

@@ -114,3 +114,49 @@ bx (lr)
     mnemonic: (mnemonic)
     operand: (parenthesized_expression
       (identifier))))
+
+================================================================================
+A memory operand inside a C macro call continues on the next line
+================================================================================
+
+X(ldr x0, [x1,
+   #8]!)
+nop
+
+--------------------------------------------------------------------------------
+
+(source_file
+  (macro_call
+    function: (identifier)
+    arguments: (argument_list
+      argument: (argument
+        (identifier)
+        (register))
+      argument: (memory_operand
+        operand: (register)
+        operand: (immediate
+          value: (integer)))))
+  (instruction
+    mnemonic: (mnemonic)))
+
+================================================================================
+An assembler comment inside a C macro call ends where the argument ends
+================================================================================
+
+PROBE(read, 2, 4@r0, 8@r1)
+nop
+
+--------------------------------------------------------------------------------
+
+(source_file
+  (macro_call
+    function: (identifier)
+    arguments: (argument_list
+      argument: (identifier)
+      argument: (integer)
+      argument: (integer)
+      (line_comment)
+      argument: (integer)
+      (line_comment)))
+  (instruction
+    mnemonic: (mnemonic)))

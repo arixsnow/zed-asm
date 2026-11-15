@@ -99,7 +99,6 @@ m x, (1)
 A macro call being typed keeps to its own line
 ================================================================================
 
-m (a,
 m b=
 m c,
 nop
@@ -107,10 +106,6 @@ nop
 --------------------------------------------------------------------------------
 
 (source_file
-  (macro_call
-    function: (identifier)
-    arguments: (argument_list
-      argument: (identifier)))
   (macro_call
     function: (identifier)
     arguments: (argument_list
@@ -230,6 +225,77 @@ TAG(28bytes, 1f, 0x1e+2, 1.5)
         left: (integer)
         right: (integer))
       argument: (float))))
+
+================================================================================
+A C macro call reaches its closing parenthesis across lines
+================================================================================
+
+NOTE(Xen, ENTRY,
+	entry: .quad 1)
+X(a, (b +
+   c))
+.quad F(1,
+  2)
+WRAP(nop
+ret)
+nop
+
+--------------------------------------------------------------------------------
+
+(source_file
+  (macro_call
+    function: (identifier)
+    arguments: (argument_list
+      argument: (identifier)
+      argument: (identifier)
+      argument: (argument
+        (label
+          name: (identifier))
+        (identifier)
+        (integer))))
+  (macro_call
+    function: (identifier)
+    arguments: (argument_list
+      argument: (identifier)
+      argument: (parenthesized_expression
+        (binary_expression
+          left: (identifier)
+          right: (identifier)))))
+  (directive
+    name: (directive_name)
+    argument: (macro_call
+      function: (identifier)
+      arguments: (argument_list
+        argument: (integer)
+        argument: (integer))))
+  (macro_call
+    function: (identifier)
+    arguments: (argument_list
+      argument: (argument
+        (identifier)
+        (identifier))))
+  (instruction
+    mnemonic: (mnemonic)))
+
+================================================================================
+A C macro call being typed takes the lines after it up to a closing parenthesis
+================================================================================
+
+WRAP(a,
+nop
+)
+nop
+
+--------------------------------------------------------------------------------
+
+(source_file
+  (macro_call
+    function: (identifier)
+    arguments: (argument_list
+      argument: (identifier)
+      argument: (identifier)))
+  (instruction
+    mnemonic: (mnemonic)))
 
 ================================================================================
 A call statement ends before a comment

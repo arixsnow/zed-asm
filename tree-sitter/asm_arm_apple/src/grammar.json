@@ -2368,7 +2368,12 @@
           "type": "CHOICE",
           "members": [
             {
-              "type": "STRING",
+              "type": "ALIAS",
+              "content": {
+                "type": "SYMBOL",
+                "name": "_call_close"
+              },
+              "named": false,
               "value": ")"
             },
             {
@@ -6932,7 +6937,12 @@
               "type": "CHOICE",
               "members": [
                 {
-                  "type": "STRING",
+                  "type": "ALIAS",
+                  "content": {
+                    "type": "SYMBOL",
+                    "name": "_call_close"
+                  },
+                  "named": false,
                   "value": ")"
                 },
                 {
@@ -7891,6 +7901,10 @@
       "name": "block_comment"
     },
     {
+      "type": "SYMBOL",
+      "name": "_call_newline"
+    },
+    {
       "type": "PATTERN",
       "value": "\\\\[ \\t\\f\\v\\r]*\\n"
     }
@@ -8342,6 +8356,14 @@
     {
       "type": "SYMBOL",
       "name": "_list_caret"
+    },
+    {
+      "type": "SYMBOL",
+      "name": "_call_close"
+    },
+    {
+      "type": "SYMBOL",
+      "name": "_call_newline"
     },
     {
       "type": "SYMBOL",

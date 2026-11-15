@@ -7384,6 +7384,14 @@
     },
     {
       "type": "SYMBOL",
+      "name": "_call_close"
+    },
+    {
+      "type": "SYMBOL",
+      "name": "_call_newline"
+    },
+    {
+      "type": "SYMBOL",
       "name": "_relocation_suffix"
     },
     {

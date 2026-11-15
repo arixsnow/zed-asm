@@ -126,6 +126,8 @@ const EXTERNALS = [
     '_range_dash',
     '_writeback_bang',
     '_list_caret',
+    '_call_close',
+    '_call_newline',
     '_relocation_suffix',
     '_memory_address',
     '_pseudo_prefix',

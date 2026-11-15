@@ -17,4 +17,6 @@ wrapped:
     WRAP(nop; nop)
     WRAP(prfm pldl1keep, [x1])  // note
     prfm([x2])
+    WRAP(add x0,
+        x1, #1)
     ret

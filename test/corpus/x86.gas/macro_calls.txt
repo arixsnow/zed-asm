@@ -259,3 +259,29 @@ mov eax, F(ebx, 2nd)
       arguments: (argument_list
         argument: (register)
         argument: (identifier)))))
+
+================================================================================
+Statements in a C macro call continue across lines
+================================================================================
+
+NOTE(Xen, ENTRY,
+	.globl entry; entry: .quad 1)
+nop
+
+--------------------------------------------------------------------------------
+
+(source_file
+  (macro_call
+    function: (identifier)
+    arguments: (argument_list
+      argument: (identifier)
+      argument: (identifier)
+      argument: (argument
+        (identifier)
+        (identifier)
+        (label
+          name: (identifier))
+        (identifier)
+        (integer))))
+  (instruction
+    mnemonic: (mnemonic)))

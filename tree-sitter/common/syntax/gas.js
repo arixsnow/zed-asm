@@ -49,7 +49,13 @@ function macroArgumentList(ctx, $, item, joined) {
 
 function cppArguments($, marker, argument) {
     const slot = optional(choice(field('argument', argument), $._missing_operand));
-    return seq(marker, '(', slot, repeat(seq(',', slot)), choice(')', $._unclosed_arguments));
+    return seq(
+        marker,
+        '(',
+        slot,
+        repeat(seq(',', slot)),
+        choice(alias($._call_close, ')'), $._unclosed_arguments),
+    );
 }
 
 function cppRules(prefix, item, call) {
@@ -410,7 +416,7 @@ module.exports = (ctx) => {
                 ($) => $.concatenation,
             ],
         },
-        extras: [($) => $.block_comment],
+        extras: [($) => $.block_comment, ($) => $._call_newline],
         conflicts: [($) => [$.parenthesized_expression, $._call_item]],
     };
 };

@@ -22,4 +22,6 @@ wrapped:
     WRAP(lfence; jmp *%rax; int3)
     WRAP(movb -32(%rdx), %bl)  # note
     pause()
+    WRAP(movq %rax,
+        %rbx)
     ret
