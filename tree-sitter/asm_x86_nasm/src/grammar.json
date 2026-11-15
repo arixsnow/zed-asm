@@ -461,6 +461,37 @@
         }
       ]
     },
+    "_call_statement": {
+      "type": "SEQ",
+      "members": [
+        {
+          "type": "FIELD",
+          "name": "function",
+          "content": {
+            "type": "ALIAS",
+            "content": {
+              "type": "SYMBOL",
+              "name": "_macro_name"
+            },
+            "named": true,
+            "value": "identifier"
+          }
+        },
+        {
+          "type": "FIELD",
+          "name": "arguments",
+          "content": {
+            "type": "ALIAS",
+            "content": {
+              "type": "SYMBOL",
+              "name": "_statement_arguments"
+            },
+            "named": true,
+            "value": "argument_list"
+          }
+        }
+      ]
+    },
     "keyword_argument": {
       "type": "SEQ",
       "members": [
@@ -1074,37 +1105,6 @@
               "type": "BLANK"
             }
           ]
-        }
-      ]
-    },
-    "_call_statement": {
-      "type": "SEQ",
-      "members": [
-        {
-          "type": "FIELD",
-          "name": "function",
-          "content": {
-            "type": "ALIAS",
-            "content": {
-              "type": "SYMBOL",
-              "name": "_macro_name"
-            },
-            "named": true,
-            "value": "identifier"
-          }
-        },
-        {
-          "type": "FIELD",
-          "name": "arguments",
-          "content": {
-            "type": "ALIAS",
-            "content": {
-              "type": "SYMBOL",
-              "name": "_statement_arguments"
-            },
-            "named": true,
-            "value": "argument_list"
-          }
         }
       ]
     },
@@ -4444,6 +4444,15 @@
           "value": "macro_call"
         },
         {
+          "type": "ALIAS",
+          "content": {
+            "type": "SYMBOL",
+            "name": "_call_statement"
+          },
+          "named": true,
+          "value": "macro_call"
+        },
+        {
           "type": "SYMBOL",
           "name": "macro_definition"
         },
@@ -4479,15 +4488,6 @@
         {
           "type": "SYMBOL",
           "name": "structure_instance"
-        },
-        {
-          "type": "ALIAS",
-          "content": {
-            "type": "SYMBOL",
-            "name": "_call_statement"
-          },
-          "named": true,
-          "value": "macro_call"
         }
       ]
     },
@@ -7368,7 +7368,19 @@
     },
     {
       "type": "SYMBOL",
+      "name": "_label_colon"
+    },
+    {
+      "type": "SYMBOL",
       "name": "_range_dash"
+    },
+    {
+      "type": "SYMBOL",
+      "name": "_writeback_bang"
+    },
+    {
+      "type": "SYMBOL",
+      "name": "_list_caret"
     },
     {
       "type": "SYMBOL",

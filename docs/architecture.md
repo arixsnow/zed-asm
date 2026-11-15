@@ -272,24 +272,26 @@ What the assemblers do, measured with GNU as 2.46.1 (x86-64, AArch64) and 2.45 (
 
 What the scanner decides:
 
-|                                                  | Assembly                                                                                                   | ARM          | ARM (Apple)               | x86 (GAS)   | x86 (NASM) |
-| ------------------------------------------------ | ---------------------------------------------------------------------------------------------------------- | ------------ | ------------------------- | ----------- | ---------- |
-| text inside `"..."`                              | string                                                                                                     | string       | string                    | string      | string     |
-| `//`                                             | comment                                                                                                    | comment      | comment                   | comment     | -          |
-| `#` where an immediate fits                      | immediate if a value can start after it, else comment                                                      | immediate    | immediate                 | -           | -          |
-| other `#`                                        | C preprocessor directive at the start of a line, else comment                                              | same         | same                      | same        | -          |
-| `@` glued to a symbol                            | relocation                                                                                                 | relocation   | relocation                | relocation  | -          |
-| `@` plus a letter or digit where an operand fits | symbol type                                                                                                | comment      | -                         | symbol type | -          |
-| other `@`                                        | comment                                                                                                    | comment      | -                         | -           | -          |
-| `;`                                              | separator before a directive or after an x86 prefix, else a comment up to the next `;` a directive follows | separator    | comment                   | separator   | comment    |
-| `1$`, `1$:`                                      | dollar label                                                                                               | dollar label | -                         | -           | -          |
-| `\` or a name right after a name                 | glued piece                                                                                                | same         | same                      | same        | -          |
-| `$0` to `$9`, `$n`                               | -                                                                                                          | -            | positional macro argument | -           | -          |
-| `(` and a relocation name after a blank          | the same operand                                                                                           | same         | -                         | -           | -          |
-| a name after `(` in a relocation suffix          | relocation name                                                                                            | same         | -                         | -           | -          |
-| a name after `:` in a relocation                 | relocation name                                                                                            | same         | -                         | -           | -          |
-| `{` where a decorator or prefix fits             | decorator or pseudo-prefix                                                                                 | -            | -                         | same        | -          |
-| `.req`, `.dn`, `.qn` after a first name          | register alias word                                                                                        | same         | same                      | -           | -          |
+|                                                  | Assembly                                                                                                   | ARM          | ARM (Apple)                   | x86 (GAS)   | x86 (NASM) |
+| ------------------------------------------------ | ---------------------------------------------------------------------------------------------------------- | ------------ | ----------------------------- | ----------- | ---------- |
+| text inside `"..."`                              | string                                                                                                     | string       | string                        | string      | string     |
+| `//`                                             | comment                                                                                                    | comment      | comment                       | comment     | -          |
+| `#` where an immediate fits                      | immediate if a value can start after it, else comment                                                      | immediate    | immediate                     | -           | -          |
+| other `#`                                        | C preprocessor directive at the start of a line, else comment                                              | same         | same                          | same        | -          |
+| `@` glued to a symbol                            | relocation                                                                                                 | relocation   | relocation                    | relocation  | -          |
+| `@` plus a letter or digit where an operand fits | symbol type                                                                                                | comment      | -                             | symbol type | -          |
+| other `@`                                        | comment                                                                                                    | comment      | -                             | -           | -          |
+| `;`                                              | separator before a directive or after an x86 prefix, else a comment up to the next `;` a directive follows | separator    | comment                       | separator   | comment    |
+| `;` inside a C macro call                        | separator                                                                                                  | separator    | comment to the argument's end | separator   | -          |
+| `%%`                                             | separator                                                                                                  | -            | separator                     | -           | -          |
+| `1$`, `1$:`                                      | dollar label                                                                                               | dollar label | -                             | -           | -          |
+| `\` or a name right after a name                 | glued piece                                                                                                | same         | same                          | same        | -          |
+| `$0` to `$9`, `$n`                               | -                                                                                                          | -            | positional macro argument     | -           | -          |
+| `(` and a relocation name after a blank          | the same operand                                                                                           | same         | -                             | -           | -          |
+| a name after `(` in a relocation suffix          | relocation name                                                                                            | same         | -                             | -           | -          |
+| a name after `:` in a relocation                 | relocation name                                                                                            | same         | -                             | -           | -          |
+| `{` where a decorator or prefix fits             | decorator or pseudo-prefix                                                                                 | -            | -                             | same        | -          |
+| `.req`, `.dn`, `.qn` after a first name          | register alias word                                                                                        | same         | same                          | -           | -          |
 
 In Assembly a `;` is a separator when a directive follows it and a comment otherwise. The file does
 not say whether it is written for GNU as and clang ELF, where `;` separates, or for Apple's clang,
@@ -305,6 +307,13 @@ A `;` after an x86 prefix separates too (`rep; movsb`, `lock; incl %eax`). No pr
 mnemonic, so such a line is x86 code, and there `;` always separates. The prefixes are the x86 (GAS)
 prefix words (see x86 operands, Prefixes).
 
+The preprocessor ends a C macro call at its `)`, whatever the assembler later reads as a comment.
+So inside a call a `;` separates in Assembly too, and in ARM (Apple) its comment ends where the
+argument ends: at a `,` or `)` outside parentheses, skipping strings and C comments as the
+preprocessor does. `%%` is the statement separator of Apple's clang (`SeparatorString` in LLVM's
+`AArch64MCAsmInfo.cpp`, next to the `;` comment). Assembly reads it as well, since no x86 or GNU
+ARM operand starts with `%%`.
+
 A value can start with a letter, a digit or one of `_ . ( - + ~ ! ' :`. In Assembly `svc #0` has an
 immediate, while `nop # note` and `nop #*** banner ***` are comments.
 
@@ -316,6 +325,15 @@ Inside a block, its closing word (`.endm`, `.endmacro`, `.endif` or `.endr`) is 
 the grammar, the parser would have to decide at the first letter of a line whether the current
 block ends, before it could see the colon. The word takes the characters of the grammar's names,
 and a test checks every printable character against `lexical.js`.
+
+A statement inside a C macro call argument may start with a label or with an operand, such as a
+register. There the scanner's operand readers look for the colon first and then for the word's
+role as an operand, so `X(r4: nop)` has a label and `cfi_rel_offset (r4, 0)` a register. GNU as
+drops the blanks between a statement's first word and its colon (`app.c`), so `name :` is a label
+inside a call too. A label named by a call (`L(x):`) is decided there at its colon, which the
+scanner reads as a label colon; a call is an item whether or not a colon follows. Looking past the
+parentheses for the colon, as at a statement start, would repeat at every nested call and make a
+line of `(a` cost time in proportion to the square of its length.
 
 The same word may be a directive that must match whole: a block opener or clause, `.loc` or `.file`,
 an ARM directive with register operands, or a NASM directive such as `section` or `db`. The words
@@ -366,7 +384,7 @@ any character that cannot start it:
 
 | Token                        | The missing piece                                                                         | Starts with                                                    |
 | ---------------------------- | ----------------------------------------------------------------------------------------- | -------------------------------------------------------------- |
-| `_missing_operand`           | an instruction operand or a condition                                                     | a value; in ARM also `[`, `{` and `=`; in x86 also `*`         |
+| `_missing_operand`           | an instruction operand or a condition, an item of a C macro call argument                 | a value; in ARM also `[`, `{` and `=`; in x86 also `*`         |
 | `_missing_label_operand`     | an ARM branch target                                                                      | a value, `[` or `=`                                            |
 | `_missing_argument`          | a directive argument or an `.irp` value                                                   | a value                                                        |
 | `_missing_register_argument` | an argument of `.cfi_offset`, `.save` and the other register directives                   | a value; in ARM also `{`                                       |
@@ -400,16 +418,20 @@ with an operator where the parser takes one:
 Where a character means different things, the scanner reads the token itself, and only where the
 parser expects it: the comma right after an AT&T `(` (`(,%rax,8)`), the colon of an ARM alignment
 or index range, the colon of an Intel segment (`fs:[0x28]`), the `[` after an Intel displacement
-(`sym[rip]`), the dash of a register range, a relocation name after `:` and the colon after it, a
-pseudo-prefix and a decorator. Before a `(` it writes a zero-width marker of what the parentheses
-open (see Expressions). At the start of an ARM bracket element a colon begins an alignment
-when a digit follows (`[r0, :64]`) and a relocation otherwise (`[x0, :lo12:sym]`). The first colon
+(`sym[rip]`), the dash of a register range, the `!` of an ARM writeback and the `^` after a
+register list, a relocation name after `:` and the colon after it, a pseudo-prefix and a
+decorator. Before a `(` it writes a zero-width marker of what the parentheses open (see
+Expressions). At the start of an ARM bracket element a colon begins an alignment when a digit
+follows (`[r0, :64]`) and a relocation otherwise (`[x0, :lo12:sym]`). The first colon
 of `:lo12:` stays the parser's own token, since a label's colon is the same character
 (`\name\()_start:`). When a missing piece and an open construct could both close, the construct
-closes as it stands, so `F(` at the end of a line is an empty call.
+closes as it stands, so `F(` at the end of a line is an empty call. A separator inside a C macro
+call ends a statement of the argument, not the call, so where one may follow, the call still closes
+at the end of the line.
 
 Comments are read first, so the decision is made on the next real character. `==` and `!=` need a
-second character (`!` alone is an operator in the GNU-syntax languages except ARM (Apple)), and so
+second character (`!` alone is an operator in the GNU-syntax languages except ARM (Apple), where
+`a !b` in a call argument is two items), and so
 does a NASM `$`, which starts a name only before a letter, `_`, `?` or `.`, and a `.` where only a
 name fits. The only word that may be glued to a complete operand is a relocation
 specifier after `@`, and the scanner reads that itself, so any other glued word closes like any
@@ -682,7 +704,8 @@ Assembly the scanner does not do this before `#`, which after code is x86's comm
 the assemblers take with an amount (`lsl lsr asr ror asl msl` and the extends `uxtb`...`sxtx`,
 measured); such a word alone is an ordinary symbol, and `m x0 #1` has the two operands `x0` and
 `#1`. A blank-separated `.irp` list or macro parameter list never holds a shift, since GNU as ends
-each item at a blank.
+each item at a blank. Arguments of C macro calls read their blanks by shape instead (see
+Expressions).
 
 NASM names follow what nasm 3.02 and yasm 1.3.0 accept: an optional `$`, which turns a reserved word
 into a name (`$eax` is a symbol, not the register), then a letter, `_`, `?`, `@` or `.`, then
@@ -725,19 +748,45 @@ and `ge` with the comparisons, while clang's Intel mode switches to C's order (`
 GNU as and 10 in clang). The grammar follows GNU as there. Precedence shapes the tree only, never a
 color.
 
-In `.S` files the C preprocessor runs first, so operands hold C macro calls: Linux's
-`PER_CPU_VAR(x)`, glibc's `L(loop)` and `VMM(1)`. In every GNU-syntax language a name followed by
-`(` is a `macro_call` (`function`, `arguments`), and as in C any argument may be empty (`F(,1)`).
-AT&T memory wins when the parentheses start with a register or a comma (`sym(%rip)`, `t(,%rax,8)`,
-and `8(rbx)` in noprefix mode). Where an instruction's operands may be separated by blanks, a blank
-before `(` keeps GNU's reading of two arguments (`m 1 (2)`); elsewhere a blank changes nothing
-(`.word F (1)`). A label written as a call (`L(loop):`) is a local label named by its call. A
-statement's first word stays its mnemonic, since GNU as cannot tell a macro from an instruction
-without the definitions, and a statement may take one argument list as its operand
-(`_ASM_EXTABLE(1b, 3b)`, `ENTRY_P2ALIGN (STRCHR, 5)`). Before a `(` the scanner writes a zero-width
-marker of what the parentheses open: call arguments, a relocation suffix or an AT&T memory address.
-It decides from the text after the `(` and from the markers the parser accepts there, so no parse
-conflict has to choose between the readings.
+In `.S` files the C preprocessor runs first, so the source holds C macro calls: Linux's
+`PER_CPU_VAR(x)` and `USER(9f, ldr x0, [x1])`, glibc's `L(loop)` and `VMM(1)`. In every GNU-syntax
+language a name followed by `(` is a `macro_call` (`function`, `arguments`). AT&T memory wins when
+the parentheses start with a register or a comma (`sym(%rip)`, `t(,%rax,8)`, and `8(rbx)` in
+noprefix mode). Where an instruction's operands may be separated by blanks, a blank before `(`
+keeps GNU's reading of two arguments (`m 1 (2)`); elsewhere a blank changes nothing
+(`.word F (1)`). A label written as a call (`L(loop):`) is a local label named by its call. Before
+a `(` the scanner writes a zero-width marker of what the parentheses open: call arguments, a
+relocation suffix or an AT&T memory address. It decides from the text after the `(` and from the
+markers the parser accepts there, so no parse conflict has to choose between the readings.
+
+A statement is a call when parentheses right after its first word end it (`_ASM_EXTABLE(1b, 3b)`,
+and `ENTRY_P2ALIGN (STRCHR, 5)`, since GCC's manual lets a blank stand before the `(`). The
+statement ends at a line end, a separator or a comment (`CALGN(subs r2, r2, ip)  @ C is set`). A
+word that names an instruction makes a call only with the `(` glued to it (`PLD( pld [r1, #-4] )`,
+`BX(ip)`); with a blank it stays the instruction (`lgdt (%eax)`). Only a compiler that sees every
+`#define` can tell, so this is a preference by shape, as tree-sitter-c ranks macro-shaped readings
+below the plain ones. Linux, glibc and FFmpeg write 69 glued macro calls named like an instruction,
+67 instructions with a blank and none the other way. `push(%rax)` reads as a call.
+
+The preprocessor passes an argument on as text, and the macro body places it, often as a whole
+statement: `USER(9f, ldr x0, [x1])` puts `ldr x0, [x1]` after a label. So an argument is one item or
+a run of them. An item is an instruction operand (an Intel operand in Intel mode) or a pp-number, a
+digit word that no assembler number takes (`L(28bytes)`), read as a name. A statement inside an
+argument may start with labels (`EXC(1: movw (%esi), %bx)`), and statements split at the dialect's
+separator (see The external scanner). An argument may be empty (`F(,1)`). After a blank, a `[`, a
+`(` or an operator glued to its operand starts the next item (`pld [r1, #-4]`, `movw (%esi)`,
+`jmp *%\reg`), while an operator with blanks on both sides stays binary (`i + 2`). This is a
+preference by shape too: inside calls the three code bases write 68 glued forms that start an item
+and 92 spaced ones that are binary, with no exception. `X(a -1)` reads two items. `.macro`
+arguments keep GNU as's own rule (see Blocks, labels and directive forms).
+
+A pp-number is an assembler number with name text glued to it (`128` and `_more`, `28b` and
+`ytes`), one `identifier` built as concatenations are, from the scanner's glued text. So where an
+assembler number takes the whole word, the number stands (`1f`, `1.5`, `1e+5`), and a sign ends the
+glued text, so `0x1e+2` stays an expression. The glued text takes the dialect's name characters, a
+`$` included in GNU, while GCC and clang in assembler mode end a pp-number at `$`; `L(1$x)` pastes
+into the GNU name `.L1$x` either way. A single token for the pp-number would cost 82 lexer states
+(see Performance).
 
 A quoted name is a symbol where a symbol is needed: as a label (`"a b":`), in an operand, after `$`,
 with `@PLT` or `:lo12:`, and in memory operands. GNU as and clang accept all of these on every
@@ -2105,6 +2154,15 @@ table. In estimated cycles x86 (GAS) is 1.7% cheaper than M4 on `basics`, 1.0% d
 fixtures and 3.4% dearer on `nop` lines; the wall-clock gap above is larger, and the estimate models
 the caches but not branch prediction. The scanner token is what tells `movl` from a macro call such
 as `SAVE_ALL`, so it stays.
+
+tree-sitter's generator compiles the whole lexer without optimization once it has more than 300
+states (`#pragma GCC optimize ("O0")` and its clang and MSVC forms, in `render.rs` of
+tree-sitter-generate: "Compiling large lexer functions can be very slow"). The limit is the
+generator's, so the GNU grammars keep their lexers below it: Assembly has 264 states, ARM 263, ARM
+(Apple) 258 and x86 (GAS) 262. A pp-number read as one regex token added 82 states in each and cost
+31% on `basics` in x86 (GAS), nearly all of it in the unoptimized `ts_lex`. Built from a number
+and glued text it adds none, and C macro invocation as a whole costs 1.4%. x86 (NASM) has 415
+lexer states and parses with the pragma.
 
 NASM parses 60% slower than M4 on the fixtures and 72% on `basics`, because its grammar grew from
 71 states to 4341 to read the preprocessor, macro calls and structures. Taking one rule out of a

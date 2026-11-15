@@ -1,0 +1,46 @@
+================================================================================
+Statements in a C macro argument split at %%, and a ; comment ends with the argument
+================================================================================
+
+X(nop %% ret ; done, y)
+nop %% ret
+
+--------------------------------------------------------------------------------
+
+(source_file
+  (macro_call
+    function: (identifier)
+    arguments: (argument_list
+      argument: (argument
+        (identifier)
+        (identifier))
+      (line_comment)
+      argument: (identifier)))
+  (instruction
+    mnemonic: (mnemonic))
+  (instruction
+    mnemonic: (mnemonic)))
+
+================================================================================
+A C macro named with a leading L is a call, while the bare name stays local
+================================================================================
+
+b L(x)
+.word LOAD(1), Lz
+
+--------------------------------------------------------------------------------
+
+(source_file
+  (instruction
+    mnemonic: (mnemonic)
+    operand: (macro_call
+      function: (identifier)
+      arguments: (argument_list
+        argument: (identifier))))
+  (directive
+    name: (directive_name)
+    argument: (macro_call
+      function: (identifier)
+      arguments: (argument_list
+        argument: (integer)))
+    argument: (local_identifier)))

@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: MIT
 
-const { argumentGroup, macroArgumentList } = require('../syntax/gas.js');
+const { argumentGroup, cppArguments, cppRules, macroArgumentList } = require('../syntax/gas.js');
 const { intelLevels } = require('./x86.js');
 
 const PREFIX_SEMICOLONS = ['AUTO'];
@@ -26,7 +26,7 @@ module.exports = (ctx) => {
     const intel = intelLevels(ctx);
     const { levels } = intel;
     return {
-        conflicts: [($) => [$._intel_macro_argument, $._intel_parenthesized]],
+        conflicts: [($) => [$._intel_parenthesized, $._intel_operand]],
         rules: {
             _register_concatenation: ($) =>
                 seq(
@@ -108,15 +108,13 @@ module.exports = (ctx) => {
                     field('function', $.identifier),
                     field('arguments', alias($._intel_argument_list, $.argument_list)),
                 ),
-            _intel_argument_list: ($) =>
-                seq(
-                    $._call_arguments,
-                    '(',
-                    optional(field('argument', $._intel_macro_argument)),
-                    repeat(seq(',', optional(field('argument', $._intel_macro_argument)))),
-                    choice(')', $._unclosed_arguments),
-                ),
-            _intel_macro_argument: ($) => choice($._intel_expression, prec(1, $.string)),
+            _intel_argument_list: ($) => cppArguments($, $._call_arguments, $._intel_cpp_argument),
+            _intel_call_item: ($) => choice($._intel_operand, alias($._pp_number, $.identifier)),
+            ...cppRules(
+                'intel_',
+                ($) => $._intel_call_item,
+                ($) => alias($._intel_macro_call, $.macro_call),
+            ),
             _word_binary: ($) =>
                 choice(
                     ...INTEL_WORD_OPERATORS.map(([word, sameAs]) =>
@@ -160,11 +158,11 @@ module.exports = (ctx) => {
             _flags_att_first: ($) => choice($._value, $._plain_att_operand),
             _intel_call_argument: ($) =>
                 choice(
-                    $._intel_operand,
+                    $._intel_call_item,
                     $.keyword_argument,
                     alias($._intel_argument_group, $.argument_list),
                 ),
-            _intel_argument_group: ($) => argumentGroup($, $._intel_macro_argument),
+            _intel_argument_group: ($) => argumentGroup($, $._intel_call_item),
             ...(prefixSemicolons
                 ? { _prefix_instruction: ($) => field('prefix', alias($._prefix_word, $.prefix)) }
                 : {}),
@@ -178,6 +176,13 @@ module.exports = (ctx) => {
             _plain_intel_operand: [($) => $.immediate],
             _macro_arguments: [
                 ($) => seq($._intel_operands, macroArgumentList(ctx, $, $._intel_call_argument)),
+            ],
+            _statement_arguments: [
+                ($) =>
+                    seq(
+                        $._intel_operands,
+                        cppArguments($, $._statement_call, $._intel_cpp_argument),
+                    ),
             ],
             _intel_expression: [
                 ($) => $.float,
@@ -216,7 +221,6 @@ module.exports = (ctx) => {
             symbol_type: [($) => seq(alias($._type_mark, '@'), choice($.identifier, $.integer))],
             _statement: [($) => alias($._syntax_directive, $.directive)],
             _value: [($) => $.immediate, ($) => alias($._register, $.register)],
-            _macro_argument: [($) => $._x86_register],
             _expression: [
                 ($) => alias($._word_binary, $.binary_expression),
                 ($) => alias($._word_unary, $.unary_expression),

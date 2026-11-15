@@ -1,5 +1,116 @@
 [
   {
+    "type": "argument",
+    "named": true,
+    "fields": {},
+    "children": {
+      "multiple": true,
+      "required": false,
+      "types": [
+        {
+          "type": "binary_expression",
+          "named": true
+        },
+        {
+          "type": "char",
+          "named": true
+        },
+        {
+          "type": "concatenation",
+          "named": true
+        },
+        {
+          "type": "decorated_operand",
+          "named": true
+        },
+        {
+          "type": "decorator",
+          "named": true
+        },
+        {
+          "type": "float",
+          "named": true
+        },
+        {
+          "type": "identifier",
+          "named": true
+        },
+        {
+          "type": "immediate",
+          "named": true
+        },
+        {
+          "type": "indirect",
+          "named": true
+        },
+        {
+          "type": "integer",
+          "named": true
+        },
+        {
+          "type": "label",
+          "named": true
+        },
+        {
+          "type": "local_identifier",
+          "named": true
+        },
+        {
+          "type": "location_counter",
+          "named": true
+        },
+        {
+          "type": "macro_argument",
+          "named": true
+        },
+        {
+          "type": "macro_call",
+          "named": true
+        },
+        {
+          "type": "memory_operand",
+          "named": true
+        },
+        {
+          "type": "numeric_label",
+          "named": true
+        },
+        {
+          "type": "parenthesized_expression",
+          "named": true
+        },
+        {
+          "type": "register",
+          "named": true
+        },
+        {
+          "type": "relocation",
+          "named": true
+        },
+        {
+          "type": "segment_override",
+          "named": true
+        },
+        {
+          "type": "string",
+          "named": true
+        },
+        {
+          "type": "symbol_type",
+          "named": true
+        },
+        {
+          "type": "typed_operand",
+          "named": true
+        },
+        {
+          "type": "unary_expression",
+          "named": true
+        }
+      ]
+    }
+  },
+  {
     "type": "argument_list",
     "named": true,
     "fields": {
@@ -7,6 +118,10 @@
         "multiple": true,
         "required": false,
         "types": [
+          {
+            "type": "argument",
+            "named": true
+          },
           {
             "type": "argument_list",
             "named": true
@@ -3091,6 +3206,10 @@
     "named": true
   },
   {
+    "type": "number",
+    "named": false
+  },
+  {
     "type": "numeric_label",
     "named": true
   },
@@ -3122,6 +3241,10 @@
   {
     "type": "register",
     "named": true
+  },
+  {
+    "type": "text",
+    "named": false
   },
   {
     "type": "|",

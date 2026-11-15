@@ -103,6 +103,42 @@ const POSITIONS: Position[] = [
         syntax: 'gas',
     },
     {
+        name: 'after an item run in a macro call',
+        token: '_unclosed_arguments',
+        prefix: 'mov r0, F(a b ',
+        syntax: 'gas',
+    },
+    {
+        name: 'after a label in a macro call',
+        token: '_unclosed_arguments',
+        prefix: 'mov r0, F(1: ',
+        syntax: 'gas',
+    },
+    {
+        name: 'after a separator in a macro call',
+        token: '_unclosed_arguments',
+        prefix: 'mov r0, F(a; ',
+        dialects: ['AUTO', 'ARM', 'X86_GAS'],
+    },
+    {
+        name: 'after a percent separator in a macro call',
+        token: '_unclosed_arguments',
+        prefix: 'mov r0, F(a %% ',
+        dialects: ['AUTO', 'ARM_APPLE'],
+    },
+    {
+        name: 'after a memory operand in a macro call',
+        token: '_unclosed_arguments',
+        prefix: 'mov r0, F(ldr x0, [x1] ',
+        arch: 'arm',
+    },
+    {
+        name: 'after a register list in a macro call',
+        token: '_unclosed_arguments',
+        prefix: 'mov r0, F(ldm r0, {r1} ',
+        arch: 'arm',
+    },
+    {
         name: 'after a comma before a label',
         token: '_missing_label_operand',
         prefix: 'cbz x0, ',

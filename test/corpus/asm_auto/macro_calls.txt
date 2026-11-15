@@ -1,0 +1,20 @@
+================================================================================
+A ; inside a C macro call separates statements, and %% separates them anywhere
+================================================================================
+
+X(nop; ret)
+nop %% ret
+
+--------------------------------------------------------------------------------
+
+(source_file
+  (macro_call
+    function: (identifier)
+    arguments: (argument_list
+      argument: (argument
+        (identifier)
+        (identifier))))
+  (instruction
+    mnemonic: (mnemonic))
+  (instruction
+    mnemonic: (mnemonic)))

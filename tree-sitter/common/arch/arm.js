@@ -138,7 +138,8 @@ module.exports = (ctx) => {
                         $._glued_pieces,
                     ),
                 ),
-            writeback: ($) => prec(1, seq(field('register', $._register_name), '!')),
+            writeback: ($) =>
+                prec(1, seq(field('register', $._register_name), alias($._writeback_bang, '!'))),
             indexed_register: ($) =>
                 prec(
                     1,
@@ -166,7 +167,7 @@ module.exports = (ctx) => {
                         seq(',', choice(field('operand', $._memory_element), $._missing_element)),
                     ),
                     choice(']', $._unclosed_bracket),
-                    optional('!'),
+                    optional(alias($._writeback_bang, '!')),
                 )),
             _memory_element: ($) =>
                 choice(
@@ -190,7 +191,7 @@ module.exports = (ctx) => {
                     optional(
                         seq('[', field('index', $._expression), choice(']', $._unclosed_index)),
                     ),
-                    optional('^'),
+                    optional(alias($._list_caret, '^')),
                 )),
             _list_element: ($) => choice($._register_name, $.indexed_register, $.register_range),
             register_range: ($) =>
@@ -372,7 +373,12 @@ module.exports = (ctx) => {
                 ($) => $.literal_pool,
                 ($) => $.shift,
             ],
-            ...(appleLocals ? { _symbol: [($) => alias($._apple_local, $.local_identifier)] } : {}),
+            ...(appleLocals
+                ? {
+                    _symbol: [($) => alias($._apple_local, $.local_identifier)],
+                    _call_name: [($) => alias($._apple_local, $.identifier)],
+                }
+                : {}),
             ...(positionalArguments
                 ? { _glue_head: [($) => alias($._darwin_argument, $.macro_argument)] }
                 : {}),

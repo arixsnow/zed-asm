@@ -13,8 +13,10 @@ const ERROR_NODE = /\((?:ERROR|MISSING[^[]*) \[(\d+), \d+\] - \[(\d+), \d+\]/g;
 
 const REJECTED: [string, number[], string[]][] = [
     ['first:\n    nop main:', [1], GNU],
-    ['1$:\n    b 1$', [0, 1], ['asm_arm_apple', 'asm_x86_gas']],
-    ['1:\n    b 1B', [1], GNU],
+    ['1$:\n    b 1$', [0, 1], ['asm_arm_apple']],
+    ['1$:\n    jmp 1$', [0, 1], ['asm_x86_gas']],
+    ['1:\n    b 1B', [1], ['asm_auto', 'asm_arm', 'asm_arm_apple']],
+    ['1:\n    jmp 1B', [1], X86_GAS],
     ['1b: nop', [0], GNU],
     ['    ldm r0, {.foo}\n    nop', [0], ['asm_auto', 'asm_arm']],
     ['    ldm r0, {.endm\n    nop', [0], ['asm_auto', 'asm_arm']],

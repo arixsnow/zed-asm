@@ -105,11 +105,6 @@ module.exports = (ctx) => ({
                 optional(field('parameters', $.argument_list)),
                 optional(seq(alias($._reference_colon, ':'), field('count', $._intel_expression))),
             ),
-        _call_statement: ($) =>
-            seq(
-                field('function', alias($._macro_name, $.identifier)),
-                field('arguments', alias($._statement_arguments, $.argument_list)),
-            ),
         _macro_statement: ($) =>
             choice(
                 alias($._macro_invocation, $.macro_call),
@@ -515,7 +510,6 @@ module.exports = (ctx) => ({
             ($) => $.times,
             ($) => $.structure,
             ($) => $.structure_instance,
-            ($) => alias($._call_statement, $.macro_call),
         ],
         _symbol: [
             ($) => alias($._dot_identifier, $.local_identifier),

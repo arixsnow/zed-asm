@@ -60,6 +60,10 @@
           "named": true
         },
         {
+          "type": "label",
+          "named": true
+        },
+        {
           "type": "literal_pool",
           "named": true
         },
@@ -3301,6 +3305,10 @@
     "named": true
   },
   {
+    "type": "number",
+    "named": false
+  },
+  {
     "type": "numeric_label",
     "named": true
   },
@@ -3328,6 +3336,10 @@
   {
     "type": "shift_operator",
     "named": true
+  },
+  {
+    "type": "text",
+    "named": false
   },
   {
     "type": "{",

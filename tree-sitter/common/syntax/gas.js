@@ -34,7 +34,7 @@ function argumentGroup($, item) {
         seq(
             '(',
             field('argument', item),
-            repeat(seq(choice(',', $._blank), field('argument', item))),
+            repeat(seq(choice(',', $._blank), choice(field('argument', item), $._missing_operand))),
             choice(')', $._unclosed_arguments),
         ),
     );
@@ -45,6 +45,45 @@ function macroArgumentList(ctx, $, item, joined) {
         field('argument', delimited(ctx, $, item, joined)),
         listRest(ctx, $, 'argument', item, joined, $._missing_operand),
     );
+}
+
+function cppArguments($, marker, argument) {
+    const slot = optional(choice(field('argument', argument), $._missing_operand));
+    return seq(marker, '(', slot, repeat(seq(',', slot)), choice(')', $._unclosed_arguments));
+}
+
+function cppRules(prefix, item, call) {
+    const name = (part) => `_${prefix}cpp_${part}`;
+    return {
+        [name('label')]: ($) =>
+            choice(
+                alias($._global_label, $.label),
+                alias($._local_label, $.label),
+                alias($[name('call_label')], $.label),
+            ),
+        [name('call_label')]: ($) => seq(field('name', call($)), alias($._label_colon, ':')),
+        [name('argument')]: ($) => choice(item($), alias($[name('text')], $.argument)),
+        [name('text')]: ($) =>
+            choice(
+                $[name('items')],
+                $[name('labelled')],
+                seq(
+                    optional($[name('statement')]),
+                    repeat1(
+                        seq(
+                            $._separator,
+                            optional(choice($[name('statement')], $._missing_operand)),
+                        ),
+                    ),
+                ),
+            ),
+        [name('statement')]: ($) => choice($[name('labelled')], $[name('body')]),
+        [name('labelled')]: ($) =>
+            seq(repeat1($[name('label')]), optional(choice($[name('body')], $._missing_operand))),
+        [name('body')]: ($) => choice(item($), $[name('items')]),
+        [name('items')]: ($) =>
+            seq(item($), repeat1(seq($._blank, choice(item($), $._missing_operand)))),
+    };
 }
 
 function preprocRest($, ...parts) {
@@ -218,17 +257,9 @@ module.exports = (ctx) => {
                         optional(field('specifier', alias($._relocation_specifier, $.identifier))),
                     ),
                 ),
-            argument_list: ($) =>
-                seq(
-                    $._call_arguments,
-                    '(',
-                    optional(field('argument', $._macro_argument)),
-                    repeat(seq(',', optional(field('argument', $._macro_argument)))),
-                    choice(')', $._unclosed_arguments),
-                ),
+            argument_list: ($) => cppArguments($, $._call_arguments, $._cpp_argument),
             _call_argument: ($) => choice($._call_value, $.keyword_argument),
-            _call_value: ($) =>
-                choice($._instruction_operand, alias($._argument_group, $.argument_list)),
+            _call_value: ($) => choice($._call_item, alias($._argument_group, $.argument_list)),
             ...(COMMA_SEPARATED_LISTS.includes(ctx.dialect)
                 ? {
                     _joined_call_values: ($) =>
@@ -238,7 +269,14 @@ module.exports = (ctx) => {
                         ),
                 }
                 : {}),
-            _argument_group: ($) => argumentGroup($, $._macro_argument),
+            _argument_group: ($) => argumentGroup($, $._call_item),
+            ...cppRules('', ($) => $._call_item, ($) => $.macro_call),
+            _call_label: ($) => seq(field('name', alias($._macro_label, $.macro_call)), ':'),
+            _pp_number: ($) =>
+                seq(
+                    alias(choice($.integer, $.numeric_label, $.float), 'number'),
+                    alias($._glued_text, 'text'),
+                ),
             location_counter: () => '.',
             _percent_name: () => token(prec(-1, seq('%', optional(/[A-Za-z0-9_]+/)))),
             ...(dotLocals
@@ -250,6 +288,7 @@ module.exports = (ctx) => {
             _macro_arguments: [
                 ($) => macroArgumentList(ctx, $, $._call_argument, $._joined_call_values),
             ],
+            _statement_arguments: [($) => cppArguments($, $._statement_call, $._cpp_argument)],
             _macro_header: [
                 ($) =>
                     seq(
@@ -324,10 +363,10 @@ module.exports = (ctx) => {
             ],
             _mnemonic: [($) => $.macro_argument, ($) => $.concatenation],
             _local_label: [
-                ($) => seq(field('name', alias($._macro_label, $.macro_call)), ':'),
                 ($) => seq(field('name', alias($._numeric_label_name, $.numeric_label)), ':'),
                 ($) => seq(field('name', choice($.macro_argument, $.concatenation)), ':'),
             ],
+            _item: [($) => alias($._call_label, $.label)],
             _statement: [($) => $.directive, ($) => $.assignment],
             _defined_name: [
                 ($) => $._symbol,
@@ -349,7 +388,10 @@ module.exports = (ctx) => {
             _operand: [($) => $._value, ($) => $.keyword_argument],
             _instruction_operand: [($) => $._value],
             _operands: [($) => instructionOperands($)],
-            _macro_argument: [($) => $._expression, ($) => prec(1, $.string)],
+            _call_item: [
+                ($) => $._instruction_operand,
+                ($) => alias($._pp_number, $.identifier),
+            ],
             _expression: [
                 ($) => $._symbol,
                 ($) => $.integer,
@@ -369,9 +411,11 @@ module.exports = (ctx) => {
             ],
         },
         extras: [($) => $.block_comment],
-        conflicts: [($) => [$.parenthesized_expression, $._macro_argument]],
+        conflicts: [($) => [$.parenthesized_expression, $._call_item]],
     };
 };
 
 module.exports.argumentGroup = argumentGroup;
+module.exports.cppArguments = cppArguments;
+module.exports.cppRules = cppRules;
 module.exports.macroArgumentList = macroArgumentList;

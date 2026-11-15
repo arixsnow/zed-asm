@@ -119,6 +119,12 @@ module.exports = (ctx) => ({
                 optional(field('arguments', alias($._macro_arguments, $.argument_list))),
             ),
 
+        _call_statement: ($) =>
+            seq(
+                field('function', alias($._macro_name, $.identifier)),
+                field('arguments', alias($._statement_arguments, $.argument_list)),
+            ),
+
         keyword_argument: ($) => seq(field('name', $._keyword_name), '=', $._keyword_value),
 
         macro_call: ($) =>
@@ -159,6 +165,7 @@ module.exports = (ctx) => ({
         _statement: [
             ($) => $.instruction,
             ($) => alias($._macro_invocation, $.macro_call),
+            ($) => alias($._call_statement, $.macro_call),
             ($) => $.macro_definition,
             ($) => $.conditional,
             ($) => $.repeat_block,

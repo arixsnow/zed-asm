@@ -14,3 +14,12 @@ answer:
     .error "not taken"
 #endif
 #undef RESULT
+#define WRAP(insn...) insn
+#define pause() rep; nop
+    .text
+wrapped:
+    WRAP(1:	movw (%rsi), %bx)
+    WRAP(lfence; jmp *%rax; int3)
+    WRAP(movb -32(%rdx), %bl)  # note
+    pause()
+    ret

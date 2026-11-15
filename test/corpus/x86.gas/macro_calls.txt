@@ -152,3 +152,110 @@ Registers and immediates as macro defaults and keyword arguments
       argument: (identifier)
       argument: (immediate
         value: (integer)))))
+
+================================================================================
+Instruction text in C macro arguments, with x86 operands
+================================================================================
+
+EXC(1:	movw (%esi), %bx)
+STR(lfence; jmp *%\reg; int3)
+EXC(movb -32(%edx), %bl)
+SYM(start)  # note
+
+--------------------------------------------------------------------------------
+
+(source_file
+  (macro_call
+    function: (identifier)
+    arguments: (argument_list
+      argument: (argument
+        (label
+          name: (numeric_label))
+        (identifier)
+        (memory_operand
+          base: (register)))
+      argument: (register)))
+  (macro_call
+    function: (identifier)
+    arguments: (argument_list
+      argument: (argument
+        (identifier)
+        (identifier)
+        (indirect
+          operand: (concatenation
+            (register)
+            (macro_argument)))
+        (identifier))))
+  (macro_call
+    function: (identifier)
+    arguments: (argument_list
+      argument: (argument
+        (identifier)
+        (memory_operand
+          displacement: (unary_expression
+            argument: (integer))
+          base: (register)))
+      argument: (register)))
+  (macro_call
+    function: (identifier)
+    arguments: (argument_list
+      argument: (identifier)))
+  (line_comment))
+
+================================================================================
+A mnemonic glued to parentheses that end the statement is a call, with a blank an instruction
+================================================================================
+
+push(%rax)
+lgdt (%eax)
+F()
+
+--------------------------------------------------------------------------------
+
+(source_file
+  (macro_call
+    function: (identifier)
+    arguments: (argument_list
+      argument: (register)))
+  (instruction
+    mnemonic: (mnemonic)
+    operand: (memory_operand
+      base: (register)))
+  (macro_call
+    function: (identifier)
+    arguments: (argument_list)))
+
+================================================================================
+Intel instruction text in C macro arguments
+================================================================================
+
+.intel_syntax noprefix
+EXC(1: mov eax, dword ptr [esi])
+mov eax, F(ebx, 2nd)
+
+--------------------------------------------------------------------------------
+
+(source_file
+  (directive
+    name: (directive_name)
+    argument: (identifier))
+  (macro_call
+    function: (identifier)
+    arguments: (argument_list
+      argument: (argument
+        (label
+          name: (numeric_label))
+        (identifier)
+        (register))
+      argument: (typed_operand
+        type: (operand_type)
+        operand: (memory_operand
+          address: (register)))))
+  (instruction
+    mnemonic: (mnemonic)
+    operand: (register)
+    operand: (macro_call
+      function: (identifier)
+      arguments: (argument_list
+        argument: (register)
+        argument: (identifier)))))

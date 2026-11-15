@@ -51,28 +51,25 @@ ENTRY (memcpy)
   (macro_call
     function: (identifier)
     arguments: (argument_list
-      argument: (argument_list
-        argument: (numeric_label)
-        argument: (numeric_label))))
+      argument: (numeric_label)
+      argument: (numeric_label)))
   (macro_call
     function: (identifier)
     arguments: (argument_list
-      argument: (argument_list
-        argument: (identifier)
-        argument: (integer))))
+      argument: (identifier)
+      argument: (integer)))
   (macro_call
     function: (identifier)
     arguments: (argument_list
-      argument: (parenthesized_expression
-        (identifier)))))
+      argument: (identifier))))
 
 ================================================================================
 A parenthesized group is one macro argument, its items separated by commas or blanks
 ================================================================================
 
-m (a, b)
-m (a b)
-m (1)
+m (a, b), c
+m x, (a b)
+m x, (1)
 
 --------------------------------------------------------------------------------
 
@@ -82,16 +79,19 @@ m (1)
     arguments: (argument_list
       argument: (argument_list
         argument: (identifier)
-        argument: (identifier))))
+        argument: (identifier))
+      argument: (identifier)))
   (macro_call
     function: (identifier)
     arguments: (argument_list
+      argument: (identifier)
       argument: (argument_list
         argument: (identifier)
         argument: (identifier))))
   (macro_call
     function: (identifier)
     arguments: (argument_list
+      argument: (identifier)
       argument: (parenthesized_expression
         (integer)))))
 
@@ -110,8 +110,7 @@ nop
   (macro_call
     function: (identifier)
     arguments: (argument_list
-      argument: (argument_list
-        argument: (identifier))))
+      argument: (identifier)))
   (macro_call
     function: (identifier)
     arguments: (argument_list
@@ -152,3 +151,103 @@ A macro named with a dot, its dotted parameters and their references
     arguments: (argument_list
       argument: (integer)
       argument: (integer))))
+
+================================================================================
+A C macro argument is a run of items, with labels where a statement starts
+================================================================================
+
+WRAP(1: nop)
+WRAP(done : nop, 2f)
+WRAP(L(next): nop)
+
+--------------------------------------------------------------------------------
+
+(source_file
+  (macro_call
+    function: (identifier)
+    arguments: (argument_list
+      argument: (argument
+        (label
+          name: (numeric_label))
+        (identifier))))
+  (macro_call
+    function: (identifier)
+    arguments: (argument_list
+      argument: (argument
+        (label
+          name: (identifier))
+        (identifier))
+      argument: (numeric_label)))
+  (macro_call
+    function: (identifier)
+    arguments: (argument_list
+      argument: (argument
+        (label
+          name: (macro_call
+            function: (identifier)
+            arguments: (argument_list
+              argument: (identifier))))
+        (identifier)))))
+
+================================================================================
+A blank before an operator glued to its operand starts the next item, a spaced operator is binary
+================================================================================
+
+SPLIT(n + 1, n -1, n - 1)
+
+--------------------------------------------------------------------------------
+
+(source_file
+  (macro_call
+    function: (identifier)
+    arguments: (argument_list
+      argument: (binary_expression
+        left: (identifier)
+        right: (integer))
+      argument: (argument
+        (identifier)
+        (unary_expression
+          argument: (integer)))
+      argument: (binary_expression
+        left: (identifier)
+        right: (integer)))))
+
+================================================================================
+A digit word that no assembler number takes is a name
+================================================================================
+
+TAG(28bytes, 1f, 0x1e+2, 1.5)
+
+--------------------------------------------------------------------------------
+
+(source_file
+  (macro_call
+    function: (identifier)
+    arguments: (argument_list
+      argument: (identifier)
+      argument: (numeric_label)
+      argument: (binary_expression
+        left: (integer)
+        right: (integer))
+      argument: (float))))
+
+================================================================================
+A call statement ends before a comment
+================================================================================
+
+WRAP(nop)  // note
+WRAP(nop) /* note */
+
+--------------------------------------------------------------------------------
+
+(source_file
+  (macro_call
+    function: (identifier)
+    arguments: (argument_list
+      argument: (identifier)))
+  (line_comment)
+  (macro_call
+    function: (identifier)
+    arguments: (argument_list
+      argument: (identifier)))
+  (block_comment))

@@ -34,3 +34,83 @@ C macro calls with empty arguments
     argument: (macro_call
       function: (identifier)
       arguments: (argument_list))))
+
+================================================================================
+Instruction text in C macro arguments, with ARM operands
+================================================================================
+
+PRELOAD(	pld	[r1, #-4]	)
+USER(9f, ldr x0, [x1]!)
+ALT(	stmdb r0, {sp, lr}^	)
+UNWIND(	.save {r4-r7}	)
+THUMB(	stmia ip!, {r4}	)	@ note
+
+--------------------------------------------------------------------------------
+
+(source_file
+  (macro_call
+    function: (identifier)
+    arguments: (argument_list
+      argument: (argument
+        (identifier)
+        (memory_operand
+          operand: (register)
+          operand: (immediate
+            value: (unary_expression
+              argument: (integer)))))))
+  (macro_call
+    function: (identifier)
+    arguments: (argument_list
+      argument: (numeric_label)
+      argument: (argument
+        (identifier)
+        (register))
+      argument: (memory_operand
+        operand: (register))))
+  (macro_call
+    function: (identifier)
+    arguments: (argument_list
+      argument: (argument
+        (identifier)
+        (register))
+      argument: (register_list
+        element: (register)
+        element: (register))))
+  (macro_call
+    function: (identifier)
+    arguments: (argument_list
+      argument: (argument
+        (identifier)
+        (register_list
+          element: (register_range
+            start: (register)
+            end: (register))))))
+  (macro_call
+    function: (identifier)
+    arguments: (argument_list
+      argument: (argument
+        (identifier)
+        (writeback
+          register: (register)))
+      argument: (register_list
+        element: (register))))
+  (line_comment))
+
+================================================================================
+A mnemonic glued to parentheses that end the statement is a call, with a blank an instruction
+================================================================================
+
+BX(lr)
+bx (lr)
+
+--------------------------------------------------------------------------------
+
+(source_file
+  (macro_call
+    function: (identifier)
+    arguments: (argument_list
+      argument: (register)))
+  (instruction
+    mnemonic: (mnemonic)
+    operand: (parenthesized_expression
+      (identifier))))
