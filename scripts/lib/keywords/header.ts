@@ -14,8 +14,20 @@ export interface HeaderConstant {
     value: number;
 }
 
+export interface HeaderCharacters {
+    name: string;
+    characters: string;
+}
+
 function quoted(text: string): string {
     return `"${text.replace(/["\\]/g, (character) => `\\${character}`)}"`;
+}
+
+function characterString({ name, characters }: HeaderCharacters): string {
+    if (!/^[!-~]*$/.test(characters)) {
+        throw new Error(`${name} holds a character that is not printable ASCII`);
+    }
+    return `#define ${name} ${quoted(characters)}\n`;
 }
 
 function entry(word: string, flags: string[], table: HeaderTable): string {
@@ -40,6 +52,7 @@ export function header(
     projects: Project[],
     constants: HeaderConstant[],
     tables: HeaderTable[],
+    characters: HeaderCharacters[],
 ): string {
     const sections = [
         xTable(
@@ -52,6 +65,7 @@ export function header(
                 table.keywords.entries().map(([word, flags]) => entry(word, flags, table)),
             )
         ),
+        ...characters.map(characterString),
     ];
     const counts = constants.length === 0
         ? []

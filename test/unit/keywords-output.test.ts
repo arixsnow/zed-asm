@@ -69,8 +69,17 @@ test('header writes the sources, the constants and each table in its form', () =
             role: (word) => `ROLE_${word.toUpperCase()}`,
         },
     ];
+    const characters = [
+        { name: 'ASM_SOME_CHARACTERS', characters: '$"\\[' },
+        { name: 'ASM_NO_CHARACTERS', characters: '' },
+    ];
     assert.strictEqual(
-        header([project], [{ name: 'ASM_ONE', value: 1 }, { name: 'ASM_TWO', value: 2 }], tables),
+        header(
+            [project],
+            [{ name: 'ASM_ONE', value: 1 }, { name: 'ASM_TWO', value: 2 }],
+            tables,
+            characters,
+        ),
         [
             '#ifndef ASM_KEYWORDS_H',
             '#define ASM_KEYWORDS_H',
@@ -95,6 +104,10 @@ test('header writes the sources, the constants and each table in its form', () =
             '    X("e", ROLE_E, F1) \\',
             '    X("f", ROLE_F, 0)',
             '',
+            '#define ASM_SOME_CHARACTERS "$\\"\\\\["',
+            '',
+            '#define ASM_NO_CHARACTERS ""',
+            '',
             '#endif /* ASM_KEYWORDS_H */',
             '',
         ].join('\n'),
@@ -103,16 +116,28 @@ test('header writes the sources, the constants and each table in its form', () =
 
 test('header stops on an empty table', () => {
     assertThrowsIncluding(
-        () => header([], [], [{ name: 'ASM_EMPTY', keywords: keywords({}) }]),
+        () => header([], [], [{ name: 'ASM_EMPTY', keywords: keywords({}) }], []),
         'table ASM_KEYWORD_SOURCES is empty',
     );
     assertThrowsIncluding(
         () =>
             header([{ name: 'up', path: '', commit: 'abc' }], [], [
                 { name: 'ASM_EMPTY', keywords: keywords({}) },
-            ]),
+            ], []),
         'table ASM_EMPTY is empty',
     );
+});
+
+test('header stops on a character string that is not printable ASCII', () => {
+    for (const characters of [' ', '\t', String.fromCharCode(0xe9)]) {
+        assertThrowsIncluding(
+            () =>
+                header([{ name: 'up', path: '', commit: 'abc' }], [], [], [
+                    { name: 'ASM_BAD_CHARACTERS', characters },
+                ]),
+            'ASM_BAD_CHARACTERS holds a character that is not printable ASCII',
+        );
+    }
 });
 
 test('unlexed keeps the names an identifier cannot read whole, with their flags', () => {

@@ -285,3 +285,381 @@ nop
         (integer))))
   (instruction
     mnemonic: (mnemonic)))
+
+================================================================================
+An AT&T base or index named by a macro, with no name before the parenthesis
+================================================================================
+
+movdqu STATE0, 0x00(STATEP)
+mov (SRC, %rcx), %rax
+addl (%ebx,INDEX,4), %ebx
+vpxor \i*32(SRC), RNDKEYLAST, TMP0
+lea -16(REM), REM
+vbroadcastss ((round * 16) + idx + 0)(rk), t0
+movl sym(KEY), %eax
+
+--------------------------------------------------------------------------------
+
+(source_file
+  (instruction
+    mnemonic: (mnemonic)
+    operand: (identifier)
+    operand: (memory_operand
+      displacement: (integer)
+      base: (identifier)))
+  (instruction
+    mnemonic: (mnemonic)
+    operand: (memory_operand
+      base: (identifier)
+      index: (register))
+    operand: (register))
+  (instruction
+    mnemonic: (mnemonic)
+    operand: (memory_operand
+      base: (register)
+      index: (identifier)
+      scale: (integer))
+    operand: (register))
+  (instruction
+    mnemonic: (mnemonic)
+    operand: (memory_operand
+      displacement: (binary_expression
+        left: (macro_argument)
+        right: (integer))
+      base: (identifier))
+    operand: (identifier)
+    operand: (identifier))
+  (instruction
+    mnemonic: (mnemonic)
+    operand: (memory_operand
+      displacement: (unary_expression
+        argument: (integer))
+      base: (identifier))
+    operand: (identifier))
+  (instruction
+    mnemonic: (mnemonic)
+    operand: (memory_operand
+      displacement: (parenthesized_expression
+        (binary_expression
+          left: (binary_expression
+            left: (parenthesized_expression
+              (binary_expression
+                left: (identifier)
+                right: (integer)))
+            right: (identifier))
+          right: (integer)))
+      base: (identifier))
+    operand: (identifier))
+  (instruction
+    mnemonic: (mnemonic)
+    operand: (macro_call
+      function: (identifier)
+      arguments: (argument_list
+        argument: (identifier)))
+    operand: (register)))
+
+================================================================================
+Registers built by C macros, and a symbol type in a directive
+================================================================================
+
+VMOVU (%rsi), %VMM(1)
+vpmovmskb %VMM_lo(4), %VRCX
+andl $(CHAR_PER_VEC - 1), %VGPR_SZ(SHIFT_REG, 32)
+vpminub %VMM(2), %VMM(3), %VMM(3){%k1}{z}
+.type f, %function
+
+--------------------------------------------------------------------------------
+
+(source_file
+  (macro_call
+    function: (identifier)
+    arguments: (argument_list
+      argument: (argument_list
+        argument: (register))
+      argument: (register
+        (macro_call
+          function: (identifier)
+          arguments: (argument_list
+            argument: (integer))))))
+  (instruction
+    mnemonic: (mnemonic)
+    operand: (register
+      (macro_call
+        function: (identifier)
+        arguments: (argument_list
+          argument: (integer))))
+    operand: (register))
+  (instruction
+    mnemonic: (mnemonic)
+    operand: (immediate
+      value: (parenthesized_expression
+        (binary_expression
+          left: (identifier)
+          right: (integer))))
+    operand: (register
+      (macro_call
+        function: (identifier)
+        arguments: (argument_list
+          argument: (identifier)
+          argument: (integer)))))
+  (instruction
+    mnemonic: (mnemonic)
+    operand: (register
+      (macro_call
+        function: (identifier)
+        arguments: (argument_list
+          argument: (integer))))
+    operand: (register
+      (macro_call
+        function: (identifier)
+        arguments: (argument_list
+          argument: (integer))))
+    operand: (decorated_operand
+      operand: (register
+        (macro_call
+          function: (identifier)
+          arguments: (argument_list
+            argument: (integer))))
+      decorator: (decorator)
+      decorator: (decorator)))
+  (directive
+    name: (directive_name)
+    argument: (identifier)
+    argument: (symbol_type)))
+
+================================================================================
+A name before an operand is its type
+================================================================================
+
+vmovdqa .Lbswap32_mask rRIP, RTMP2
+cmpl __percpu 4(%esi), %edx
+
+--------------------------------------------------------------------------------
+
+(source_file
+  (instruction
+    mnemonic: (mnemonic)
+    operand: (typed_operand
+      type: (local_identifier)
+      operand: (identifier))
+    operand: (identifier))
+  (instruction
+    mnemonic: (mnemonic)
+    operand: (typed_operand
+      type: (identifier)
+      operand: (memory_operand
+        displacement: (integer)
+        base: (register)))
+    operand: (register)))
+
+================================================================================
+Decorators after a symbol, a name and a C macro call statement
+================================================================================
+
+vmovdqu8 %zmm0, sym{%k1}
+vmovdqu8 (AAD), GHASHDATA0_XMM{%k1}{z}
+CMP_R1_S2_VMM (%VMM(0), (%rsi), %VMM(1), %k1){%k2}
+
+--------------------------------------------------------------------------------
+
+(source_file
+  (instruction
+    mnemonic: (mnemonic)
+    operand: (register)
+    operand: (decorated_operand
+      operand: (identifier)
+      decorator: (decorator)))
+  (instruction
+    mnemonic: (mnemonic)
+    operand: (memory_operand
+      base: (identifier))
+    operand: (decorated_operand
+      operand: (identifier)
+      decorator: (decorator)
+      decorator: (decorator)))
+  (macro_call
+    function: (identifier)
+    arguments: (argument_list
+      argument: (register
+        (macro_call
+          function: (identifier)
+          arguments: (argument_list
+            argument: (integer))))
+      argument: (memory_operand
+        base: (register))
+      argument: (register
+        (macro_call
+          function: (identifier)
+          arguments: (argument_list
+            argument: (integer))))
+      argument: (register))
+    decorator: (decorator)))
+
+================================================================================
+A C macro call as the mnemonic
+================================================================================
+
+__ASM_SIZE(push,) %__ASM_REG(dx)
+
+--------------------------------------------------------------------------------
+
+(source_file
+  (instruction
+    mnemonic: (macro_call
+      function: (identifier)
+      arguments: (argument_list
+        argument: (identifier)))
+    operand: (register
+      (macro_call
+        function: (identifier)
+        arguments: (argument_list
+          argument: (identifier))))))
+
+================================================================================
+A name, a blank and a parenthesis inside a C macro call argument call the name
+================================================================================
+
+END (MEMMOVE_CHK_SYMBOL (__mempcpy_chk, unaligned))
+EXC(movw (%esi), %bx)
+
+--------------------------------------------------------------------------------
+
+(source_file
+  (macro_call
+    function: (identifier)
+    arguments: (argument_list
+      argument: (macro_call
+        function: (identifier)
+        arguments: (argument_list
+          argument: (identifier)
+          argument: (identifier)))))
+  (macro_call
+    function: (identifier)
+    arguments: (argument_list
+      argument: (argument
+        (identifier)
+        (memory_operand
+          base: (register)))
+      argument: (register))))
+
+================================================================================
+SystemTap probe arguments
+================================================================================
+
+LIBC_PROBE (longjmp, 3, 4@%eax, -4@8(%esp), 4@%edx)
+LIBC_PROBE (longjmp, 3, LP_SIZE@%RDI_LP, -4@%eax, LP_SIZE@%RDX_LP)
+
+--------------------------------------------------------------------------------
+
+(source_file
+  (macro_call
+    function: (identifier)
+    arguments: (argument_list
+      argument: (identifier)
+      argument: (integer)
+      argument: (probe_argument
+        size: (integer)
+        operand: (register))
+      argument: (probe_argument
+        size: (unary_expression
+          argument: (integer))
+        operand: (memory_operand
+          displacement: (integer)
+          base: (register)))
+      argument: (probe_argument
+        size: (integer)
+        operand: (register))))
+  (macro_call
+    function: (identifier)
+    arguments: (argument_list
+      argument: (identifier)
+      argument: (integer)
+      argument: (probe_argument
+        size: (identifier)
+        operand: (register))
+      argument: (probe_argument
+        size: (unary_expression
+          argument: (integer))
+        operand: (register))
+      argument: (probe_argument
+        size: (identifier)
+        operand: (register)))))
+
+================================================================================
+A name in parentheses followed by an operator is an expression, not a base
+================================================================================
+
+VMOVU %VZERO, ((VEC_SIZE)-(VEC_SIZE - CHAR_SIZE))(%rdi, %rdx, CHAR_SIZE)
+movq (AAD) + 8, %rax
+movq (AAD), %rax
+
+--------------------------------------------------------------------------------
+
+(source_file
+  (macro_call
+    function: (identifier)
+    arguments: (argument_list
+      argument: (register)
+      argument: (memory_operand
+        displacement: (parenthesized_expression
+          (binary_expression
+            left: (parenthesized_expression
+              (identifier))
+            right: (parenthesized_expression
+              (binary_expression
+                left: (identifier)
+                right: (identifier)))))
+        base: (register)
+        index: (register)
+        scale: (identifier))))
+  (instruction
+    mnemonic: (mnemonic)
+    operand: (binary_expression
+      left: (parenthesized_expression
+        (identifier))
+      right: (integer))
+    operand: (register))
+  (instruction
+    mnemonic: (mnemonic)
+    operand: (memory_operand
+      base: (identifier))
+    operand: (register)))
+
+================================================================================
+A C macro call after an operand is one of its decorators
+================================================================================
+
+    VPTEST %VMM(2), %VMM(2), %k0 COND_MASK(k2)
+    vpminub %ymm1, %ymm2, %ymm3 MASK(k1)
+
+--------------------------------------------------------------------------------
+
+(source_file
+  (instruction
+    mnemonic: (mnemonic)
+    operand: (register
+      (macro_call
+        function: (identifier)
+        arguments: (argument_list
+          argument: (integer))))
+    operand: (register
+      (macro_call
+        function: (identifier)
+        arguments: (argument_list
+          argument: (integer))))
+    operand: (decorated_operand
+      operand: (register)
+      decorator: (macro_call
+        function: (identifier)
+        arguments: (argument_list
+          argument: (identifier)))))
+  (instruction
+    mnemonic: (mnemonic)
+    operand: (register)
+    operand: (register)
+    operand: (decorated_operand
+      operand: (register)
+      decorator: (macro_call
+        function: (identifier)
+        arguments: (argument_list
+          argument: (identifier))))))

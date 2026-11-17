@@ -159,8 +159,8 @@ movq (sym), %rbx
     operand: (register))
   (instruction
     mnemonic: (mnemonic)
-    operand: (parenthesized_expression
-      (identifier))
+    operand: (memory_operand
+      base: (identifier))
     operand: (register)))
 
 ================================================================================

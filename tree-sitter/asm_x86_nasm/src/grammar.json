@@ -7148,6 +7148,10 @@
     },
     {
       "type": "SYMBOL",
+      "name": "_joining_blank"
+    },
+    {
+      "type": "SYMBOL",
       "name": "_prefix_word"
     },
     {
@@ -7201,6 +7205,10 @@
     {
       "type": "SYMBOL",
       "name": "_float_space_directive"
+    },
+    {
+      "type": "SYMBOL",
+      "name": "_string_directive"
     },
     {
       "type": "SYMBOL",
@@ -7389,6 +7397,22 @@
     {
       "type": "SYMBOL",
       "name": "_call_newline"
+    },
+    {
+      "type": "SYMBOL",
+      "name": "_call_mnemonic"
+    },
+    {
+      "type": "SYMBOL",
+      "name": "_percent_call"
+    },
+    {
+      "type": "SYMBOL",
+      "name": "_probe_at"
+    },
+    {
+      "type": "SYMBOL",
+      "name": "_decorator_gap"
     },
     {
       "type": "SYMBOL",

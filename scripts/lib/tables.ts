@@ -17,9 +17,11 @@ export interface KeywordSources {
     scanner: string;
     keywords: string;
     tables: Map<string, TableRow[]>;
+    characters: Map<string, string>;
 }
 
 const TABLE = /^#define (ASM_\w+)\(X\) \\\n((?:[^\n]*\\\n)*[^\n]*)/gm;
+const CHARACTERS = /^#define (ASM_\w+_CHARACTERS) "((?:[^"\\\n]|\\.)*)"$/gm;
 
 function readCommon(name: string): string {
     return readFileSync(join(ROOT, 'tree-sitter', 'common', name), 'utf8');
@@ -65,7 +67,11 @@ export function keywordSources(scanner: string, keywords: string): KeywordSource
     for (const [, table, body] of keywords.matchAll(TABLE)) {
         tables.set(table, body.split('\n').map((line) => tableRow(table, line)));
     }
-    return { scanner, keywords, tables };
+    const characters = new Map<string, string>();
+    for (const [, name, text] of keywords.matchAll(CHARACTERS)) {
+        characters.set(name, text.replace(/\\(.)/g, '$1'));
+    }
+    return { scanner, keywords, tables, characters };
 }
 
 export function commonSources(): KeywordSources {

@@ -72,7 +72,7 @@ nop
   (instruction
     mnemonic: (mnemonic)
     operand: (register)
-    operand: (symbol_type))
+    operand: (register))
   (instruction
     mnemonic: (mnemonic)))
 

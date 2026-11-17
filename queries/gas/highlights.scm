@@ -32,6 +32,9 @@
 (relocation
     specifier: (identifier) @attribute)
 
+(probe_argument
+    "@" @punctuation.special)
+
 (numeric_label) @label
 
 (float) @number

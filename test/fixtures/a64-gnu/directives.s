@@ -40,4 +40,5 @@ spaced :
     .data
     .balign 8,,4
     . = . + 4
+    .ascii "a" "b"
     .section .note.GNU-stack,"",%progbits

@@ -99,12 +99,17 @@ module.exports = (ctx) => {
                     choice(
                         seq(
                             field('operator', alias($._shift_word, $.shift_operator)),
-                            optional($._blank),
+                            optional(choice($._blank, $._joining_blank)),
                             field('amount', $._shift_amount),
                         ),
                         seq(
                             field('operator', alias($._extend_word, $.shift_operator)),
-                            optional(seq(optional($._blank), field('amount', $._shift_amount))),
+                            optional(
+                                seq(
+                                    optional(choice($._blank, $._joining_blank)),
+                                    field('amount', $._shift_amount),
+                                ),
+                            ),
                         ),
                     ),
                 ),
@@ -183,16 +188,22 @@ module.exports = (ctx) => {
             register_list: ($) =>
                 prec.right(seq(
                     '{',
-                    choice(field('element', $._list_element), $._missing_register),
-                    repeat(
-                        seq(',', choice(field('element', $._list_element), $._missing_register)),
-                    ),
+                    choice($._list_item, $._missing_register),
+                    repeat(seq(',', choice($._list_item, $._missing_register))),
                     choice('}', $._unclosed_brace),
                     optional(
                         seq('[', field('index', $._expression), choice(']', $._unclosed_index)),
                     ),
                     optional(alias($._list_caret, '^')),
                 )),
+            _list_item: ($) =>
+                choice(
+                    field('element', $._list_element),
+                    seq(
+                        repeat1(field('element', $.macro_call)),
+                        optional(field('element', $._list_element)),
+                    ),
+                ),
             _list_element: ($) => choice($._register_name, $.indexed_register, $.register_range),
             register_range: ($) =>
                 seq(

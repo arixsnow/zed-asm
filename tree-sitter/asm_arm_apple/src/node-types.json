@@ -100,6 +100,10 @@
           "named": true
         },
         {
+          "type": "probe_argument",
+          "named": true
+        },
+        {
           "type": "register",
           "named": true
         },
@@ -224,6 +228,10 @@
           },
           {
             "type": "predicate",
+            "named": true
+          },
+          {
+            "type": "probe_argument",
             "named": true
           },
           {
@@ -1310,6 +1318,10 @@
             "named": true
           },
           {
+            "type": "macro_call",
+            "named": true
+          },
+          {
             "type": "mnemonic",
             "named": true
           }
@@ -1523,6 +1535,10 @@
           },
           {
             "type": "predicate",
+            "named": true
+          },
+          {
+            "type": "probe_argument",
             "named": true
           },
           {
@@ -1992,6 +2008,10 @@
             "named": true
           },
           {
+            "type": "probe_argument",
+            "named": true
+          },
+          {
             "type": "register",
             "named": true
           },
@@ -2270,6 +2290,140 @@
     }
   },
   {
+    "type": "probe_argument",
+    "named": true,
+    "fields": {
+      "operand": {
+        "multiple": false,
+        "required": false,
+        "types": [
+          {
+            "type": "binary_expression",
+            "named": true
+          },
+          {
+            "type": "char",
+            "named": true
+          },
+          {
+            "type": "concatenation",
+            "named": true
+          },
+          {
+            "type": "float",
+            "named": true
+          },
+          {
+            "type": "identifier",
+            "named": true
+          },
+          {
+            "type": "immediate",
+            "named": true
+          },
+          {
+            "type": "indexed_register",
+            "named": true
+          },
+          {
+            "type": "integer",
+            "named": true
+          },
+          {
+            "type": "literal_pool",
+            "named": true
+          },
+          {
+            "type": "local_identifier",
+            "named": true
+          },
+          {
+            "type": "location_counter",
+            "named": true
+          },
+          {
+            "type": "macro_argument",
+            "named": true
+          },
+          {
+            "type": "macro_call",
+            "named": true
+          },
+          {
+            "type": "memory_operand",
+            "named": true
+          },
+          {
+            "type": "numeric_label",
+            "named": true
+          },
+          {
+            "type": "parenthesized_expression",
+            "named": true
+          },
+          {
+            "type": "predicate",
+            "named": true
+          },
+          {
+            "type": "register",
+            "named": true
+          },
+          {
+            "type": "register_list",
+            "named": true
+          },
+          {
+            "type": "relocation",
+            "named": true
+          },
+          {
+            "type": "shift",
+            "named": true
+          },
+          {
+            "type": "signed_register",
+            "named": true
+          },
+          {
+            "type": "string",
+            "named": true
+          },
+          {
+            "type": "symbol_type",
+            "named": true
+          },
+          {
+            "type": "unary_expression",
+            "named": true
+          },
+          {
+            "type": "writeback",
+            "named": true
+          }
+        ]
+      },
+      "size": {
+        "multiple": false,
+        "required": true,
+        "types": [
+          {
+            "type": "identifier",
+            "named": true
+          },
+          {
+            "type": "integer",
+            "named": true
+          },
+          {
+            "type": "unary_expression",
+            "named": true
+          }
+        ]
+      }
+    }
+  },
+  {
     "type": "register_alias",
     "named": true,
     "fields": {
@@ -2351,6 +2505,10 @@
           },
           {
             "type": "macro_argument",
+            "named": true
+          },
+          {
+            "type": "macro_call",
             "named": true
           },
           {
@@ -2679,6 +2837,10 @@
           },
           {
             "type": "predicate",
+            "named": true
+          },
+          {
+            "type": "probe_argument",
             "named": true
           },
           {

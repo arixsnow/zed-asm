@@ -20,3 +20,9 @@
     (#match? @keyword "^(?i:offset|imagerel|short)$"))
 
 (decorator) @attribute
+
+(typed_operand
+    type: (identifier) @keyword)
+
+(register
+    "%" @variable.special)

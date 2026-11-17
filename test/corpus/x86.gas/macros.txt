@@ -39,3 +39,32 @@ Registers as .irp values
       (instruction
         mnemonic: (mnemonic)
         operand: (macro_argument)))))
+
+================================================================================
+A blank after a parameter default starts the next parameter
+================================================================================
+
+.macro m a=x b
+.endm
+.macro n a=%k0 b
+.endm
+
+--------------------------------------------------------------------------------
+
+(source_file
+  (macro_definition
+    name: (identifier)
+    parameter: (parameter
+      name: (identifier)
+      default: (identifier))
+    parameter: (parameter
+      name: (identifier))
+    body: (body))
+  (macro_definition
+    name: (identifier)
+    parameter: (parameter
+      name: (identifier)
+      default: (register))
+    parameter: (parameter
+      name: (identifier))
+    body: (body)))

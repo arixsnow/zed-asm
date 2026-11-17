@@ -20,3 +20,7 @@ wrapped:
     WRAP(add x0,
         x1, #1)
     ret
+#define PROBE(name, n, ...) .pushsection .note.probe, "a"; .ascii #__VA_ARGS__; .popsection
+probed:
+    PROBE(longjmp, 3, 8@x0, -4@x1, 8@[sp, #8])
+    ret

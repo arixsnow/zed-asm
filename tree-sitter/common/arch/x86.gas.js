@@ -1,6 +1,12 @@
 // SPDX-License-Identifier: MIT
 
-const { argumentGroup, cppArguments, cppRules, macroArgumentList } = require('../syntax/gas.js');
+const {
+    argumentGroup,
+    cppArguments,
+    cppRules,
+    joinedValues,
+    macroArgumentList,
+} = require('../syntax/gas.js');
 const { intelLevels } = require('./x86.js');
 
 const PREFIX_SEMICOLONS = ['AUTO'];
@@ -33,6 +39,22 @@ module.exports = (ctx) => {
                     choice(alias($._register, $.register), alias($._percent_name, $.register)),
                     $._glued_pieces,
                 ),
+            _register_call: ($) => seq(alias($._percent_call, '%'), $.macro_call),
+            _name_typed: ($) =>
+                prec.right(
+                    seq(
+                        field('type', $._symbol),
+                        $._operand_gap,
+                        field('operand', $._instruction_operand),
+                    ),
+                ),
+            _memory_name: ($) => prec(1, choice($.identifier, $.macro_argument, $.concatenation)),
+            _decorated_call_statement: ($) =>
+                seq(
+                    field('function', alias($._macro_name, $.identifier)),
+                    field('arguments', alias($._statement_arguments, $.argument_list)),
+                    repeat1(field('decorator', $.decorator)),
+                ),
             _att_memory: ($) =>
                 choice(
                     seq(
@@ -50,7 +72,10 @@ module.exports = (ctx) => {
                         $._memory_address,
                         '(',
                         choice(
-                            seq(field('base', $._x86_register), $._after_memory_register),
+                            seq(
+                                field('base', choice($._x86_register, $._memory_name)),
+                                $._after_memory_register,
+                            ),
                             seq(alias($._memory_comma, ','), $._after_memory_comma),
                         ),
                     ),
@@ -60,7 +85,7 @@ module.exports = (ctx) => {
                 choice(
                     $._memory_close,
                     seq(
-                        field('index', $._x86_register),
+                        field('index', choice($._x86_register, $._memory_name)),
                         choice(
                             $._memory_close,
                             seq(
@@ -99,9 +124,18 @@ module.exports = (ctx) => {
                 seq(
                     field(
                         'operand',
-                        choice($._x86_register, alias($._att_memory, $.memory_operand)),
+                        choice(
+                            $._x86_register,
+                            alias($._att_memory, $.memory_operand),
+                            $._expression,
+                        ),
                     ),
-                    repeat1(field('decorator', $.decorator)),
+                    repeat1(
+                        choice(
+                            field('decorator', $.decorator),
+                            seq($._decorator_gap, field('decorator', $.macro_call)),
+                        ),
+                    ),
                 ),
             _intel_macro_call: ($) =>
                 seq(
@@ -156,12 +190,10 @@ module.exports = (ctx) => {
                     ),
                 ),
             _flags_att_first: ($) => choice($._value, $._plain_att_operand),
-            _intel_call_argument: ($) =>
-                choice(
-                    $._intel_call_item,
-                    $.keyword_argument,
-                    alias($._intel_argument_group, $.argument_list),
-                ),
+            _intel_call_argument: ($) => choice($._intel_call_value, $.keyword_argument),
+            _intel_call_value: ($) =>
+                choice($._intel_call_item, alias($._intel_argument_group, $.argument_list)),
+            _joined_intel_values: ($) => joinedValues($, $._intel_call_value),
             _intel_argument_group: ($) => argumentGroup($, $._intel_call_item),
             ...(prefixSemicolons
                 ? { _prefix_instruction: ($) => field('prefix', alias($._prefix_word, $.prefix)) }
@@ -170,12 +202,17 @@ module.exports = (ctx) => {
         choices: {
             _x86_register: [
                 ($) => alias($._percent_name, $.register),
+                ($) => alias($._register_call, $.register),
                 ($) => alias($._register_concatenation, $.concatenation),
             ],
             _intel_operand: [($) => $.decorator],
             _plain_intel_operand: [($) => $.immediate],
             _macro_arguments: [
-                ($) => seq($._intel_operands, macroArgumentList(ctx, $, $._intel_call_argument)),
+                ($) =>
+                    seq(
+                        $._intel_operands,
+                        macroArgumentList(ctx, $, $._intel_call_argument, $._joined_intel_values),
+                    ),
             ],
             _statement_arguments: [
                 ($) =>
@@ -219,18 +256,27 @@ module.exports = (ctx) => {
                 ($) => seq('$', field('value', $._expression)),
             ],
             symbol_type: [($) => seq(alias($._type_mark, '@'), choice($.identifier, $.integer))],
-            _statement: [($) => alias($._syntax_directive, $.directive)],
+            _statement: [
+                ($) => alias($._syntax_directive, $.directive),
+                ($) => alias($._decorated_call_statement, $.macro_call),
+            ],
             _value: [($) => $.immediate, ($) => alias($._register, $.register)],
             _expression: [
                 ($) => alias($._word_binary, $.binary_expression),
                 ($) => alias($._word_unary, $.unary_expression),
             ],
-            _instruction_operand: [($) => $._plain_att_operand, ($) => $.decorator],
+            _instruction_operand: [
+                ($) => $._plain_att_operand,
+                ($) => $.decorator,
+                ($) => prec(1, alias($._percent_name, $.register)),
+                ($) => alias($._register_call, $.register),
+            ],
             _plain_att_operand: [
                 ($) => alias($._register_concatenation, $.concatenation),
                 ($) => alias($._att_memory, $.memory_operand),
                 ($) => $.indirect,
                 ($) => $.decorated_operand,
+                ($) => alias($._name_typed, $.typed_operand),
             ],
             _instruction_body: [
                 ($) =>

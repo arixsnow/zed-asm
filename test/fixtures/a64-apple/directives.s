@@ -38,4 +38,5 @@ _spaced :
     .data
     .balign 8,,4
     . = . + 4
+    .ascii "a" "b"
     .subsections_via_symbols

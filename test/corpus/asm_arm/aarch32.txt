@@ -889,7 +889,7 @@ Relocation suffixes of AArch32 assembly
 bl sym(PLT)
 bl sym (PLT)
 ldr r0, =sym(TLSGD)
-.irp r a (b)
+.irp r a (1)
 .endr
 
 --------------------------------------------------------------------------------
@@ -944,9 +944,10 @@ ldr r0, =sym(TLSGD)
         specifier: (identifier))))
   (repeat_block
     parameter: (identifier)
-    value: (identifier)
-    value: (parenthesized_expression
-      (identifier))
+    value: (macro_call
+      function: (identifier)
+      arguments: (argument_list
+        argument: (integer)))
     body: (body)))
 
 ================================================================================

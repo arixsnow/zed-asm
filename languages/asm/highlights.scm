@@ -81,6 +81,9 @@
 (relocation
     specifier: (identifier) @attribute)
 
+(probe_argument
+    "@" @punctuation.special)
+
 (numeric_label) @label
 
 (float) @number
@@ -187,3 +190,9 @@
     (#match? @keyword "^(?i:offset|imagerel|short)$"))
 
 (decorator) @attribute
+
+(typed_operand
+    type: (identifier) @keyword)
+
+(register
+    "%" @variable.special)

@@ -163,3 +163,41 @@ Mach-O section types that start with a digit are names
   (directive
     name: (directive_name)
     argument: (numeric_label)))
+
+================================================================================
+String directives take blank-separated arguments
+================================================================================
+
+.ascii "a" "b"
+.asciz "a", "b"
+.ascii KERN_WARNING "insl\0"
+1:	.ascii	KERN_DEBUG "VFP: \str\n"
+.string "x" ,
+
+--------------------------------------------------------------------------------
+
+(source_file
+  (directive
+    name: (directive_name)
+    argument: (string)
+    argument: (string))
+  (directive
+    name: (directive_name)
+    argument: (string)
+    argument: (string))
+  (directive
+    name: (directive_name)
+    argument: (identifier)
+    argument: (string
+      (escape_sequence)))
+  (label
+    name: (numeric_label))
+  (directive
+    name: (directive_name)
+    argument: (identifier)
+    argument: (string
+      (escape_sequence)
+      (escape_sequence)))
+  (directive
+    name: (directive_name)
+    argument: (string)))

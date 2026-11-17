@@ -6,3 +6,5 @@
     .irp v 1 2 3
     .byte \v
     .endr
+    .data
+    .asciz "a" "b"

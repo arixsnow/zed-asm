@@ -121,9 +121,9 @@ function lastOperandKinds(grammar: string, lines: string[]): (string | undefined
     assert.deepStrictEqual(trees.length, lines.length, `${grammar}: one tree per line`);
     return trees.map((tree) => {
         const text = tree.replace(/ \[\d+, \d+\] - \[\d+, \d+\]/g, '').replace(/\s+/g, ' ').trim();
-        const operands = /\(instruction mnemonic: \(mnemonic\)((?: operand: \(\w+\))+)\)\)$/.exec(
-            text,
-        );
+        const operands =
+            /\((?:instruction mnemonic: \(mnemonic\)|directive name: \(directive_name\))((?: (?:operand|argument): \(\w+\))+)\)\)$/
+                .exec(text);
         return /ERROR|MISSING/.test(text) ? undefined : operands?.[1].match(/\((\w+)\)$/)?.[1];
     });
 }
@@ -146,6 +146,7 @@ function check(
 }
 
 const push = (operand: string) => `push ${operand}`;
+const long = (operand: string) => `.long ${operand}`;
 const noprefix = (operand: string) => `.intel_syntax noprefix\npush ${operand}`;
 
 function indexCases(register: Register, mark: string): [string, boolean][] {
@@ -166,7 +167,7 @@ test('every generated x86 GAS register reads as a register with % and in noprefi
     assert.deepStrictEqual(NOT_GAS_REGISTERS.filter((name) => names.has(name)), []);
     const indexed = table.filter(({ indexes }) => indexes > 0);
     for (const grammar of X86_GAS) {
-        check(failures, grammar, push, [
+        check(failures, grammar, long, [
             ...table.flatMap(({ name, intel }) =>
                 cases(name).map((spelling): [string, boolean] => [`%${spelling}`, !intel])
             ),

@@ -22,7 +22,15 @@ import {
     writtenNames,
 } from './source.ts';
 
+export interface SymbolCharacters {
+    gnu: string;
+    x86: string;
+    aarch64: string;
+    aarch32: string;
+}
+
 export interface BinutilsTables {
+    symbolCharacters: SymbolCharacters;
     x86Instructions: Keywords;
     x86FlagsInstructions: Keywords;
     x86DefaultFlags: Keywords;
@@ -1328,8 +1336,135 @@ function readDirectives(binutils: Project, cpuType: string): Keywords {
     return directives;
 }
 
+const SCRUBBER_CONFIGURATION = ['OBJ_ELF', 'TE_LINUX'];
+
+const STRING_LITERAL = /"((?:[^"\\]|\\.)*)"/g;
+
+function characterSet(text: string): string {
+    return [...new Set(text)].sort().join('');
+}
+
+function configured(
+    binutils: Project,
+    file: string,
+    keep: (line: string) => boolean,
+    dump: boolean,
+) {
+    const lines = withoutComments(readSource(binutils, file)).replace(/\\\n/g, ' ').split('\n');
+    const kept: string[] = [];
+    let open = false;
+    for (const line of lines) {
+        const directive = /^\s*#/.test(line) && !/^\s*#\s*(?:include|error|warning)\b/.test(line);
+        if (open || keep(line)) {
+            kept.push(line);
+            open = !line.replace(STRING_LITERAL, '""').includes(';');
+        } else if (directive) {
+            kept.push(line);
+        }
+    }
+    const work = workDirectory('binutils');
+    const name = `${file.replace(/\W/g, '-')}-configured`;
+    const input = join(work, `${name}.c`);
+    const output = join(work, `${name}.i`);
+    const prelude = SCRUBBER_CONFIGURATION.map((macro) => `#define ${macro} 1`);
+    writeFileSync(input, [...prelude, ...kept, ''].join('\n'));
+    runOrThrow('gcc', ['-E', '-P', ...(dump ? ['-dM'] : []), '-x', 'c', input, '-o', output]);
+    return readFileSync(output, 'utf8');
+}
+
+function configuredStrings(binutils: Project, file: string, names: string[]): Map<string, string> {
+    const declaration = new RegExp(
+        `^\\s*(?:static\\s+)?(?:const\\s+)?char\\s*(?:\\*\\s*)?(?:${names.join('|')})\\b`,
+    );
+    const text = configured(binutils, file, (line) => declaration.test(line), false);
+    const strings = new Map<string, string>();
+    for (const name of names) {
+        const definitions = [
+            ...text.matchAll(
+                new RegExp(
+                    `\\b${name}\\s*(?:\\[\\s*\\])?\\s*=\\s*((?:"(?:[^"\\\\]|\\\\.)*"\\s*)+);`,
+                    'g',
+                ),
+            ),
+        ];
+        if (definitions.length !== 1) {
+            throw new Error(
+                `${file}: an ELF Linux build defines ${name} ${definitions.length} times`,
+            );
+        }
+        const literals = [...definitions[0][1].matchAll(STRING_LITERAL)];
+        strings.set(name, literals.map(([, literal]) => unescapeC(literal)).join(''));
+    }
+    return strings;
+}
+
+export function scrubberBase(binutils: Project): string {
+    const file = 'gas/app.c';
+    const table = withoutComments(
+        section(
+            readSource(binutils, file),
+            /^static char lex\[256\] = \{/m,
+            /^\};/m,
+            `lex in ${file}`,
+        ),
+    );
+    if (!/^\s*INIT128 \(128\),?\s*$/m.test(table)) {
+        throw new Error(`${file}: lex no longer makes the bytes 128 to 255 symbol characters`);
+    }
+    const characters = [
+        ...table.matchAll(/\['((?:[^'\\]|\\.)+)'\]\s*=\s*LEX_IS_SYMBOL_COMPONENT\b/g),
+    ]
+        .map(([, literal]) => unescapeC(literal))
+        .join('');
+    if (characters.length === 0) {
+        throw new Error(`${file}: lex names no symbol character`);
+    }
+    return characterSet(characters);
+}
+
+export function scrubberSymbols(binutils: Project, cpuType: string, base: string): string {
+    const file = `gas/config/tc-${cpuType}.c`;
+    const macros = configured(binutils, `gas/config/tc-${cpuType}.h`, () => false, true);
+    const macro = (name: string) => new RegExp(`^#define ${name} (\\w+)$`, 'm').exec(macros)?.[1];
+    const symbols = macro('tc_symbol_chars');
+    const removed = [
+        macro('tc_comment_chars') ?? 'comment_chars',
+        'line_comment_chars',
+        macro('tc_line_separator_chars') ?? 'line_separator_chars',
+    ];
+    const strings = configuredStrings(
+        binutils,
+        file,
+        symbols === undefined ? removed : [symbols, ...removed],
+    );
+    const unlisted = new Set(removed.map((name) => strings.get(name)).join(''));
+    for (const character of base) {
+        if (unlisted.has(character)) {
+            throw new Error(
+                `${file}: the symbol character ${character} also starts a comment or line`,
+            );
+        }
+    }
+    const extra = symbols === undefined ? '' : (strings.get(symbols) ?? '');
+    return characterSet(
+        [...extra].filter((character) => !unlisted.has(character) && !base.includes(character))
+            .join(''),
+    );
+}
+
+function readSymbolCharacters(binutils: Project): SymbolCharacters {
+    const gnu = scrubberBase(binutils);
+    return {
+        gnu,
+        x86: scrubberSymbols(binutils, 'i386', gnu),
+        aarch64: scrubberSymbols(binutils, 'aarch64', gnu),
+        aarch32: scrubberSymbols(binutils, 'arm', gnu),
+    };
+}
+
 export function readBinutils(binutils: Project): BinutilsTables {
     return {
+        symbolCharacters: readSymbolCharacters(binutils),
         ...readX86(binutils),
         ...readAarch64(binutils),
         ...readArm(binutils),

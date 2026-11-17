@@ -143,7 +143,7 @@ nop
 An assembler comment inside a C macro call ends where the argument ends
 ================================================================================
 
-PROBE(read, 2, 4@r0, 8@r1)
+NOTE(read, 2, 4 @r0, 8 @r1)
 nop
 
 --------------------------------------------------------------------------------
@@ -160,3 +160,62 @@ nop
       (line_comment)))
   (instruction
     mnemonic: (mnemonic)))
+
+================================================================================
+SystemTap probe arguments
+================================================================================
+
+LIBC_PROBE (longjmp, 3, 8@x0, -4@x1, 8@[sp, #8])
+
+--------------------------------------------------------------------------------
+
+(source_file
+  (macro_call
+    function: (identifier)
+    arguments: (argument_list
+      argument: (identifier)
+      argument: (integer)
+      argument: (probe_argument
+        size: (integer)
+        operand: (register))
+      argument: (probe_argument
+        size: (unary_expression
+          argument: (integer))
+        operand: (register))
+      argument: (probe_argument
+        size: (integer)
+        operand: (memory_operand
+          operand: (register)
+          operand: (immediate
+            value: (integer)))))))
+
+================================================================================
+A C macro call in a register list may supply the comma after it
+================================================================================
+
+ldmfd sp!, {r4, UNWIND(fpreg,) pc}
+push {r4, CALL(r5), r6}
+
+--------------------------------------------------------------------------------
+
+(source_file
+  (instruction
+    mnemonic: (mnemonic)
+    operand: (writeback
+      register: (register))
+    operand: (register_list
+      element: (register)
+      element: (macro_call
+        function: (identifier)
+        arguments: (argument_list
+          argument: (identifier)))
+      element: (register)))
+  (instruction
+    mnemonic: (mnemonic)
+    operand: (register_list
+      element: (register)
+      element: (macro_call
+        function: (identifier)
+        arguments: (argument_list
+          argument: (register)))
+      element: (register))))

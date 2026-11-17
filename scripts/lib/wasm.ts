@@ -80,7 +80,7 @@ class Reader {
     unsigned(): number {
         let result = 0;
         let shift = 0;
-        for (;;) {
+        while (true) {
             const byte = this.byte();
             result += (byte & 0x7f) * 2 ** shift;
             if ((byte & 0x80) === 0) {

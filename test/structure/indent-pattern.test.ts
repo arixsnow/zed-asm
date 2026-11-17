@@ -139,7 +139,7 @@ const CASE_SETS: Record<string, CaseSet> = {
 
 const ERROR_CASES: Record<string, number> = {
     asm_auto: 442,
-    asm_arm: 442,
+    asm_arm: 464,
     asm_arm_apple: 245,
     asm_x86_gas: 706,
     asm_x86_nasm: 66,

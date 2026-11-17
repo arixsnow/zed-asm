@@ -39,15 +39,52 @@ m a, b c
   (macro_call
     function: (identifier)
     arguments: (argument_list
-      argument: (binary_expression
-        left: (integer)
-        right: (integer))))
+      argument: (integer)
+      argument: (unary_expression
+        argument: (integer))))
   (macro_call
     function: (identifier)
     arguments: (argument_list
       argument: (identifier)
       argument: (identifier)
       argument: (identifier))))
+
+================================================================================
+A blank joins the item unless a symbol character of any target, a quote or a backslash follows
+================================================================================
+
+m 1 -2
+m a ~b
+m x0 #1
+m a {b}
+
+--------------------------------------------------------------------------------
+
+(source_file
+  (macro_call
+    function: (identifier)
+    arguments: (argument_list
+      argument: (integer)
+      argument: (unary_expression
+        argument: (integer))))
+  (macro_call
+    function: (identifier)
+    arguments: (argument_list
+      argument: (argument
+        (identifier)
+        (unary_expression
+          argument: (identifier)))))
+  (macro_call
+    function: (identifier)
+    arguments: (argument_list
+      argument: (register)))
+  (line_comment)
+  (macro_call
+    function: (identifier)
+    arguments: (argument_list
+      argument: (identifier)
+      argument: (register_list
+        element: (identifier)))))
 
 ================================================================================
 Blank-separated .irp values

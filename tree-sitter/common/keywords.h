@@ -16589,8 +16589,8 @@ enum {
     X(".alt_entry", GENERIC_DIRECTIVE, 0) \
     X(".altmacro", GENERIC_DIRECTIVE, 0) \
     X(".arch", GENERIC_DIRECTIVE, 0) \
-    X(".ascii", GENERIC_DIRECTIVE, 0) \
-    X(".asciz", GENERIC_DIRECTIVE, 0) \
+    X(".ascii", STRING_DIRECTIVE, 0) \
+    X(".asciz", STRING_DIRECTIVE, 0) \
     X(".att_mnemonic", GENERIC_DIRECTIVE, 0) \
     X(".att_syntax", ATT_SYNTAX, 0) \
     X(".attach_to_group", GENERIC_DIRECTIVE, 0) \
@@ -16956,11 +16956,11 @@ enum {
     X(".stabs", GENERIC_DIRECTIVE, 0) \
     X(".static_const", GENERIC_DIRECTIVE, 0) \
     X(".static_data", GENERIC_DIRECTIVE, 0) \
-    X(".string", GENERIC_DIRECTIVE, 0) \
-    X(".string16", GENERIC_DIRECTIVE, 0) \
-    X(".string32", GENERIC_DIRECTIVE, 0) \
-    X(".string64", GENERIC_DIRECTIVE, 0) \
-    X(".string8", GENERIC_DIRECTIVE, 0) \
+    X(".string", STRING_DIRECTIVE, 0) \
+    X(".string16", STRING_DIRECTIVE, 0) \
+    X(".string32", STRING_DIRECTIVE, 0) \
+    X(".string64", STRING_DIRECTIVE, 0) \
+    X(".string8", STRING_DIRECTIVE, 0) \
     X(".struct", GENERIC_DIRECTIVE, 0) \
     X(".subsection", GENERIC_DIRECTIVE, 0) \
     X(".subsections_via_symbols", GENERIC_DIRECTIVE, 0) \
@@ -17023,8 +17023,8 @@ enum {
     X(".altmacro", GENERIC_DIRECTIVE, 0) \
     X(".arch", GENERIC_DIRECTIVE, 0) \
     X(".arch_extension", GENERIC_DIRECTIVE, 0) \
-    X(".ascii", GENERIC_DIRECTIVE, 0) \
-    X(".asciz", GENERIC_DIRECTIVE, 0) \
+    X(".ascii", STRING_DIRECTIVE, 0) \
+    X(".asciz", STRING_DIRECTIVE, 0) \
     X(".attach_to_group", GENERIC_DIRECTIVE, 0) \
     X(".balign", GENERIC_DIRECTIVE, 0) \
     X(".balignl", GENERIC_DIRECTIVE, 0) \
@@ -17359,11 +17359,11 @@ enum {
     X(".stabs", GENERIC_DIRECTIVE, 0) \
     X(".static_const", GENERIC_DIRECTIVE, 0) \
     X(".static_data", GENERIC_DIRECTIVE, 0) \
-    X(".string", GENERIC_DIRECTIVE, 0) \
-    X(".string16", GENERIC_DIRECTIVE, 0) \
-    X(".string32", GENERIC_DIRECTIVE, 0) \
-    X(".string64", GENERIC_DIRECTIVE, 0) \
-    X(".string8", GENERIC_DIRECTIVE, 0) \
+    X(".string", STRING_DIRECTIVE, 0) \
+    X(".string16", STRING_DIRECTIVE, 0) \
+    X(".string32", STRING_DIRECTIVE, 0) \
+    X(".string64", STRING_DIRECTIVE, 0) \
+    X(".string8", STRING_DIRECTIVE, 0) \
     X(".struct", GENERIC_DIRECTIVE, 0) \
     X(".subsection", GENERIC_DIRECTIVE, 0) \
     X(".subsections_via_symbols", GENERIC_DIRECTIVE, 0) \
@@ -17430,8 +17430,8 @@ enum {
     X(".altmacro", GENERIC_DIRECTIVE, 0) \
     X(".arch", GENERIC_DIRECTIVE, 0) \
     X(".arch_extension", GENERIC_DIRECTIVE, 0) \
-    X(".ascii", GENERIC_DIRECTIVE, 0) \
-    X(".asciz", GENERIC_DIRECTIVE, 0) \
+    X(".ascii", STRING_DIRECTIVE, 0) \
+    X(".asciz", STRING_DIRECTIVE, 0) \
     X(".balign", GENERIC_DIRECTIVE, 0) \
     X(".balignl", GENERIC_DIRECTIVE, 0) \
     X(".balignw", GENERIC_DIRECTIVE, 0) \
@@ -17710,7 +17710,7 @@ enum {
     X(".stabs", GENERIC_DIRECTIVE, 0) \
     X(".static_const", GENERIC_DIRECTIVE, 0) \
     X(".static_data", GENERIC_DIRECTIVE, 0) \
-    X(".string", GENERIC_DIRECTIVE, 0) \
+    X(".string", STRING_DIRECTIVE, 0) \
     X(".subsection", GENERIC_DIRECTIVE, 0) \
     X(".subsections_via_symbols", GENERIC_DIRECTIVE, 0) \
     X(".symbol_resolver", GENERIC_DIRECTIVE, 0) \
@@ -17761,8 +17761,8 @@ enum {
     X(".arch", GENERIC_DIRECTIVE, 0) \
     X(".arch_extension", GENERIC_DIRECTIVE, 0) \
     X(".arm", GENERIC_DIRECTIVE, 0) \
-    X(".ascii", GENERIC_DIRECTIVE, 0) \
-    X(".asciz", GENERIC_DIRECTIVE, 0) \
+    X(".ascii", STRING_DIRECTIVE, 0) \
+    X(".asciz", STRING_DIRECTIVE, 0) \
     X(".asmfunc", GENERIC_DIRECTIVE, 0) \
     X(".attach_to_group", GENERIC_DIRECTIVE, 0) \
     X(".balign", GENERIC_DIRECTIVE, 0) \
@@ -18110,11 +18110,11 @@ enum {
     X(".stabs", GENERIC_DIRECTIVE, 0) \
     X(".static_const", GENERIC_DIRECTIVE, 0) \
     X(".static_data", GENERIC_DIRECTIVE, 0) \
-    X(".string", GENERIC_DIRECTIVE, 0) \
-    X(".string16", GENERIC_DIRECTIVE, 0) \
-    X(".string32", GENERIC_DIRECTIVE, 0) \
-    X(".string64", GENERIC_DIRECTIVE, 0) \
-    X(".string8", GENERIC_DIRECTIVE, 0) \
+    X(".string", STRING_DIRECTIVE, 0) \
+    X(".string16", STRING_DIRECTIVE, 0) \
+    X(".string32", STRING_DIRECTIVE, 0) \
+    X(".string64", STRING_DIRECTIVE, 0) \
+    X(".string8", STRING_DIRECTIVE, 0) \
     X(".struct", GENERIC_DIRECTIVE, 0) \
     X(".subsection", GENERIC_DIRECTIVE, 0) \
     X(".subsections_via_symbols", GENERIC_DIRECTIVE, 0) \
@@ -24718,5 +24718,13 @@ enum {
     X("xpsr_g", 0, 0) \
     X("xpsr_nzcvq", 0, 0) \
     X("xpsr_nzcvqg", 0, 0)
+
+#define ASM_GNU_SYMBOL_CHARACTERS "$.0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ_abcdefghijklmnopqrstuvwxyz"
+
+#define ASM_X86_GAS_SYMBOL_CHARACTERS "%(*-["
+
+#define ASM_AARCH64_GNU_SYMBOL_CHARACTERS ""
+
+#define ASM_AARCH32_SYMBOL_CHARACTERS "[]{}"
 
 #endif /* ASM_KEYWORDS_H */

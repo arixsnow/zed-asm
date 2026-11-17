@@ -151,6 +151,46 @@ test('the header holds the scope bits, the kinds and one section per dialect', (
     assert.deepStrictEqual(header, wordsHeader(keywordSources(SCANNER, KEYWORDS)));
 });
 
+test('a dialect holds the symbol characters of the scopes it selects as ASCII bit masks', () => {
+    const keywords = [
+        KEYWORDS,
+        '#define ASM_GNU_SYMBOL_CHARACTERS "$Aa"',
+        '',
+        '#define ASM_ALPHA_SYMBOL_CHARACTERS "\\"\\\\"',
+        '',
+        '#define ASM_BETA_SYMBOL_CHARACTERS ""',
+        '',
+    ].join('\n');
+    assert.deepStrictEqual(byDialect('ONE', keywords).symbols, [
+        (1n << 36n) | (1n << 34n),
+        (1n << 1n) | (1n << 33n) | (1n << 28n),
+    ]);
+    assert.deepStrictEqual(byDialect('TWO', keywords).symbols, [0n, 0n]);
+    assert.ok(
+        wordsHeader(keywordSources(SCANNER, keywords)).includes(
+            [
+                '#if defined(ASM_DIALECT_ONE)',
+                'static const uint64_t SYMBOL_CHARACTERS[] = {',
+                '    UINT64_C(0x0000001400000000),',
+                '    UINT64_C(0x0000000210000002),',
+                '};',
+            ].join('\n'),
+        ),
+    );
+    assert.throws(
+        () => byDialect('ONE', `${keywords}#define ASM_ALPHA_SPACE_CHARACTERS "a"\n`),
+        /ASM_ALPHA_SPACE_CHARACTERS is no SYMBOL_CHARACTERS table/,
+    );
+    assert.throws(
+        () =>
+            byDialect(
+                'ONE',
+                keywords.replace('"$Aa"', `"$A${String.fromCharCode(0xe9)}"`),
+            ),
+        /ASM_GNU_SYMBOL_CHARACTERS holds a character outside ASCII/,
+    );
+});
+
 test('every dictionary holds exactly the rows of the tables its dialect selects', () => {
     const sources = commonSources();
     const scanner = sources.scanner;

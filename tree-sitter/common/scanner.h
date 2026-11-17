@@ -235,6 +235,7 @@ enum TokenType {
     GLUED_CONTEXT,
     GLUED_EXPANSION,
     BLANK,
+    JOINING_BLANK,
     PREFIX_WORD,
     PREFIX_SEMICOLON,
     MACRO_OPEN,
@@ -249,6 +250,7 @@ enum TokenType {
     BLANK_SEPARATED_DIRECTIVE,
     FLOAT_DATA_DIRECTIVE,
     FLOAT_SPACE_DIRECTIVE,
+    STRING_DIRECTIVE,
     CFI_REGISTER_DIRECTIVE,
     UNWIND_REGISTER_DIRECTIVE,
     LINKER_HINT_DIRECTIVE,
@@ -296,6 +298,10 @@ enum TokenType {
     LIST_CARET,
     CALL_CLOSE,
     CALL_NEWLINE,
+    CALL_MNEMONIC,
+    PERCENT_CALL,
+    PROBE_AT,
+    DECORATOR_GAP,
     RELOCATION_SUFFIX,
     MEMORY_ADDRESS,
     PSEUDO_PREFIX,
@@ -380,6 +386,11 @@ enum {
     OCTAL_BASE = 8,
     DECIMAL_BASE = 10,
     HEXADECIMAL_BASE = 16,
+};
+
+enum {
+    ASCII_LIMIT = 128,
+    SYMBOL_MASK_BITS = 64,
 };
 
 #define UPPER_CASE            0x01U
@@ -865,6 +876,45 @@ static inline bool separates_operand(int32_t codepoint)
     return starts_operand(codepoint) && !continues_expression(codepoint);
 }
 
+static inline bool is_symbol_component(int32_t codepoint)
+{
+    uint32_t code = 0;
+
+    if (codepoint >= ASCII_LIMIT) {
+        return true;
+    }
+    if (codepoint < 0) {
+        return false;
+    }
+    code = (uint32_t)codepoint;
+    return ((SYMBOL_CHARACTERS[code / SYMBOL_MASK_BITS] >> (code % SYMBOL_MASK_BITS)) & 1U) != 0;
+}
+
+static inline bool scrubber_keeps_blank(int32_t codepoint)
+{
+    return is_symbol_component(codepoint)
+        || codepoint == '"'
+        || codepoint == '\''
+        || codepoint == '\\';
+}
+
+static inline bool scrubs_blank(const bool *valid)
+{
+    return !ASM_DARWIN_ARGUMENTS && valid[JOINING_BLANK] && !valid[ERROR_SENTINEL];
+}
+
+static bool blank_fits(int32_t codepoint, const bool *valid, TSSymbol *symbol)
+{
+    const bool scrubbed = scrubs_blank(valid);
+
+    if (scrubbed && scrubber_keeps_blank(codepoint)) {
+        *symbol = BLANK;
+        return valid[BLANK];
+    }
+    *symbol = valid[BLANK] && !scrubbed ? BLANK : JOINING_BLANK;
+    return valid[*symbol] && separates_operand(codepoint);
+}
+
 static inline bool value_continues(int32_t codepoint, const bool *valid, uint32_t blanks)
 {
     return continues_expression(codepoint)
@@ -877,6 +927,13 @@ static inline bool value_continues(int32_t codepoint, const bool *valid, uint32_
 
 static inline bool starts_gapped_operand(int32_t codepoint)
 {
+    if (ASM_GNU_SYNTAX) {
+        return is_alpha(codepoint)
+            || is_digit(codepoint)
+            || codepoint == '.'
+            || codepoint == '\\'
+            || codepoint == '"';
+    }
     return is_digit(codepoint)
         || codepoint == '['
         || codepoint == '$'
@@ -929,6 +986,7 @@ static inline bool statement_keyword_fits(const bool *valid)
         || valid[BLANK_SEPARATED_DIRECTIVE]
         || valid[FLOAT_DATA_DIRECTIVE]
         || valid[FLOAT_SPACE_DIRECTIVE]
+        || valid[STRING_DIRECTIVE]
         || valid[CFI_REGISTER_DIRECTIVE]
         || valid[UNWIND_REGISTER_DIRECTIVE]
         || valid[LINKER_HINT_DIRECTIVE]
@@ -968,11 +1026,11 @@ static inline bool scanner_dispatches(int32_t codepoint)
 }
 
 static const TSSymbol CLOSING_TOKENS[] = {
+    UNCLOSED_MEMORY,
     UNCLOSED,
     UNCLOSED_BRACKET,
     UNCLOSED_INDEX,
     UNCLOSED_BRACE,
-    UNCLOSED_MEMORY,
     UNCLOSED_ADDRESS,
     UNCLOSED_ARGUMENTS,
     MISSING_OPERAND,
@@ -1262,11 +1320,24 @@ static bool scan_slash(TSLexer *lexer, const bool *valid, bool closing)
     return false;
 }
 
+static bool probe_operand_follows(const TSLexer *lexer, const bool *valid)
+{
+    const int32_t next = lexer->lookahead;
+
+    if (is_blank(next) || at_line_end(lexer)) {
+        return false;
+    }
+    return !valid[AT_ATTACHED] || !is_alpha(next);
+}
+
 static bool scan_at(TSLexer *lexer, const bool *valid, bool recovering, bool glued, bool closing,
     bool in_call)
 {
     advance(lexer);
     if (!recovering) {
+        if (glued && valid[PROBE_AT] && probe_operand_follows(lexer, valid)) {
+            return finish_token(lexer, PROBE_AT);
+        }
         if (glued && valid[AT_ATTACHED]) {
             return finish_token(lexer, AT_ATTACHED);
         }
@@ -1439,11 +1510,6 @@ static bool statement_ends(TSLexer *lexer)
         }
     }
     return false;
-}
-
-static bool statement_call_follows(TSLexer *lexer)
-{
-    return !skip_call_parentheses(lexer) || statement_ends(lexer);
 }
 
 static bool preproc_line_comment(TSLexer *lexer, const bool *valid)
@@ -2667,31 +2733,39 @@ static unsigned char letter_case(int32_t codepoint)
     return codepoint >= 'a' && codepoint <= 'z' ? LOWER_CASE : 0;
 }
 
-static bool scan_register_after_percent(TSLexer *lexer, const struct Scanner *scanner)
+static bool scan_register_after_percent(TSLexer *lexer, const bool *valid,
+    const struct Scanner *scanner)
 {
     char word[STATEMENT_WORD_CAPACITY] = {0};
     size_t length = 0;
     bool stray = false;
+    bool named = false;
     const struct WordRole *entry = NULL;
 
+    lexer->mark_end(lexer);
     if (!advance_blanks(lexer)) {
         return false;
     }
     while (word_continues(lexer, continues_label, &stray)) {
         take_word_char(lexer, word, &length);
+        named = true;
     }
-    entry = x86_register(word, word_entry(word), scanner->x86_syntax);
-    if (stray || entry == NULL) {
+    if (stray) {
         return false;
     }
+    entry = x86_register(word, word_entry(word), scanner->x86_syntax);
+    if (entry == NULL) {
+        lexer->result_symbol = PERCENT_CALL;
+        return valid[PERCENT_CALL] && named && lexer->lookahead == '(';
+    }
     lexer->mark_end(lexer);
-    return finish_register(lexer, entry);
+    return valid[REGISTER] && finish_register(lexer, entry);
 }
 
-static bool scan_percent_register(TSLexer *lexer, const struct Scanner *scanner)
+static bool scan_percent_register(TSLexer *lexer, const bool *valid, const struct Scanner *scanner)
 {
     advance(lexer);
-    return scan_register_after_percent(lexer, scanner);
+    return scan_register_after_percent(lexer, valid, scanner);
 }
 
 static const struct WordRole *intel_entry(const struct WordEntry *entry, unsigned char cases)
@@ -3391,8 +3465,36 @@ static bool scan_darwin_argument(TSLexer *lexer, const bool *valid, bool closing
 enum ParenthesisContent {
     CONTENT_OTHER,
     CONTENT_MEMORY,
+    CONTENT_NAMES,
     CONTENT_SUFFIX,
 };
+
+static bool memory_name_ends(TSLexer *lexer)
+{
+    if (!advance_blanks(lexer)) {
+        return false;
+    }
+    if (lexer->lookahead == ')') {
+        advance(lexer);
+        return advance_blanks(lexer)
+            && lexer->lookahead != '('
+            && lexer->lookahead != '%'
+            && !starts_operator(lexer->lookahead);
+    }
+    return lexer->lookahead == ',' || at_line_end(lexer);
+}
+
+static bool memory_argument_follows(TSLexer *lexer)
+{
+    advance(lexer);
+    if (!argument_name_follows(lexer)) {
+        return false;
+    }
+    while (is_word_char(lexer->lookahead)) {
+        advance(lexer);
+    }
+    return memory_name_ends(lexer);
+}
 
 static enum ParenthesisContent parenthesis_content(TSLexer *lexer, unsigned char x86_syntax)
 {
@@ -3410,7 +3512,10 @@ static enum ParenthesisContent parenthesis_content(TSLexer *lexer, unsigned char
     if (att && (lexer->lookahead == '%' || lexer->lookahead == ',')) {
         return CONTENT_MEMORY;
     }
-    if (!suffix && !bare_register) {
+    if (att && lexer->lookahead == '\\') {
+        return memory_argument_follows(lexer) ? CONTENT_NAMES : CONTENT_OTHER;
+    }
+    if ((!suffix && !att) || !is_alpha(lexer->lookahead)) {
         return CONTENT_OTHER;
     }
     while (is_word_char(lexer->lookahead)) {
@@ -3424,18 +3529,19 @@ static enum ParenthesisContent parenthesis_content(TSLexer *lexer, unsigned char
     if (bare_register && x86_register(word, entry, x86_syntax) != NULL) {
         return CONTENT_MEMORY;
     }
-    return CONTENT_OTHER;
+    return att && memory_name_ends(lexer) ? CONTENT_NAMES : CONTENT_OTHER;
 }
 
 static enum ScanDecision scan_parenthesis(TSLexer *lexer, const bool *valid,
-    unsigned char x86_syntax, bool split)
+    const struct Scanner *scanner, bool split)
 {
     enum ParenthesisContent content = CONTENT_OTHER;
 
     lexer->mark_end(lexer);
     advance(lexer);
-    content = parenthesis_content(lexer, x86_syntax);
-    if (valid[MEMORY_ADDRESS] && content == CONTENT_MEMORY) {
+    content = parenthesis_content(lexer, scanner->x86_syntax);
+    if (valid[MEMORY_ADDRESS]
+        && (content == CONTENT_MEMORY || (content == CONTENT_NAMES && !valid[CALL_ARGUMENTS]))) {
         lexer->result_symbol = MEMORY_ADDRESS;
         return SCAN_FOUND;
     }
@@ -3445,13 +3551,30 @@ static enum ScanDecision scan_parenthesis(TSLexer *lexer, const bool *valid,
     }
     if (split && !(ASM_PERCENT_MACROS && valid[CALL_ARGUMENTS])) {
         lexer->result_symbol = BLANK;
-        return content == CONTENT_OTHER ? SCAN_FOUND : SCAN_NOT_FOUND;
+        return content == CONTENT_OTHER || content == CONTENT_NAMES ? SCAN_FOUND : SCAN_NOT_FOUND;
     }
     if (valid[CALL_ARGUMENTS] || valid[RELOCATION_SUFFIX]) {
         lexer->result_symbol = valid[CALL_ARGUMENTS] ? CALL_ARGUMENTS : RELOCATION_SUFFIX;
         return SCAN_FOUND;
     }
     return SCAN_NOT_FOUND;
+}
+
+static enum ScanDecision scan_gap_parenthesis(TSLexer *lexer, const bool *valid,
+    const struct Scanner *scanner, TSSymbol gap)
+{
+    enum ParenthesisContent content = CONTENT_OTHER;
+
+    lexer->mark_end(lexer);
+    advance(lexer);
+    content = parenthesis_content(lexer, scanner->x86_syntax);
+    if (content == CONTENT_SUFFIX && valid[RELOCATION_SUFFIX]) {
+        lexer->result_symbol = RELOCATION_SUFFIX;
+        return SCAN_FOUND;
+    }
+    lexer->result_symbol = content == CONTENT_MEMORY || !valid[CALL_ARGUMENTS] ? gap
+                                                                               : CALL_ARGUMENTS;
+    return SCAN_FOUND;
 }
 
 static bool operands_follow(const TSLexer *lexer, const bool *valid, const struct Scanner *scanner)
@@ -3863,9 +3986,9 @@ static enum ScanDecision scan_braced(TSLexer *lexer, const bool *valid,
     const struct Scanner *scanner, uint32_t blanks)
 {
     const TSSymbol symbol = valid[PSEUDO_PREFIX] ? PSEUDO_PREFIX : DECORATOR;
-    const bool blank = valid[BLANK]
-        && (ASM_PERCENT_MACROS
-            || (blanks > 0 && separates_operand('{') && starts_item('{', scanner)));
+    TSSymbol gap = BLANK;
+    const bool blank = (ASM_PERCENT_MACROS && valid[BLANK])
+        || (blanks > 0 && blank_fits('{', valid, &gap) && starts_item('{', scanner));
     const bool open = valid[BRACE_OPEN] && !blank;
 
     lexer->mark_end(lexer);
@@ -3877,7 +4000,7 @@ static enum ScanDecision scan_braced(TSLexer *lexer, const bool *valid,
             advance(lexer);
             lexer->mark_end(lexer);
         }
-        lexer->result_symbol = blank ? BLANK : BRACE_OPEN;
+        lexer->result_symbol = blank ? gap : BRACE_OPEN;
         return SCAN_FOUND;
     }
     return decided(closable(valid) && closes_before('{', valid) && close_construct(lexer, valid));
@@ -3946,8 +4069,14 @@ static enum ScanDecision scan_colon(TSLexer *lexer, const bool *valid, uint32_t 
 static enum ScanDecision unread_word(TSLexer *lexer, const bool *valid, int32_t first,
     uint32_t blanks)
 {
-    if ((valid[BLANK] || valid[OPERAND_GAP]) && blanks > 0) {
-        lexer->result_symbol = valid[BLANK] ? BLANK : OPERAND_GAP;
+    TSSymbol symbol = BLANK;
+
+    if (blanks > 0 && blank_fits(first, valid, &symbol)) {
+        lexer->result_symbol = symbol;
+        return SCAN_FOUND;
+    }
+    if (blanks > 0 && valid[OPERAND_GAP]) {
+        lexer->result_symbol = OPERAND_GAP;
         return SCAN_FOUND;
     }
     return decided(closable(valid) && closes_before(first, valid) && close_construct(lexer, valid));
@@ -4104,33 +4233,49 @@ static enum ScanDecision scan_run_blank(TSLexer *lexer, const bool *valid,
 static inline __attribute__((always_inline)) enum ScanDecision scan_blank(TSLexer *lexer,
     const bool *valid, const struct Scanner *scanner, uint32_t blanks)
 {
-    if (!valid[BLANK] || blanks == 0 || (lexer->lookahead == ':' && colon_fits(valid))) {
+    const int32_t first = lexer->lookahead;
+    TSSymbol symbol = BLANK;
+
+    if (blanks == 0
+        || (!valid[BLANK] && !valid[JOINING_BLANK])
+        || (first == ':' && colon_fits(valid))) {
         return SCAN_UNDECIDED;
     }
-    if (call_statement_fits(valid) && splits_run(lexer->lookahead)) {
+    if (first == '('
+        && valid[BLANK]
+        && valid[CALL_ARGUMENTS]
+        && scanner->open_calls > 0
+        && !valid[ERROR_SENTINEL]) {
+        return scan_gap_parenthesis(lexer, valid, scanner, BLANK);
+    }
+    if (valid[BLANK] && call_statement_fits(valid) && splits_run(first)) {
         return scan_run_blank(lexer, valid, scanner);
     }
-    if (!separates_operand(lexer->lookahead)) {
+    if (!blank_fits(first, valid, &symbol)) {
         return SCAN_UNDECIDED;
     }
-    if (lexer->lookahead == '(') {
-        return scan_parenthesis(lexer, valid, scanner->x86_syntax, true);
+    if (first == '(' && symbol == JOINING_BLANK) {
+        return scan_gap_parenthesis(lexer, valid, scanner, JOINING_BLANK);
+    }
+    if (first == '(' && !scrubs_blank(valid)) {
+        return scan_parenthesis(lexer, valid, scanner, true);
     }
     lexer->mark_end(lexer);
     if (valid[UNCLOSED_ARGUMENTS] && !starts_group_item(lexer, scanner)) {
         return decided(close_construct(lexer, valid));
     }
-    if (lexer->lookahead == '!' && !bang_starts_operand(lexer)) {
+    if (first == '!' && !bang_starts_operand(lexer)) {
         return SCAN_NOT_FOUND;
     }
-    lexer->result_symbol = BLANK;
+    lexer->result_symbol = symbol;
     return SCAN_FOUND;
 }
 
 static enum ScanDecision scan_percent_separator(TSLexer *lexer, const bool *valid,
     const struct Scanner *scanner, uint32_t blanks)
 {
-    const bool blank = blanks > 0 && valid[BLANK] && separates_operand('%');
+    TSSymbol symbol = BLANK;
+    const bool blank = blanks > 0 && blank_fits('%', valid, &symbol);
     const bool item = !valid[UNCLOSED_ARGUMENTS] || starts_group_item(lexer, scanner);
 
     lexer->mark_end(lexer);
@@ -4140,7 +4285,7 @@ static enum ScanDecision scan_percent_separator(TSLexer *lexer, const bool *vali
         return decided(finish_token(lexer, SEPARATOR));
     }
     if (blank && item) {
-        lexer->result_symbol = BLANK;
+        lexer->result_symbol = symbol;
         return SCAN_FOUND;
     }
     if (blank) {
@@ -4150,8 +4295,8 @@ static enum ScanDecision scan_percent_separator(TSLexer *lexer, const bool *vali
         return decided(finish_token(lexer, REMAINDER));
     }
     return decided(ASM_X86_OPERANDS
-        && valid[REGISTER]
-        && scan_register_after_percent(lexer, scanner));
+        && (valid[REGISTER] || valid[PERCENT_CALL])
+        && scan_register_after_percent(lexer, valid, scanner));
 }
 
 static bool scan_special_symbol(TSLexer *lexer)
@@ -4203,27 +4348,88 @@ static enum ScanDecision scan_question_mark(TSLexer *lexer, const bool *valid)
     return decided(!valid[UNINITIALIZED] && closable(valid) && close_construct(lexer, valid));
 }
 
-static enum ScanDecision scan_open_parenthesis(TSLexer *lexer, const bool *valid,
-    const struct Scanner *scanner)
+static bool skip_decorators(TSLexer *lexer)
 {
-    if (valid[STATEMENT_CALL]) {
-        lexer->mark_end(lexer);
-        if (!statement_call_follows(lexer)) {
-            return SCAN_NOT_FOUND;
+    while (lexer->lookahead == '{') {
+        while (lexer->lookahead != '}') {
+            if (at_line_end(lexer)) {
+                return false;
+            }
+            advance(lexer);
         }
-        lexer->result_symbol = STATEMENT_CALL;
-        return SCAN_FOUND;
+        advance(lexer);
+        if (!advance_blanks(lexer)) {
+            return false;
+        }
+    }
+    return true;
+}
+
+enum CallForm {
+    CALL_FORM_NONE,
+    CALL_FORM_STATEMENT,
+    CALL_FORM_MNEMONIC,
+};
+
+static enum CallForm statement_call_form(TSLexer *lexer, const struct Scanner *scanner)
+{
+    bool spaced = false;
+
+    if (!skip_call_parentheses(lexer)) {
+        return CALL_FORM_STATEMENT;
+    }
+    if (ASM_X86_OPERANDS && lexer->lookahead == '{') {
+        return skip_decorators(lexer) && statement_ends(lexer) ? CALL_FORM_STATEMENT
+                                                               : CALL_FORM_NONE;
+    }
+    spaced = is_blank(lexer->lookahead);
+    if (statement_ends(lexer)) {
+        return CALL_FORM_STATEMENT;
+    }
+    return spaced && starts_item(lexer->lookahead, scanner) ? CALL_FORM_MNEMONIC : CALL_FORM_NONE;
+}
+
+static enum ScanDecision scan_open_parenthesis(TSLexer *lexer, const bool *valid,
+    const struct Scanner *scanner, uint32_t blanks)
+{
+    enum CallForm form = CALL_FORM_NONE;
+
+    if (valid[STATEMENT_CALL] || valid[CALL_MNEMONIC]) {
+        lexer->mark_end(lexer);
+        form = statement_call_form(lexer, scanner);
+        if (form == CALL_FORM_STATEMENT && valid[STATEMENT_CALL]) {
+            lexer->result_symbol = STATEMENT_CALL;
+            return SCAN_FOUND;
+        }
+        if (form == CALL_FORM_MNEMONIC && valid[CALL_MNEMONIC] && blanks == 0) {
+            lexer->result_symbol = CALL_MNEMONIC;
+            return SCAN_FOUND;
+        }
+        return SCAN_NOT_FOUND;
     }
     if (valid[CALL_ARGUMENTS] || valid[RELOCATION_SUFFIX] || valid[MEMORY_ADDRESS]) {
-        return scan_parenthesis(lexer, valid, scanner->x86_syntax, false);
+        return scan_parenthesis(lexer, valid, scanner, false);
     }
     return SCAN_UNDECIDED;
+}
+
+static bool call_name_follows(TSLexer *lexer)
+{
+    while (is_alpha(lexer->lookahead) || is_digit(lexer->lookahead)) {
+        advance(lexer);
+    }
+    return lexer->lookahead == '(';
 }
 
 static enum ScanDecision scan_operand_gap(TSLexer *lexer, const bool *valid, uint32_t blanks)
 {
     const int32_t first = lexer->lookahead;
 
+    if (blanks > 0 && !valid[OPERAND_GAP] && valid[DECORATOR_GAP] && is_alpha(first)) {
+        lexer->mark_end(lexer);
+        lexer->result_symbol = DECORATOR_GAP;
+        return call_name_follows(lexer) ? SCAN_FOUND : SCAN_NOT_FOUND;
+    }
     if (!valid[OPERAND_GAP] || blanks == 0 || !starts_gapped_operand(first)) {
         return SCAN_UNDECIDED;
     }
@@ -4280,7 +4486,7 @@ static enum ScanDecision scan_expected_token(TSLexer *lexer, const bool *valid,
         return scan_colon(lexer, valid, blanks);
     }
     if (first == '(') {
-        return scan_open_parenthesis(lexer, valid, scanner);
+        return scan_open_parenthesis(lexer, valid, scanner, blanks);
     }
     if (first == '.' && valid[SPECIAL_SYMBOL]) {
         lexer->mark_end(lexer);
@@ -4304,22 +4510,19 @@ static enum ScanDecision scan_operand_token(TSLexer *lexer, const bool *valid,
     const int32_t first = lexer->lookahead;
     const uint32_t blanks = gap->blanks;
     enum ScanDecision decision = SCAN_UNDECIDED;
+    TSSymbol symbol = BLANK;
 
     if (first == '%' && ASM_PERCENT_SEPARATOR && valid[SEPARATOR]) {
         return scan_percent_separator(lexer, valid, scanner, blanks);
     }
-    if (first == '%'
-        && !ASM_PERCENT_MACROS
-        && blanks > 0
-        && valid[BLANK]
-        && separates_operand(first)) {
+    if (first == '%' && !ASM_PERCENT_MACROS && blanks > 0 && blank_fits(first, valid, &symbol)) {
         return scan_blank(lexer, valid, scanner, blanks);
     }
     if (first == '%' && (ASM_PERCENT_MACROS || valid[REMAINDER])) {
         return scan_percent(lexer, valid, scanner, gap);
     }
-    if (first == '%' && ASM_X86_OPERANDS && valid[REGISTER]) {
-        return decided(scan_percent_register(lexer, scanner));
+    if (first == '%' && ASM_X86_OPERANDS && (valid[REGISTER] || valid[PERCENT_CALL])) {
+        return decided(scan_percent_register(lexer, valid, scanner));
     }
     if (is_digit(first) && (valid[SECTION_TYPE_WORD] || valid[DOLLAR_LABEL])) {
         return scan_digit_word(lexer, valid, blanks);
@@ -4681,7 +4884,7 @@ static void follow_calls(struct Scanner *scanner, TSSymbol symbol, const bool *v
     if (!ASM_GNU_SYNTAX) {
         return;
     }
-    if (symbol == CALL_ARGUMENTS || symbol == STATEMENT_CALL) {
+    if (symbol == CALL_ARGUMENTS || symbol == STATEMENT_CALL || symbol == CALL_MNEMONIC) {
         scanner->open_calls++;
         return;
     }

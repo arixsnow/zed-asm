@@ -46,9 +46,14 @@ const GNU_SEMANTIC_SHAPES = new Map<string, string>([
     ['binutils:s_irp:1', 'IRPC_OPEN'],
     ['binutils:float_cons', 'FLOAT_DATA_DIRECTIVE'],
     ['binutils:s_float_space', 'FLOAT_SPACE_DIRECTIVE'],
+    ['binutils:stringer', 'STRING_DIRECTIVE'],
     ...['SINGLE', 'FLOAT', 'DC_S', 'DOUBLE', 'DC_D'].map((kind): [string, string] => [
         `llvm:DK_${kind}`,
         'FLOAT_DATA_DIRECTIVE',
+    ]),
+    ...['ASCII', 'ASCIZ', 'STRING'].map((kind): [string, string] => [
+        `llvm:DK_${kind}`,
+        'STRING_DIRECTIVE',
     ]),
     ['llvm:DK_DCB_S', 'FLOAT_SPACE_DIRECTIVE'],
     ['llvm:DK_DCB_D', 'FLOAT_SPACE_DIRECTIVE'],

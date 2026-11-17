@@ -304,7 +304,14 @@ function main(args: string[]): number {
     );
     checkWordClashes(tables);
     const constants = [{ name: 'ASM_AARCH32_TYPE_ELEMENTS', value: binutils.armTypeElements }];
-    writeFileSync(KEYWORDS_HEADER, header(projects, constants, tables));
+    const { symbolCharacters } = binutils;
+    const characters = [
+        { name: 'ASM_GNU_SYMBOL_CHARACTERS', characters: symbolCharacters.gnu },
+        { name: 'ASM_X86_GAS_SYMBOL_CHARACTERS', characters: symbolCharacters.x86 },
+        { name: 'ASM_AARCH64_GNU_SYMBOL_CHARACTERS', characters: symbolCharacters.aarch64 },
+        { name: 'ASM_AARCH32_SYMBOL_CHARACTERS', characters: symbolCharacters.aarch32 },
+    ];
+    writeFileSync(KEYWORDS_HEADER, header(projects, constants, tables, characters));
     workDirectory('');
     writeFileSync(
         join(WORK, 'tables.json'),

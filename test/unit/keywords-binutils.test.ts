@@ -16,6 +16,8 @@ import {
     machoSectionTypes,
     objectFormats,
     pseudoOps,
+    scrubberBase,
+    scrubberSymbols,
     shellCaseArms,
     unescapeC,
     x86Decorators,
@@ -754,4 +756,112 @@ test('armSignature reads one slot per operand, in lower case when optional', () 
     assert.strictEqual(armSignature('{OP_RR, OP_COND}'), 'OC');
     assert.strictEqual(armSignature('{OP_wPSR, OP_RR}'), 'SO');
     assert.strictEqual(armSignature('{OP_stop}'), '');
+});
+
+const APP = 'gas/app.c';
+const DEMO_HEADER = 'gas/config/tc-demo.h';
+const DEMO = 'gas/config/tc-demo.c';
+const LEX = [
+    'static char lex[256] = {',
+    "  [' ']  = LEX_IS_WHITESPACE,",
+    "  ['$'] = LEX_IS_SYMBOL_COMPONENT,",
+    "  ['_'] = LEX_IS_SYMBOL_COMPONENT, ['a'] = LEX_IS_SYMBOL_COMPONENT,",
+    "  ['\\''] = LEX_IS_SYMBOL_COMPONENT,",
+    '#define INIT2(n) [n] = LEX_IS_SYMBOL_COMPONENT, \\',
+    '                 [(n) + 1] = LEX_IS_SYMBOL_COMPONENT',
+    '  INIT128 (128),',
+    '};',
+    '',
+].join('\n');
+const DEMO_HEADER_TEXT = [
+    '#include "obj-format.h"',
+    '#define tc_symbol_chars demo_symbol_chars',
+    '#ifdef TE_PE',
+    '#define tc_comment_chars pe_comment_chars',
+    '#else',
+    '#define tc_comment_chars demo_comment_chars',
+    '#endif',
+    '',
+].join('\n');
+const DEMO_TEXT = [
+    '#include "as.h"',
+    '#if MAX_OPERANDS != 5',
+    '#error "MAX_OPERANDS must be 5."',
+    '#endif',
+    'static int unrelated (void) { return 0; }',
+    '/* Characters that start an operand.  */',
+    'const char demo_symbol_chars[] = "*[#;$"',
+    '#ifdef LEX_AT',
+    '\t"@"',
+    '#endif',
+    '\t;',
+    '#if defined (OBJ_ELF) && !defined (TE_LINUX)',
+    'const char *demo_comment_chars = "#/";',
+    '#else',
+    'const char *demo_comment_chars = "#";',
+    '#endif',
+    'const char line_comment_chars[] = "#";',
+    'const char line_separator_chars[] = ";";',
+    '',
+].join('\n');
+
+test('scrubberBase reads the symbol characters of the scrubber lex table', () => {
+    const tree = sourceTree('binutils-scrubber-base', { [APP]: LEX });
+    assert.strictEqual(scrubberBase(tree), "$'_a");
+});
+
+test('scrubberBase stops when the lex table changes its symbol characters', () => {
+    const tree = (scratch: string, text: string) =>
+        sourceTree(`binutils-scrubber-base-${scratch}`, { [APP]: text });
+    assertThrowsIncluding(
+        () => scrubberBase(tree('high', LEX.replace('  INIT128 (128),\n', ''))),
+        'lex no longer makes the bytes 128 to 255 symbol characters',
+    );
+    assertThrowsIncluding(
+        () => scrubberBase(tree('none', LEX.replace(/\['.+'\] = LEX_IS_SYMBOL_COMPONENT,/g, ''))),
+        'lex names no symbol character',
+    );
+});
+
+test('scrubberSymbols reads the target symbols of an ELF Linux build without its comment and separator characters', () => {
+    const tree = sourceTree('binutils-scrubber-symbols', {
+        [DEMO_HEADER]: DEMO_HEADER_TEXT,
+        [DEMO]: DEMO_TEXT,
+    });
+    assert.strictEqual(scrubberSymbols(tree, 'demo', '$_a'), '*[');
+    const plain = sourceTree('binutils-scrubber-plain', {
+        [DEMO_HEADER]: '#define tc_comment_chars demo_comment_chars\n',
+        [DEMO]: DEMO_TEXT,
+    });
+    assert.strictEqual(scrubberSymbols(plain, 'demo', '$_a'), '');
+});
+
+test('scrubberSymbols stops on a symbol character that starts a comment and on an unclear definition', () => {
+    const tree = (scratch: string, from: string, to: string) =>
+        sourceTree(`binutils-scrubber-${scratch}`, {
+            [DEMO_HEADER]: DEMO_HEADER_TEXT,
+            [DEMO]: DEMO_TEXT.replace(from, to),
+        });
+    assertThrowsIncluding(
+        () =>
+            scrubberSymbols(
+                tree('comment', 'demo_comment_chars = "#";', 'demo_comment_chars = "#a";'),
+                'demo',
+                '$_a',
+            ),
+        'gas/config/tc-demo.c: the symbol character a also starts a comment or line',
+    );
+    assertThrowsIncluding(
+        () =>
+            scrubberSymbols(
+                tree(
+                    'twice',
+                    'const char line_separator_chars[] = ";";',
+                    'const char line_separator_chars[] = ";";\nchar demo_symbol_chars[] = "x";',
+                ),
+                'demo',
+                '$_a',
+            ),
+        'an ELF Linux build defines demo_symbol_chars 2 times',
+    );
 });

@@ -24,6 +24,10 @@ const COUNT = /^\d+$/;
 const FLAGS = /^(?:0|[A-Z][A-Z0-9_]*(?: \| [A-Z][A-Z0-9_]*)*)$/;
 const GRAPH_VALUES_PER_LINE = 12;
 const LARGEST_SHORT_INDEX = 0xffff;
+const ASCII_LIMIT = 128;
+const MASK_BITS = 64;
+const MASK_DIGITS = 16;
+const SYMBOL_CHARACTERS = 'SYMBOL_CHARACTERS';
 const SCOPE_FIELDS: [number, string][] = [
     [8, 'unsigned char'],
     [16, 'unsigned short'],
@@ -51,6 +55,7 @@ export interface Dictionary {
     side: number;
     graph: number[];
     length: number;
+    symbols: bigint[];
 }
 
 interface WordTable {
@@ -116,18 +121,53 @@ function role(table: WordTable, row: TableRow): WordRole {
     return SYMBOL.test(second) ? { ...blank, symbol: second, flags: third } : fail('bad symbol');
 }
 
+function tableScope(table: string, scopes: string[]): { scope: string; kind: string } {
+    const scope = [...scopes]
+        .sort((left, right) => right.length - left.length)
+        .find((name) => table.startsWith(`ASM_${name}_`));
+    if (scope === undefined) {
+        throw new Error(`keywords.h: ${table} names no scope from scanner.h`);
+    }
+    return { scope, kind: table.slice(`ASM_${scope}_`.length) };
+}
+
+function selects(defines: Map<string, string>, dialect: string, scope: string): boolean {
+    return scope === GNU_SCOPE
+        ? definedFlag(defines, dialect, 'ASM_GNU_SYNTAX')
+        : definedFlag(defines, dialect, `ASM_${scope}_KEYWORDS`);
+}
+
 function wordTables(sources: KeywordSources, scopes: string[]): WordTable[] {
-    const byLength = [...scopes].sort((left, right) => right.length - left.length);
     return [...sources.tables.entries()]
         .filter(([table]) => table !== 'ASM_KEYWORD_SOURCES')
-        .map(([table, rows]) => {
-            const scope = byLength.find((name) => table.startsWith(`ASM_${name}_`));
-            if (scope === undefined) {
-                throw new Error(`keywords.h: ${table} names no scope from scanner.h`);
-            }
-            return { scope, kind: table.slice(`ASM_${scope}_`.length), rows };
-        })
+        .map(([table, rows]) => ({ ...tableScope(table, scopes), rows }))
         .sort((left, right) => scopes.indexOf(left.scope) - scopes.indexOf(right.scope));
+}
+
+function symbolMasks(
+    sources: KeywordSources,
+    dialect: string,
+    defines: Map<string, string>,
+): bigint[] {
+    const scopes = keywordScopes(sources.scanner);
+    const masks = Array.from({ length: ASCII_LIMIT / MASK_BITS }, () => 0n);
+    for (const [table, characters] of sources.characters) {
+        const { scope, kind } = tableScope(table, scopes);
+        if (kind !== SYMBOL_CHARACTERS) {
+            throw new Error(`keywords.h: ${table} is no ${SYMBOL_CHARACTERS} table`);
+        }
+        if (!selects(defines, dialect, scope)) {
+            continue;
+        }
+        for (const character of characters) {
+            const code = character.charCodeAt(0);
+            if (code >= ASCII_LIMIT) {
+                throw new Error(`keywords.h: ${table} holds a character outside ASCII`);
+            }
+            masks[Math.floor(code / MASK_BITS)] |= 1n << BigInt(code % MASK_BITS);
+        }
+    }
+    return masks;
 }
 
 function graphValues(hashes: [number, number][], side: number): number[] | undefined {
@@ -171,7 +211,8 @@ function seedsFor(attempt: number): [number, number] {
 
 function perfectHash(names: string[]): Pick<Dictionary, 'seeds' | 'side' | 'graph'> {
     let side = Math.ceil(names.length * SIDE_PER_WORD);
-    for (let attempt = 0;; attempt++) {
+    let attempt = 0;
+    while (true) {
         if (attempt > 0 && attempt % SEEDS_PER_SIDE === 0) {
             side = Math.ceil(side * SIDE_GROWTH);
         }
@@ -180,21 +221,18 @@ function perfectHash(names: string[]): Pick<Dictionary, 'seeds' | 'side' | 'grap
         if (graph !== undefined) {
             return { seeds, side, graph };
         }
+        attempt++;
     }
 }
 
 export function dictionaries(sources: KeywordSources): Dictionary[] {
-    return dictionariesOf(sources.scanner, wordTables(sources, keywordScopes(sources.scanner)));
+    return dictionariesOf(sources, wordTables(sources, keywordScopes(sources.scanner)));
 }
 
-function dictionariesOf(scanner: string, tables: WordTable[]): Dictionary[] {
-    return [...dialectDefines(scanner).entries()].map(([dialect, defines]) => {
-        const selected = (scope: string) =>
-            scope === GNU_SCOPE
-                ? definedFlag(defines, dialect, 'ASM_GNU_SYNTAX')
-                : definedFlag(defines, dialect, `ASM_${scope}_KEYWORDS`);
+function dictionariesOf(sources: KeywordSources, tables: WordTable[]): Dictionary[] {
+    return [...dialectDefines(sources.scanner).entries()].map(([dialect, defines]) => {
         const words = new Map<string, Word>();
-        for (const table of tables.filter(({ scope }) => selected(scope))) {
+        for (const table of tables.filter(({ scope }) => selects(defines, dialect, scope))) {
             for (const row of table.rows) {
                 if (!/^[\x21-\x7e]+$/.test(row.name)) {
                     throw new Error(
@@ -227,6 +265,7 @@ function dictionariesOf(scanner: string, tables: WordTable[]): Dictionary[] {
             words: sorted,
             ...perfectHash(sorted.map(({ name }) => name)),
             length: Math.max(...sorted.map(({ name }) => name.length)),
+            symbols: symbolMasks(sources, dialect, defines),
         };
         for (const word of sorted) {
             if (lookupWord(dictionary, word.name) !== word) {
@@ -306,6 +345,15 @@ function section(dictionary: Dictionary): string[] {
     ];
 }
 
+function symbolSection(masks: bigint[]): string[] {
+    return [
+        'static const uint64_t SYMBOL_CHARACTERS[] = {',
+        ...masks.map((mask) => `    UINT64_C(0x${mask.toString(16).padStart(MASK_DIGITS, '0')}),`),
+        '};',
+        '',
+    ];
+}
+
 function keywordConstants(keywords: string): string[] {
     const block = /^enum \{\n((?: {4}ASM_\w+ = \d+,\n)+)\};$/m.exec(keywords);
     return block === null ? [] : ['enum {', ...block[1].trimEnd().split('\n'), '};', ''];
@@ -315,8 +363,9 @@ export function wordsHeader(sources: KeywordSources): string {
     const scopes = keywordScopes(sources.scanner);
     const tables = wordTables(sources, scopes);
     const kinds = [...new Set(tables.map(({ kind }) => kind))].sort();
-    const sections = dictionariesOf(sources.scanner, tables).flatMap((dictionary, index) => [
+    const sections = dictionariesOf(sources, tables).flatMap((dictionary, index) => [
         `${index === 0 ? '#if' : '#elif'} defined(ASM_DIALECT_${dictionary.dialect})`,
+        ...symbolSection(dictionary.symbols),
         ...section(dictionary),
     ]);
     return [

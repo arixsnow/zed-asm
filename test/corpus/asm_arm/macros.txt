@@ -103,10 +103,23 @@ Conditionals and repeat blocks on one line
         mnemonic: (mnemonic)))))
 
 ================================================================================
-A blank-separated immediate is its own macro argument
+A blank joins the item unless a symbol character, quote or backslash follows, as GNU as reads ARM
 ================================================================================
 
 m x0 #1
+m 1 -2
+m a ~b
+m 1 (2)
+m F (1)
+m a "b"
+m a [b]
+m r0 !
+m x0, uxtw #2
+add_sh r2, r2, r4, asr r3
+.macro m a, b=1 #1
+.endm
+.irp v, x0 #1
+.endr
 
 --------------------------------------------------------------------------------
 
@@ -114,9 +127,88 @@ m x0 #1
   (macro_call
     function: (identifier)
     arguments: (argument_list
+      argument: (argument
+        (register)
+        (immediate
+          value: (integer)))))
+  (macro_call
+    function: (identifier)
+    arguments: (argument_list
+      argument: (binary_expression
+        left: (integer)
+        right: (integer))))
+  (macro_call
+    function: (identifier)
+    arguments: (argument_list
+      argument: (argument
+        (identifier)
+        (unary_expression
+          argument: (identifier)))))
+  (macro_call
+    function: (identifier)
+    arguments: (argument_list
+      argument: (argument
+        (integer)
+        (parenthesized_expression
+          (integer)))))
+  (macro_call
+    function: (identifier)
+    arguments: (argument_list
+      argument: (macro_call
+        function: (identifier)
+        arguments: (argument_list
+          argument: (integer)))))
+  (macro_call
+    function: (identifier)
+    arguments: (argument_list
+      argument: (identifier)
+      argument: (string)))
+  (macro_call
+    function: (identifier)
+    arguments: (argument_list
+      argument: (identifier)
+      argument: (memory_operand
+        operand: (identifier))))
+  (macro_call
+    function: (identifier)
+    arguments: (argument_list
+      argument: (writeback
+        register: (register))))
+  (macro_call
+    function: (identifier)
+    arguments: (argument_list
       argument: (register)
-      argument: (immediate
-        value: (integer)))))
+      argument: (shift
+        operator: (shift_operator)
+        amount: (immediate
+          value: (integer)))))
+  (macro_call
+    function: (identifier)
+    arguments: (argument_list
+      argument: (register)
+      argument: (register)
+      argument: (register)
+      argument: (shift
+        operator: (shift_operator)
+        amount: (register))))
+  (macro_definition
+    name: (identifier)
+    parameter: (parameter
+      name: (identifier))
+    parameter: (parameter
+      name: (identifier)
+      default: (argument
+        (integer)
+        (immediate
+          value: (integer))))
+    body: (body))
+  (repeat_block
+    parameter: (identifier)
+    value: (argument
+      (register)
+      (immediate
+        value: (integer)))
+    body: (body)))
 
 ================================================================================
 MRI aliases of else, endif, irp and irpc open and close blocks
