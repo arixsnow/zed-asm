@@ -5687,13 +5687,17 @@
       "type": "CHOICE",
       "members": [
         {
-          "type": "ALIAS",
+          "type": "PREC",
+          "value": 0,
           "content": {
-            "type": "SYMBOL",
-            "name": "_register"
-          },
-          "named": true,
-          "value": "register"
+            "type": "ALIAS",
+            "content": {
+              "type": "SYMBOL",
+              "name": "_register"
+            },
+            "named": true,
+            "value": "register"
+          }
         }
       ]
     },

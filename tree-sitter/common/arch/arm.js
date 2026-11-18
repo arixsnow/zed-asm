@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: MIT
 
 const { ROLES } = require('../roles.js');
+const { operandStep } = require('../syntax/gas.js');
 
 const DOLLAR_LABELS = ['AUTO', 'ARM'];
 const POSITIONAL_MACRO_ARGUMENTS = ['ARM_APPLE'];
@@ -40,7 +41,10 @@ function roleMissing(role, index, $) {
 }
 
 function roleRest(role, index, $) {
-    return index === roleLast(role) ? $._role_trailing : $[`_${role.name}_after_${index}`];
+    if (index === roleLast(role)) {
+        return $._role_trailing;
+    }
+    return choice($[`_${role.name}_after_${index}`], $._call_tail);
 }
 
 function roleStep(role, index, $) {
@@ -51,9 +55,13 @@ function roleStep(role, index, $) {
                 seq(field('operand', alias($._arm_register, $.register)), roleRest(role, index, $)),
             ),
             seq(field('operand', $._final_label), optional($._role_trailing)),
+            $._slot_call,
         );
     }
-    return seq(field('operand', roleSlot(role, index, $)), optional(roleRest(role, index, $)));
+    return choice(
+        seq(field('operand', roleSlot(role, index, $)), optional(roleRest(role, index, $))),
+        $._slot_call,
+    );
 }
 
 function roleInstruction(role) {
@@ -350,12 +358,9 @@ module.exports = (ctx) => {
                     $.writeback,
                     $.predicate,
                 ),
-            _role_trailing: ($) =>
-                repeat1(
-                    choice(
-                        seq(',', choice(field('operand', $._role_operand), $._missing_operand)),
-                    ),
-                ),
+            _role_trailing: ($) => repeat1(operandStep(ctx, $)),
+            _call_tail: ($) => seq($._call_gap, $._operands),
+            _slot_call: ($) => prec(-1, seq(field('operand', $.macro_call), $._operands)),
             ...Object.assign({}, ...ROLES.map(roleRules)),
         },
         choices: {

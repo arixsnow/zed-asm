@@ -285,3 +285,42 @@ nop
             body: (body
               (instruction
                 mnemonic: (mnemonic)))))))))
+
+================================================================================
+Parameter names may be built from macro arguments
+================================================================================
+
+.macro outer pfx
+.macro inner \pfx\()x, \pfx\()y=1
+.endm
+.irp \pfx\()i, 1, 2
+.endr
+.endm
+
+--------------------------------------------------------------------------------
+
+(source_file
+  (macro_definition
+    name: (identifier)
+    parameter: (parameter
+      name: (identifier))
+    body: (body
+      (macro_definition
+        name: (identifier)
+        parameter: (parameter
+          name: (concatenation
+            (macro_argument)
+            (identifier)))
+        parameter: (parameter
+          name: (concatenation
+            (macro_argument)
+            (identifier))
+          default: (integer))
+        body: (body))
+      (repeat_block
+        parameter: (concatenation
+          (macro_argument)
+          (identifier))
+        value: (integer)
+        value: (integer)
+        body: (body)))))

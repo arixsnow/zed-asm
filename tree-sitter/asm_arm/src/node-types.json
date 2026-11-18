@@ -2104,6 +2104,10 @@
         "required": true,
         "types": [
           {
+            "type": "concatenation",
+            "named": true
+          },
+          {
             "type": "identifier",
             "named": true
           },
@@ -2885,6 +2889,10 @@
         "multiple": false,
         "required": false,
         "types": [
+          {
+            "type": "concatenation",
+            "named": true
+          },
           {
             "type": "identifier",
             "named": true

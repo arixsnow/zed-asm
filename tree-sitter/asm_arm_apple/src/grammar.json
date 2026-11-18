@@ -1789,6 +1789,10 @@
         {
           "type": "SYMBOL",
           "name": "macro_argument"
+        },
+        {
+          "type": "SYMBOL",
+          "name": "concatenation"
         }
       ]
     },
@@ -4564,12 +4568,21 @@
                 "type": "CHOICE",
                 "members": [
                   {
-                    "type": "FIELD",
-                    "name": "operand",
-                    "content": {
-                      "type": "SYMBOL",
-                      "name": "_role_operand"
-                    }
+                    "type": "CHOICE",
+                    "members": [
+                      {
+                        "type": "FIELD",
+                        "name": "operand",
+                        "content": {
+                          "type": "SYMBOL",
+                          "name": "_instruction_operand"
+                        }
+                      },
+                      {
+                        "type": "SYMBOL",
+                        "name": "_call_run"
+                      }
+                    ]
                   },
                   {
                     "type": "SYMBOL",
@@ -4578,6 +4591,66 @@
                 ]
               }
             ]
+          },
+          {
+            "type": "SEQ",
+            "members": [
+              {
+                "type": "SYMBOL",
+                "name": "_call_gap"
+              },
+              {
+                "type": "CHOICE",
+                "members": [
+                  {
+                    "type": "FIELD",
+                    "name": "operand",
+                    "content": {
+                      "type": "SYMBOL",
+                      "name": "_instruction_operand"
+                    }
+                  },
+                  {
+                    "type": "SYMBOL",
+                    "name": "_call_run"
+                  }
+                ]
+              }
+            ]
+          }
+        ]
+      }
+    },
+    "_call_tail": {
+      "type": "SEQ",
+      "members": [
+        {
+          "type": "SYMBOL",
+          "name": "_call_gap"
+        },
+        {
+          "type": "SYMBOL",
+          "name": "_operands"
+        }
+      ]
+    },
+    "_slot_call": {
+      "type": "PREC",
+      "value": -1,
+      "content": {
+        "type": "SEQ",
+        "members": [
+          {
+            "type": "FIELD",
+            "name": "operand",
+            "content": {
+              "type": "SYMBOL",
+              "name": "macro_call"
+            }
+          },
+          {
+            "type": "SYMBOL",
+            "name": "_operands"
           }
         ]
       }
@@ -4593,27 +4666,36 @@
           "type": "CHOICE",
           "members": [
             {
-              "type": "SEQ",
+              "type": "CHOICE",
               "members": [
                 {
-                  "type": "FIELD",
-                  "name": "operand",
-                  "content": {
-                    "type": "SYMBOL",
-                    "name": "_label_operand"
-                  }
-                },
-                {
-                  "type": "CHOICE",
+                  "type": "SEQ",
                   "members": [
                     {
-                      "type": "SYMBOL",
-                      "name": "_role_trailing"
+                      "type": "FIELD",
+                      "name": "operand",
+                      "content": {
+                        "type": "SYMBOL",
+                        "name": "_label_operand"
+                      }
                     },
                     {
-                      "type": "BLANK"
+                      "type": "CHOICE",
+                      "members": [
+                        {
+                          "type": "SYMBOL",
+                          "name": "_role_trailing"
+                        },
+                        {
+                          "type": "BLANK"
+                        }
+                      ]
                     }
                   ]
+                },
+                {
+                  "type": "SYMBOL",
+                  "name": "_slot_call"
                 }
               ]
             },
@@ -4636,27 +4718,36 @@
           "type": "CHOICE",
           "members": [
             {
-              "type": "SEQ",
+              "type": "CHOICE",
               "members": [
                 {
-                  "type": "FIELD",
-                  "name": "operand",
-                  "content": {
-                    "type": "SYMBOL",
-                    "name": "_label_operand"
-                  }
-                },
-                {
-                  "type": "CHOICE",
+                  "type": "SEQ",
                   "members": [
                     {
-                      "type": "SYMBOL",
-                      "name": "_role_trailing"
+                      "type": "FIELD",
+                      "name": "operand",
+                      "content": {
+                        "type": "SYMBOL",
+                        "name": "_label_operand"
+                      }
                     },
                     {
-                      "type": "BLANK"
+                      "type": "CHOICE",
+                      "members": [
+                        {
+                          "type": "SYMBOL",
+                          "name": "_role_trailing"
+                        },
+                        {
+                          "type": "BLANK"
+                        }
+                      ]
                     }
                   ]
+                },
+                {
+                  "type": "SYMBOL",
+                  "name": "_slot_call"
                 }
               ]
             },
@@ -4679,27 +4770,36 @@
           "type": "CHOICE",
           "members": [
             {
-              "type": "SEQ",
+              "type": "CHOICE",
               "members": [
                 {
-                  "type": "FIELD",
-                  "name": "operand",
-                  "content": {
-                    "type": "SYMBOL",
-                    "name": "_label_operand"
-                  }
-                },
-                {
-                  "type": "CHOICE",
+                  "type": "SEQ",
                   "members": [
                     {
-                      "type": "SYMBOL",
-                      "name": "_role_trailing"
+                      "type": "FIELD",
+                      "name": "operand",
+                      "content": {
+                        "type": "SYMBOL",
+                        "name": "_label_operand"
+                      }
                     },
                     {
-                      "type": "BLANK"
+                      "type": "CHOICE",
+                      "members": [
+                        {
+                          "type": "SYMBOL",
+                          "name": "_role_trailing"
+                        },
+                        {
+                          "type": "BLANK"
+                        }
+                      ]
                     }
                   ]
+                },
+                {
+                  "type": "SYMBOL",
+                  "name": "_slot_call"
                 }
               ]
             },
@@ -4722,27 +4822,45 @@
           "type": "CHOICE",
           "members": [
             {
-              "type": "SEQ",
+              "type": "CHOICE",
               "members": [
                 {
-                  "type": "FIELD",
-                  "name": "operand",
-                  "content": {
-                    "type": "SYMBOL",
-                    "name": "_role_operand"
-                  }
-                },
-                {
-                  "type": "CHOICE",
+                  "type": "SEQ",
                   "members": [
                     {
-                      "type": "SYMBOL",
-                      "name": "_third_label_after_2"
+                      "type": "FIELD",
+                      "name": "operand",
+                      "content": {
+                        "type": "SYMBOL",
+                        "name": "_role_operand"
+                      }
                     },
                     {
-                      "type": "BLANK"
+                      "type": "CHOICE",
+                      "members": [
+                        {
+                          "type": "CHOICE",
+                          "members": [
+                            {
+                              "type": "SYMBOL",
+                              "name": "_third_label_after_2"
+                            },
+                            {
+                              "type": "SYMBOL",
+                              "name": "_call_tail"
+                            }
+                          ]
+                        },
+                        {
+                          "type": "BLANK"
+                        }
+                      ]
                     }
                   ]
+                },
+                {
+                  "type": "SYMBOL",
+                  "name": "_slot_call"
                 }
               ]
             },
@@ -4765,27 +4883,36 @@
           "type": "CHOICE",
           "members": [
             {
-              "type": "SEQ",
+              "type": "CHOICE",
               "members": [
                 {
-                  "type": "FIELD",
-                  "name": "operand",
-                  "content": {
-                    "type": "SYMBOL",
-                    "name": "_label_operand"
-                  }
-                },
-                {
-                  "type": "CHOICE",
+                  "type": "SEQ",
                   "members": [
                     {
-                      "type": "SYMBOL",
-                      "name": "_role_trailing"
+                      "type": "FIELD",
+                      "name": "operand",
+                      "content": {
+                        "type": "SYMBOL",
+                        "name": "_label_operand"
+                      }
                     },
                     {
-                      "type": "BLANK"
+                      "type": "CHOICE",
+                      "members": [
+                        {
+                          "type": "SYMBOL",
+                          "name": "_role_trailing"
+                        },
+                        {
+                          "type": "BLANK"
+                        }
+                      ]
                     }
                   ]
+                },
+                {
+                  "type": "SYMBOL",
+                  "name": "_slot_call"
                 }
               ]
             },
@@ -4830,8 +4957,17 @@
                         }
                       },
                       {
-                        "type": "SYMBOL",
-                        "name": "_label_after_optional_second_after_2"
+                        "type": "CHOICE",
+                        "members": [
+                          {
+                            "type": "SYMBOL",
+                            "name": "_label_after_optional_second_after_2"
+                          },
+                          {
+                            "type": "SYMBOL",
+                            "name": "_call_tail"
+                          }
+                        ]
                       }
                     ]
                   }
@@ -4860,6 +4996,10 @@
                       ]
                     }
                   ]
+                },
+                {
+                  "type": "SYMBOL",
+                  "name": "_slot_call"
                 }
               ]
             },
@@ -4882,27 +5022,36 @@
           "type": "CHOICE",
           "members": [
             {
-              "type": "SEQ",
+              "type": "CHOICE",
               "members": [
                 {
-                  "type": "FIELD",
-                  "name": "operand",
-                  "content": {
-                    "type": "SYMBOL",
-                    "name": "_label_operand"
-                  }
-                },
-                {
-                  "type": "CHOICE",
+                  "type": "SEQ",
                   "members": [
                     {
-                      "type": "SYMBOL",
-                      "name": "_role_trailing"
+                      "type": "FIELD",
+                      "name": "operand",
+                      "content": {
+                        "type": "SYMBOL",
+                        "name": "_label_operand"
+                      }
                     },
                     {
-                      "type": "BLANK"
+                      "type": "CHOICE",
+                      "members": [
+                        {
+                          "type": "SYMBOL",
+                          "name": "_role_trailing"
+                        },
+                        {
+                          "type": "BLANK"
+                        }
+                      ]
                     }
                   ]
+                },
+                {
+                  "type": "SYMBOL",
+                  "name": "_slot_call"
                 }
               ]
             },
@@ -4925,27 +5074,45 @@
           "type": "CHOICE",
           "members": [
             {
-              "type": "SEQ",
+              "type": "CHOICE",
               "members": [
                 {
-                  "type": "FIELD",
-                  "name": "operand",
-                  "content": {
-                    "type": "SYMBOL",
-                    "name": "_label_operand"
-                  }
-                },
-                {
-                  "type": "CHOICE",
+                  "type": "SEQ",
                   "members": [
                     {
-                      "type": "SYMBOL",
-                      "name": "_labels_then_condition_after_2"
+                      "type": "FIELD",
+                      "name": "operand",
+                      "content": {
+                        "type": "SYMBOL",
+                        "name": "_label_operand"
+                      }
                     },
                     {
-                      "type": "BLANK"
+                      "type": "CHOICE",
+                      "members": [
+                        {
+                          "type": "CHOICE",
+                          "members": [
+                            {
+                              "type": "SYMBOL",
+                              "name": "_labels_then_condition_after_2"
+                            },
+                            {
+                              "type": "SYMBOL",
+                              "name": "_call_tail"
+                            }
+                          ]
+                        },
+                        {
+                          "type": "BLANK"
+                        }
+                      ]
                     }
                   ]
+                },
+                {
+                  "type": "SYMBOL",
+                  "name": "_slot_call"
                 }
               ]
             },
@@ -4968,27 +5135,45 @@
           "type": "CHOICE",
           "members": [
             {
-              "type": "SEQ",
+              "type": "CHOICE",
               "members": [
                 {
-                  "type": "FIELD",
-                  "name": "operand",
-                  "content": {
-                    "type": "SYMBOL",
-                    "name": "_label_operand"
-                  }
-                },
-                {
-                  "type": "CHOICE",
+                  "type": "SEQ",
                   "members": [
                     {
-                      "type": "SYMBOL",
-                      "name": "_labels_then_condition_after_3"
+                      "type": "FIELD",
+                      "name": "operand",
+                      "content": {
+                        "type": "SYMBOL",
+                        "name": "_label_operand"
+                      }
                     },
                     {
-                      "type": "BLANK"
+                      "type": "CHOICE",
+                      "members": [
+                        {
+                          "type": "CHOICE",
+                          "members": [
+                            {
+                              "type": "SYMBOL",
+                              "name": "_labels_then_condition_after_3"
+                            },
+                            {
+                              "type": "SYMBOL",
+                              "name": "_call_tail"
+                            }
+                          ]
+                        },
+                        {
+                          "type": "BLANK"
+                        }
+                      ]
                     }
                   ]
+                },
+                {
+                  "type": "SYMBOL",
+                  "name": "_slot_call"
                 }
               ]
             },
@@ -5011,27 +5196,36 @@
           "type": "CHOICE",
           "members": [
             {
-              "type": "SEQ",
+              "type": "CHOICE",
               "members": [
                 {
-                  "type": "FIELD",
-                  "name": "operand",
-                  "content": {
-                    "type": "SYMBOL",
-                    "name": "_condition_operand"
-                  }
-                },
-                {
-                  "type": "CHOICE",
+                  "type": "SEQ",
                   "members": [
                     {
-                      "type": "SYMBOL",
-                      "name": "_role_trailing"
+                      "type": "FIELD",
+                      "name": "operand",
+                      "content": {
+                        "type": "SYMBOL",
+                        "name": "_condition_operand"
+                      }
                     },
                     {
-                      "type": "BLANK"
+                      "type": "CHOICE",
+                      "members": [
+                        {
+                          "type": "SYMBOL",
+                          "name": "_role_trailing"
+                        },
+                        {
+                          "type": "BLANK"
+                        }
+                      ]
                     }
                   ]
+                },
+                {
+                  "type": "SYMBOL",
+                  "name": "_slot_call"
                 }
               ]
             },
@@ -5054,27 +5248,36 @@
           "type": "CHOICE",
           "members": [
             {
-              "type": "SEQ",
+              "type": "CHOICE",
               "members": [
                 {
-                  "type": "FIELD",
-                  "name": "operand",
-                  "content": {
-                    "type": "SYMBOL",
-                    "name": "_condition_operand"
-                  }
-                },
-                {
-                  "type": "CHOICE",
+                  "type": "SEQ",
                   "members": [
                     {
-                      "type": "SYMBOL",
-                      "name": "_role_trailing"
+                      "type": "FIELD",
+                      "name": "operand",
+                      "content": {
+                        "type": "SYMBOL",
+                        "name": "_condition_operand"
+                      }
                     },
                     {
-                      "type": "BLANK"
+                      "type": "CHOICE",
+                      "members": [
+                        {
+                          "type": "SYMBOL",
+                          "name": "_role_trailing"
+                        },
+                        {
+                          "type": "BLANK"
+                        }
+                      ]
                     }
                   ]
+                },
+                {
+                  "type": "SYMBOL",
+                  "name": "_slot_call"
                 }
               ]
             },
@@ -5097,27 +5300,45 @@
           "type": "CHOICE",
           "members": [
             {
-              "type": "SEQ",
+              "type": "CHOICE",
               "members": [
                 {
-                  "type": "FIELD",
-                  "name": "operand",
-                  "content": {
-                    "type": "SYMBOL",
-                    "name": "_role_operand"
-                  }
-                },
-                {
-                  "type": "CHOICE",
+                  "type": "SEQ",
                   "members": [
                     {
-                      "type": "SYMBOL",
-                      "name": "_third_condition_after_2"
+                      "type": "FIELD",
+                      "name": "operand",
+                      "content": {
+                        "type": "SYMBOL",
+                        "name": "_role_operand"
+                      }
                     },
                     {
-                      "type": "BLANK"
+                      "type": "CHOICE",
+                      "members": [
+                        {
+                          "type": "CHOICE",
+                          "members": [
+                            {
+                              "type": "SYMBOL",
+                              "name": "_third_condition_after_2"
+                            },
+                            {
+                              "type": "SYMBOL",
+                              "name": "_call_tail"
+                            }
+                          ]
+                        },
+                        {
+                          "type": "BLANK"
+                        }
+                      ]
                     }
                   ]
+                },
+                {
+                  "type": "SYMBOL",
+                  "name": "_slot_call"
                 }
               ]
             },
@@ -5140,27 +5361,36 @@
           "type": "CHOICE",
           "members": [
             {
-              "type": "SEQ",
+              "type": "CHOICE",
               "members": [
                 {
-                  "type": "FIELD",
-                  "name": "operand",
-                  "content": {
-                    "type": "SYMBOL",
-                    "name": "_condition_operand"
-                  }
-                },
-                {
-                  "type": "CHOICE",
+                  "type": "SEQ",
                   "members": [
                     {
-                      "type": "SYMBOL",
-                      "name": "_role_trailing"
+                      "type": "FIELD",
+                      "name": "operand",
+                      "content": {
+                        "type": "SYMBOL",
+                        "name": "_condition_operand"
+                      }
                     },
                     {
-                      "type": "BLANK"
+                      "type": "CHOICE",
+                      "members": [
+                        {
+                          "type": "SYMBOL",
+                          "name": "_role_trailing"
+                        },
+                        {
+                          "type": "BLANK"
+                        }
+                      ]
                     }
                   ]
+                },
+                {
+                  "type": "SYMBOL",
+                  "name": "_slot_call"
                 }
               ]
             },
@@ -5183,27 +5413,45 @@
           "type": "CHOICE",
           "members": [
             {
-              "type": "SEQ",
+              "type": "CHOICE",
               "members": [
                 {
-                  "type": "FIELD",
-                  "name": "operand",
-                  "content": {
-                    "type": "SYMBOL",
-                    "name": "_role_operand"
-                  }
-                },
-                {
-                  "type": "CHOICE",
+                  "type": "SEQ",
                   "members": [
                     {
-                      "type": "SYMBOL",
-                      "name": "_fourth_condition_after_2"
+                      "type": "FIELD",
+                      "name": "operand",
+                      "content": {
+                        "type": "SYMBOL",
+                        "name": "_role_operand"
+                      }
                     },
                     {
-                      "type": "BLANK"
+                      "type": "CHOICE",
+                      "members": [
+                        {
+                          "type": "CHOICE",
+                          "members": [
+                            {
+                              "type": "SYMBOL",
+                              "name": "_fourth_condition_after_2"
+                            },
+                            {
+                              "type": "SYMBOL",
+                              "name": "_call_tail"
+                            }
+                          ]
+                        },
+                        {
+                          "type": "BLANK"
+                        }
+                      ]
                     }
                   ]
+                },
+                {
+                  "type": "SYMBOL",
+                  "name": "_slot_call"
                 }
               ]
             },
@@ -5226,27 +5474,45 @@
           "type": "CHOICE",
           "members": [
             {
-              "type": "SEQ",
+              "type": "CHOICE",
               "members": [
                 {
-                  "type": "FIELD",
-                  "name": "operand",
-                  "content": {
-                    "type": "SYMBOL",
-                    "name": "_role_operand"
-                  }
-                },
-                {
-                  "type": "CHOICE",
+                  "type": "SEQ",
                   "members": [
                     {
-                      "type": "SYMBOL",
-                      "name": "_fourth_condition_after_3"
+                      "type": "FIELD",
+                      "name": "operand",
+                      "content": {
+                        "type": "SYMBOL",
+                        "name": "_role_operand"
+                      }
                     },
                     {
-                      "type": "BLANK"
+                      "type": "CHOICE",
+                      "members": [
+                        {
+                          "type": "CHOICE",
+                          "members": [
+                            {
+                              "type": "SYMBOL",
+                              "name": "_fourth_condition_after_3"
+                            },
+                            {
+                              "type": "SYMBOL",
+                              "name": "_call_tail"
+                            }
+                          ]
+                        },
+                        {
+                          "type": "BLANK"
+                        }
+                      ]
                     }
                   ]
+                },
+                {
+                  "type": "SYMBOL",
+                  "name": "_slot_call"
                 }
               ]
             },
@@ -5269,27 +5535,36 @@
           "type": "CHOICE",
           "members": [
             {
-              "type": "SEQ",
+              "type": "CHOICE",
               "members": [
                 {
-                  "type": "FIELD",
-                  "name": "operand",
-                  "content": {
-                    "type": "SYMBOL",
-                    "name": "_condition_operand"
-                  }
-                },
-                {
-                  "type": "CHOICE",
+                  "type": "SEQ",
                   "members": [
                     {
-                      "type": "SYMBOL",
-                      "name": "_role_trailing"
+                      "type": "FIELD",
+                      "name": "operand",
+                      "content": {
+                        "type": "SYMBOL",
+                        "name": "_condition_operand"
+                      }
                     },
                     {
-                      "type": "BLANK"
+                      "type": "CHOICE",
+                      "members": [
+                        {
+                          "type": "SYMBOL",
+                          "name": "_role_trailing"
+                        },
+                        {
+                          "type": "BLANK"
+                        }
+                      ]
                     }
                   ]
+                },
+                {
+                  "type": "SYMBOL",
+                  "name": "_slot_call"
                 }
               ]
             },
@@ -5312,27 +5587,36 @@
           "type": "CHOICE",
           "members": [
             {
-              "type": "SEQ",
+              "type": "CHOICE",
               "members": [
                 {
-                  "type": "FIELD",
-                  "name": "operand",
-                  "content": {
-                    "type": "SYMBOL",
-                    "name": "_system_operand"
-                  }
-                },
-                {
-                  "type": "CHOICE",
+                  "type": "SEQ",
                   "members": [
                     {
-                      "type": "SYMBOL",
-                      "name": "_role_trailing"
+                      "type": "FIELD",
+                      "name": "operand",
+                      "content": {
+                        "type": "SYMBOL",
+                        "name": "_system_operand"
+                      }
                     },
                     {
-                      "type": "BLANK"
+                      "type": "CHOICE",
+                      "members": [
+                        {
+                          "type": "SYMBOL",
+                          "name": "_role_trailing"
+                        },
+                        {
+                          "type": "BLANK"
+                        }
+                      ]
                     }
                   ]
+                },
+                {
+                  "type": "SYMBOL",
+                  "name": "_slot_call"
                 }
               ]
             },
@@ -5355,27 +5639,45 @@
           "type": "CHOICE",
           "members": [
             {
-              "type": "SEQ",
+              "type": "CHOICE",
               "members": [
                 {
-                  "type": "FIELD",
-                  "name": "operand",
-                  "content": {
-                    "type": "SYMBOL",
-                    "name": "_role_operand"
-                  }
-                },
-                {
-                  "type": "CHOICE",
+                  "type": "SEQ",
                   "members": [
                     {
-                      "type": "SYMBOL",
-                      "name": "_third_system_after_2"
+                      "type": "FIELD",
+                      "name": "operand",
+                      "content": {
+                        "type": "SYMBOL",
+                        "name": "_role_operand"
+                      }
                     },
                     {
-                      "type": "BLANK"
+                      "type": "CHOICE",
+                      "members": [
+                        {
+                          "type": "CHOICE",
+                          "members": [
+                            {
+                              "type": "SYMBOL",
+                              "name": "_third_system_after_2"
+                            },
+                            {
+                              "type": "SYMBOL",
+                              "name": "_call_tail"
+                            }
+                          ]
+                        },
+                        {
+                          "type": "BLANK"
+                        }
+                      ]
                     }
                   ]
+                },
+                {
+                  "type": "SYMBOL",
+                  "name": "_slot_call"
                 }
               ]
             },
@@ -5398,27 +5700,36 @@
           "type": "CHOICE",
           "members": [
             {
-              "type": "SEQ",
+              "type": "CHOICE",
               "members": [
                 {
-                  "type": "FIELD",
-                  "name": "operand",
-                  "content": {
-                    "type": "SYMBOL",
-                    "name": "_system_operand"
-                  }
-                },
-                {
-                  "type": "CHOICE",
+                  "type": "SEQ",
                   "members": [
                     {
-                      "type": "SYMBOL",
-                      "name": "_role_trailing"
+                      "type": "FIELD",
+                      "name": "operand",
+                      "content": {
+                        "type": "SYMBOL",
+                        "name": "_system_operand"
+                      }
                     },
                     {
-                      "type": "BLANK"
+                      "type": "CHOICE",
+                      "members": [
+                        {
+                          "type": "SYMBOL",
+                          "name": "_role_trailing"
+                        },
+                        {
+                          "type": "BLANK"
+                        }
+                      ]
                     }
                   ]
+                },
+                {
+                  "type": "SYMBOL",
+                  "name": "_slot_call"
                 }
               ]
             },
@@ -5441,27 +5752,45 @@
           "type": "CHOICE",
           "members": [
             {
-              "type": "SEQ",
+              "type": "CHOICE",
               "members": [
                 {
-                  "type": "FIELD",
-                  "name": "operand",
-                  "content": {
-                    "type": "SYMBOL",
-                    "name": "_system_operand"
-                  }
-                },
-                {
-                  "type": "CHOICE",
+                  "type": "SEQ",
                   "members": [
                     {
-                      "type": "SYMBOL",
-                      "name": "_second_and_third_system_after_2"
+                      "type": "FIELD",
+                      "name": "operand",
+                      "content": {
+                        "type": "SYMBOL",
+                        "name": "_system_operand"
+                      }
                     },
                     {
-                      "type": "BLANK"
+                      "type": "CHOICE",
+                      "members": [
+                        {
+                          "type": "CHOICE",
+                          "members": [
+                            {
+                              "type": "SYMBOL",
+                              "name": "_second_and_third_system_after_2"
+                            },
+                            {
+                              "type": "SYMBOL",
+                              "name": "_call_tail"
+                            }
+                          ]
+                        },
+                        {
+                          "type": "BLANK"
+                        }
+                      ]
                     }
                   ]
+                },
+                {
+                  "type": "SYMBOL",
+                  "name": "_slot_call"
                 }
               ]
             },
@@ -5484,27 +5813,36 @@
           "type": "CHOICE",
           "members": [
             {
-              "type": "SEQ",
+              "type": "CHOICE",
               "members": [
                 {
-                  "type": "FIELD",
-                  "name": "operand",
-                  "content": {
-                    "type": "SYMBOL",
-                    "name": "_system_operand"
-                  }
-                },
-                {
-                  "type": "CHOICE",
+                  "type": "SEQ",
                   "members": [
                     {
-                      "type": "SYMBOL",
-                      "name": "_role_trailing"
+                      "type": "FIELD",
+                      "name": "operand",
+                      "content": {
+                        "type": "SYMBOL",
+                        "name": "_system_operand"
+                      }
                     },
                     {
-                      "type": "BLANK"
+                      "type": "CHOICE",
+                      "members": [
+                        {
+                          "type": "SYMBOL",
+                          "name": "_role_trailing"
+                        },
+                        {
+                          "type": "BLANK"
+                        }
+                      ]
                     }
                   ]
+                },
+                {
+                  "type": "SYMBOL",
+                  "name": "_slot_call"
                 }
               ]
             },
@@ -5527,27 +5865,45 @@
           "type": "CHOICE",
           "members": [
             {
-              "type": "SEQ",
+              "type": "CHOICE",
               "members": [
                 {
-                  "type": "FIELD",
-                  "name": "operand",
-                  "content": {
-                    "type": "SYMBOL",
-                    "name": "_role_operand"
-                  }
-                },
-                {
-                  "type": "CHOICE",
+                  "type": "SEQ",
                   "members": [
                     {
-                      "type": "SYMBOL",
-                      "name": "_third_and_fourth_system_after_2"
+                      "type": "FIELD",
+                      "name": "operand",
+                      "content": {
+                        "type": "SYMBOL",
+                        "name": "_role_operand"
+                      }
                     },
                     {
-                      "type": "BLANK"
+                      "type": "CHOICE",
+                      "members": [
+                        {
+                          "type": "CHOICE",
+                          "members": [
+                            {
+                              "type": "SYMBOL",
+                              "name": "_third_and_fourth_system_after_2"
+                            },
+                            {
+                              "type": "SYMBOL",
+                              "name": "_call_tail"
+                            }
+                          ]
+                        },
+                        {
+                          "type": "BLANK"
+                        }
+                      ]
                     }
                   ]
+                },
+                {
+                  "type": "SYMBOL",
+                  "name": "_slot_call"
                 }
               ]
             },
@@ -5570,27 +5926,45 @@
           "type": "CHOICE",
           "members": [
             {
-              "type": "SEQ",
+              "type": "CHOICE",
               "members": [
                 {
-                  "type": "FIELD",
-                  "name": "operand",
-                  "content": {
-                    "type": "SYMBOL",
-                    "name": "_system_operand"
-                  }
-                },
-                {
-                  "type": "CHOICE",
+                  "type": "SEQ",
                   "members": [
                     {
-                      "type": "SYMBOL",
-                      "name": "_third_and_fourth_system_after_3"
+                      "type": "FIELD",
+                      "name": "operand",
+                      "content": {
+                        "type": "SYMBOL",
+                        "name": "_system_operand"
+                      }
                     },
                     {
-                      "type": "BLANK"
+                      "type": "CHOICE",
+                      "members": [
+                        {
+                          "type": "CHOICE",
+                          "members": [
+                            {
+                              "type": "SYMBOL",
+                              "name": "_third_and_fourth_system_after_3"
+                            },
+                            {
+                              "type": "SYMBOL",
+                              "name": "_call_tail"
+                            }
+                          ]
+                        },
+                        {
+                          "type": "BLANK"
+                        }
+                      ]
                     }
                   ]
+                },
+                {
+                  "type": "SYMBOL",
+                  "name": "_slot_call"
                 }
               ]
             },
@@ -5613,27 +5987,36 @@
           "type": "CHOICE",
           "members": [
             {
-              "type": "SEQ",
+              "type": "CHOICE",
               "members": [
                 {
-                  "type": "FIELD",
-                  "name": "operand",
-                  "content": {
-                    "type": "SYMBOL",
-                    "name": "_system_operand"
-                  }
-                },
-                {
-                  "type": "CHOICE",
+                  "type": "SEQ",
                   "members": [
                     {
-                      "type": "SYMBOL",
-                      "name": "_role_trailing"
+                      "type": "FIELD",
+                      "name": "operand",
+                      "content": {
+                        "type": "SYMBOL",
+                        "name": "_system_operand"
+                      }
                     },
                     {
-                      "type": "BLANK"
+                      "type": "CHOICE",
+                      "members": [
+                        {
+                          "type": "SYMBOL",
+                          "name": "_role_trailing"
+                        },
+                        {
+                          "type": "BLANK"
+                        }
+                      ]
                     }
                   ]
+                },
+                {
+                  "type": "SYMBOL",
+                  "name": "_slot_call"
                 }
               ]
             },
@@ -5656,27 +6039,45 @@
           "type": "CHOICE",
           "members": [
             {
-              "type": "SEQ",
+              "type": "CHOICE",
               "members": [
                 {
-                  "type": "FIELD",
-                  "name": "operand",
-                  "content": {
-                    "type": "SYMBOL",
-                    "name": "_system_operand"
-                  }
-                },
-                {
-                  "type": "CHOICE",
+                  "type": "SEQ",
                   "members": [
                     {
-                      "type": "SYMBOL",
-                      "name": "_second_to_fourth_system_after_2"
+                      "type": "FIELD",
+                      "name": "operand",
+                      "content": {
+                        "type": "SYMBOL",
+                        "name": "_system_operand"
+                      }
                     },
                     {
-                      "type": "BLANK"
+                      "type": "CHOICE",
+                      "members": [
+                        {
+                          "type": "CHOICE",
+                          "members": [
+                            {
+                              "type": "SYMBOL",
+                              "name": "_second_to_fourth_system_after_2"
+                            },
+                            {
+                              "type": "SYMBOL",
+                              "name": "_call_tail"
+                            }
+                          ]
+                        },
+                        {
+                          "type": "BLANK"
+                        }
+                      ]
                     }
                   ]
+                },
+                {
+                  "type": "SYMBOL",
+                  "name": "_slot_call"
                 }
               ]
             },
@@ -5699,27 +6100,45 @@
           "type": "CHOICE",
           "members": [
             {
-              "type": "SEQ",
+              "type": "CHOICE",
               "members": [
                 {
-                  "type": "FIELD",
-                  "name": "operand",
-                  "content": {
-                    "type": "SYMBOL",
-                    "name": "_system_operand"
-                  }
-                },
-                {
-                  "type": "CHOICE",
+                  "type": "SEQ",
                   "members": [
                     {
-                      "type": "SYMBOL",
-                      "name": "_second_to_fourth_system_after_3"
+                      "type": "FIELD",
+                      "name": "operand",
+                      "content": {
+                        "type": "SYMBOL",
+                        "name": "_system_operand"
+                      }
                     },
                     {
-                      "type": "BLANK"
+                      "type": "CHOICE",
+                      "members": [
+                        {
+                          "type": "CHOICE",
+                          "members": [
+                            {
+                              "type": "SYMBOL",
+                              "name": "_second_to_fourth_system_after_3"
+                            },
+                            {
+                              "type": "SYMBOL",
+                              "name": "_call_tail"
+                            }
+                          ]
+                        },
+                        {
+                          "type": "BLANK"
+                        }
+                      ]
                     }
                   ]
+                },
+                {
+                  "type": "SYMBOL",
+                  "name": "_slot_call"
                 }
               ]
             },
@@ -5742,27 +6161,36 @@
           "type": "CHOICE",
           "members": [
             {
-              "type": "SEQ",
+              "type": "CHOICE",
               "members": [
                 {
-                  "type": "FIELD",
-                  "name": "operand",
-                  "content": {
-                    "type": "SYMBOL",
-                    "name": "_system_operand"
-                  }
-                },
-                {
-                  "type": "CHOICE",
+                  "type": "SEQ",
                   "members": [
                     {
-                      "type": "SYMBOL",
-                      "name": "_role_trailing"
+                      "type": "FIELD",
+                      "name": "operand",
+                      "content": {
+                        "type": "SYMBOL",
+                        "name": "_system_operand"
+                      }
                     },
                     {
-                      "type": "BLANK"
+                      "type": "CHOICE",
+                      "members": [
+                        {
+                          "type": "SYMBOL",
+                          "name": "_role_trailing"
+                        },
+                        {
+                          "type": "BLANK"
+                        }
+                      ]
                     }
                   ]
+                },
+                {
+                  "type": "SYMBOL",
+                  "name": "_slot_call"
                 }
               ]
             },
@@ -5785,27 +6213,45 @@
           "type": "CHOICE",
           "members": [
             {
-              "type": "SEQ",
+              "type": "CHOICE",
               "members": [
                 {
-                  "type": "FIELD",
-                  "name": "operand",
-                  "content": {
-                    "type": "SYMBOL",
-                    "name": "_role_operand"
-                  }
-                },
-                {
-                  "type": "CHOICE",
+                  "type": "SEQ",
                   "members": [
                     {
-                      "type": "SYMBOL",
-                      "name": "_third_to_fifth_system_after_2"
+                      "type": "FIELD",
+                      "name": "operand",
+                      "content": {
+                        "type": "SYMBOL",
+                        "name": "_role_operand"
+                      }
                     },
                     {
-                      "type": "BLANK"
+                      "type": "CHOICE",
+                      "members": [
+                        {
+                          "type": "CHOICE",
+                          "members": [
+                            {
+                              "type": "SYMBOL",
+                              "name": "_third_to_fifth_system_after_2"
+                            },
+                            {
+                              "type": "SYMBOL",
+                              "name": "_call_tail"
+                            }
+                          ]
+                        },
+                        {
+                          "type": "BLANK"
+                        }
+                      ]
                     }
                   ]
+                },
+                {
+                  "type": "SYMBOL",
+                  "name": "_slot_call"
                 }
               ]
             },
@@ -5828,27 +6274,45 @@
           "type": "CHOICE",
           "members": [
             {
-              "type": "SEQ",
+              "type": "CHOICE",
               "members": [
                 {
-                  "type": "FIELD",
-                  "name": "operand",
-                  "content": {
-                    "type": "SYMBOL",
-                    "name": "_system_operand"
-                  }
-                },
-                {
-                  "type": "CHOICE",
+                  "type": "SEQ",
                   "members": [
                     {
-                      "type": "SYMBOL",
-                      "name": "_third_to_fifth_system_after_3"
+                      "type": "FIELD",
+                      "name": "operand",
+                      "content": {
+                        "type": "SYMBOL",
+                        "name": "_system_operand"
+                      }
                     },
                     {
-                      "type": "BLANK"
+                      "type": "CHOICE",
+                      "members": [
+                        {
+                          "type": "CHOICE",
+                          "members": [
+                            {
+                              "type": "SYMBOL",
+                              "name": "_third_to_fifth_system_after_3"
+                            },
+                            {
+                              "type": "SYMBOL",
+                              "name": "_call_tail"
+                            }
+                          ]
+                        },
+                        {
+                          "type": "BLANK"
+                        }
+                      ]
                     }
                   ]
+                },
+                {
+                  "type": "SYMBOL",
+                  "name": "_slot_call"
                 }
               ]
             },
@@ -5871,27 +6335,45 @@
           "type": "CHOICE",
           "members": [
             {
-              "type": "SEQ",
+              "type": "CHOICE",
               "members": [
                 {
-                  "type": "FIELD",
-                  "name": "operand",
-                  "content": {
-                    "type": "SYMBOL",
-                    "name": "_system_operand"
-                  }
-                },
-                {
-                  "type": "CHOICE",
+                  "type": "SEQ",
                   "members": [
                     {
-                      "type": "SYMBOL",
-                      "name": "_third_to_fifth_system_after_4"
+                      "type": "FIELD",
+                      "name": "operand",
+                      "content": {
+                        "type": "SYMBOL",
+                        "name": "_system_operand"
+                      }
                     },
                     {
-                      "type": "BLANK"
+                      "type": "CHOICE",
+                      "members": [
+                        {
+                          "type": "CHOICE",
+                          "members": [
+                            {
+                              "type": "SYMBOL",
+                              "name": "_third_to_fifth_system_after_4"
+                            },
+                            {
+                              "type": "SYMBOL",
+                              "name": "_call_tail"
+                            }
+                          ]
+                        },
+                        {
+                          "type": "BLANK"
+                        }
+                      ]
                     }
                   ]
+                },
+                {
+                  "type": "SYMBOL",
+                  "name": "_slot_call"
                 }
               ]
             },
@@ -5914,27 +6396,36 @@
           "type": "CHOICE",
           "members": [
             {
-              "type": "SEQ",
+              "type": "CHOICE",
               "members": [
                 {
-                  "type": "FIELD",
-                  "name": "operand",
-                  "content": {
-                    "type": "SYMBOL",
-                    "name": "_system_operand"
-                  }
-                },
-                {
-                  "type": "CHOICE",
+                  "type": "SEQ",
                   "members": [
                     {
-                      "type": "SYMBOL",
-                      "name": "_role_trailing"
+                      "type": "FIELD",
+                      "name": "operand",
+                      "content": {
+                        "type": "SYMBOL",
+                        "name": "_system_operand"
+                      }
                     },
                     {
-                      "type": "BLANK"
+                      "type": "CHOICE",
+                      "members": [
+                        {
+                          "type": "SYMBOL",
+                          "name": "_role_trailing"
+                        },
+                        {
+                          "type": "BLANK"
+                        }
+                      ]
                     }
                   ]
+                },
+                {
+                  "type": "SYMBOL",
+                  "name": "_slot_call"
                 }
               ]
             },
@@ -5973,27 +6464,36 @@
               "type": "CHOICE",
               "members": [
                 {
-                  "type": "SEQ",
+                  "type": "CHOICE",
                   "members": [
                     {
-                      "type": "FIELD",
-                      "name": "operand",
-                      "content": {
-                        "type": "SYMBOL",
-                        "name": "_label_operand"
-                      }
-                    },
-                    {
-                      "type": "CHOICE",
+                      "type": "SEQ",
                       "members": [
                         {
-                          "type": "SYMBOL",
-                          "name": "_role_trailing"
+                          "type": "FIELD",
+                          "name": "operand",
+                          "content": {
+                            "type": "SYMBOL",
+                            "name": "_label_operand"
+                          }
                         },
                         {
-                          "type": "BLANK"
+                          "type": "CHOICE",
+                          "members": [
+                            {
+                              "type": "SYMBOL",
+                              "name": "_role_trailing"
+                            },
+                            {
+                              "type": "BLANK"
+                            }
+                          ]
                         }
                       ]
+                    },
+                    {
+                      "type": "SYMBOL",
+                      "name": "_slot_call"
                     }
                   ]
                 },
@@ -6024,27 +6524,45 @@
               "type": "CHOICE",
               "members": [
                 {
-                  "type": "SEQ",
+                  "type": "CHOICE",
                   "members": [
                     {
-                      "type": "FIELD",
-                      "name": "operand",
-                      "content": {
-                        "type": "SYMBOL",
-                        "name": "_label_operand"
-                      }
-                    },
-                    {
-                      "type": "CHOICE",
+                      "type": "SEQ",
                       "members": [
                         {
-                          "type": "SYMBOL",
-                          "name": "_first_two_labels_after_1"
+                          "type": "FIELD",
+                          "name": "operand",
+                          "content": {
+                            "type": "SYMBOL",
+                            "name": "_label_operand"
+                          }
                         },
                         {
-                          "type": "BLANK"
+                          "type": "CHOICE",
+                          "members": [
+                            {
+                              "type": "CHOICE",
+                              "members": [
+                                {
+                                  "type": "SYMBOL",
+                                  "name": "_first_two_labels_after_1"
+                                },
+                                {
+                                  "type": "SYMBOL",
+                                  "name": "_call_tail"
+                                }
+                              ]
+                            },
+                            {
+                              "type": "BLANK"
+                            }
+                          ]
                         }
                       ]
+                    },
+                    {
+                      "type": "SYMBOL",
+                      "name": "_slot_call"
                     }
                   ]
                 },
@@ -6075,27 +6593,45 @@
               "type": "CHOICE",
               "members": [
                 {
-                  "type": "SEQ",
+                  "type": "CHOICE",
                   "members": [
                     {
-                      "type": "FIELD",
-                      "name": "operand",
-                      "content": {
-                        "type": "SYMBOL",
-                        "name": "_role_operand"
-                      }
-                    },
-                    {
-                      "type": "CHOICE",
+                      "type": "SEQ",
                       "members": [
                         {
-                          "type": "SYMBOL",
-                          "name": "_second_label_after_1"
+                          "type": "FIELD",
+                          "name": "operand",
+                          "content": {
+                            "type": "SYMBOL",
+                            "name": "_role_operand"
+                          }
                         },
                         {
-                          "type": "BLANK"
+                          "type": "CHOICE",
+                          "members": [
+                            {
+                              "type": "CHOICE",
+                              "members": [
+                                {
+                                  "type": "SYMBOL",
+                                  "name": "_second_label_after_1"
+                                },
+                                {
+                                  "type": "SYMBOL",
+                                  "name": "_call_tail"
+                                }
+                              ]
+                            },
+                            {
+                              "type": "BLANK"
+                            }
+                          ]
                         }
                       ]
+                    },
+                    {
+                      "type": "SYMBOL",
+                      "name": "_slot_call"
                     }
                   ]
                 },
@@ -6148,8 +6684,17 @@
                             }
                           },
                           {
-                            "type": "SYMBOL",
-                            "name": "_label_after_optional_first_after_1"
+                            "type": "CHOICE",
+                            "members": [
+                              {
+                                "type": "SYMBOL",
+                                "name": "_label_after_optional_first_after_1"
+                              },
+                              {
+                                "type": "SYMBOL",
+                                "name": "_call_tail"
+                              }
+                            ]
                           }
                         ]
                       }
@@ -6178,6 +6723,10 @@
                           ]
                         }
                       ]
+                    },
+                    {
+                      "type": "SYMBOL",
+                      "name": "_slot_call"
                     }
                   ]
                 },
@@ -6208,27 +6757,45 @@
               "type": "CHOICE",
               "members": [
                 {
-                  "type": "SEQ",
+                  "type": "CHOICE",
                   "members": [
                     {
-                      "type": "FIELD",
-                      "name": "operand",
-                      "content": {
-                        "type": "SYMBOL",
-                        "name": "_role_operand"
-                      }
-                    },
-                    {
-                      "type": "CHOICE",
+                      "type": "SEQ",
                       "members": [
                         {
-                          "type": "SYMBOL",
-                          "name": "_third_label_after_1"
+                          "type": "FIELD",
+                          "name": "operand",
+                          "content": {
+                            "type": "SYMBOL",
+                            "name": "_role_operand"
+                          }
                         },
                         {
-                          "type": "BLANK"
+                          "type": "CHOICE",
+                          "members": [
+                            {
+                              "type": "CHOICE",
+                              "members": [
+                                {
+                                  "type": "SYMBOL",
+                                  "name": "_third_label_after_1"
+                                },
+                                {
+                                  "type": "SYMBOL",
+                                  "name": "_call_tail"
+                                }
+                              ]
+                            },
+                            {
+                              "type": "BLANK"
+                            }
+                          ]
                         }
                       ]
+                    },
+                    {
+                      "type": "SYMBOL",
+                      "name": "_slot_call"
                     }
                   ]
                 },
@@ -6259,27 +6826,45 @@
               "type": "CHOICE",
               "members": [
                 {
-                  "type": "SEQ",
+                  "type": "CHOICE",
                   "members": [
                     {
-                      "type": "FIELD",
-                      "name": "operand",
-                      "content": {
-                        "type": "SYMBOL",
-                        "name": "_role_operand"
-                      }
-                    },
-                    {
-                      "type": "CHOICE",
+                      "type": "SEQ",
                       "members": [
                         {
-                          "type": "SYMBOL",
-                          "name": "_label_after_optional_second_after_1"
+                          "type": "FIELD",
+                          "name": "operand",
+                          "content": {
+                            "type": "SYMBOL",
+                            "name": "_role_operand"
+                          }
                         },
                         {
-                          "type": "BLANK"
+                          "type": "CHOICE",
+                          "members": [
+                            {
+                              "type": "CHOICE",
+                              "members": [
+                                {
+                                  "type": "SYMBOL",
+                                  "name": "_label_after_optional_second_after_1"
+                                },
+                                {
+                                  "type": "SYMBOL",
+                                  "name": "_call_tail"
+                                }
+                              ]
+                            },
+                            {
+                              "type": "BLANK"
+                            }
+                          ]
                         }
                       ]
+                    },
+                    {
+                      "type": "SYMBOL",
+                      "name": "_slot_call"
                     }
                   ]
                 },
@@ -6310,27 +6895,45 @@
               "type": "CHOICE",
               "members": [
                 {
-                  "type": "SEQ",
+                  "type": "CHOICE",
                   "members": [
                     {
-                      "type": "FIELD",
-                      "name": "operand",
-                      "content": {
-                        "type": "SYMBOL",
-                        "name": "_label_operand"
-                      }
-                    },
-                    {
-                      "type": "CHOICE",
+                      "type": "SEQ",
                       "members": [
                         {
-                          "type": "SYMBOL",
-                          "name": "_labels_then_condition_after_1"
+                          "type": "FIELD",
+                          "name": "operand",
+                          "content": {
+                            "type": "SYMBOL",
+                            "name": "_label_operand"
+                          }
                         },
                         {
-                          "type": "BLANK"
+                          "type": "CHOICE",
+                          "members": [
+                            {
+                              "type": "CHOICE",
+                              "members": [
+                                {
+                                  "type": "SYMBOL",
+                                  "name": "_labels_then_condition_after_1"
+                                },
+                                {
+                                  "type": "SYMBOL",
+                                  "name": "_call_tail"
+                                }
+                              ]
+                            },
+                            {
+                              "type": "BLANK"
+                            }
+                          ]
                         }
                       ]
+                    },
+                    {
+                      "type": "SYMBOL",
+                      "name": "_slot_call"
                     }
                   ]
                 },
@@ -6361,27 +6964,36 @@
               "type": "CHOICE",
               "members": [
                 {
-                  "type": "SEQ",
+                  "type": "CHOICE",
                   "members": [
                     {
-                      "type": "FIELD",
-                      "name": "operand",
-                      "content": {
-                        "type": "SYMBOL",
-                        "name": "_condition_operand"
-                      }
-                    },
-                    {
-                      "type": "CHOICE",
+                      "type": "SEQ",
                       "members": [
                         {
-                          "type": "SYMBOL",
-                          "name": "_role_trailing"
+                          "type": "FIELD",
+                          "name": "operand",
+                          "content": {
+                            "type": "SYMBOL",
+                            "name": "_condition_operand"
+                          }
                         },
                         {
-                          "type": "BLANK"
+                          "type": "CHOICE",
+                          "members": [
+                            {
+                              "type": "SYMBOL",
+                              "name": "_role_trailing"
+                            },
+                            {
+                              "type": "BLANK"
+                            }
+                          ]
                         }
                       ]
+                    },
+                    {
+                      "type": "SYMBOL",
+                      "name": "_slot_call"
                     }
                   ]
                 },
@@ -6412,27 +7024,45 @@
               "type": "CHOICE",
               "members": [
                 {
-                  "type": "SEQ",
+                  "type": "CHOICE",
                   "members": [
                     {
-                      "type": "FIELD",
-                      "name": "operand",
-                      "content": {
-                        "type": "SYMBOL",
-                        "name": "_role_operand"
-                      }
-                    },
-                    {
-                      "type": "CHOICE",
+                      "type": "SEQ",
                       "members": [
                         {
-                          "type": "SYMBOL",
-                          "name": "_second_condition_after_1"
+                          "type": "FIELD",
+                          "name": "operand",
+                          "content": {
+                            "type": "SYMBOL",
+                            "name": "_role_operand"
+                          }
                         },
                         {
-                          "type": "BLANK"
+                          "type": "CHOICE",
+                          "members": [
+                            {
+                              "type": "CHOICE",
+                              "members": [
+                                {
+                                  "type": "SYMBOL",
+                                  "name": "_second_condition_after_1"
+                                },
+                                {
+                                  "type": "SYMBOL",
+                                  "name": "_call_tail"
+                                }
+                              ]
+                            },
+                            {
+                              "type": "BLANK"
+                            }
+                          ]
                         }
                       ]
+                    },
+                    {
+                      "type": "SYMBOL",
+                      "name": "_slot_call"
                     }
                   ]
                 },
@@ -6463,27 +7093,45 @@
               "type": "CHOICE",
               "members": [
                 {
-                  "type": "SEQ",
+                  "type": "CHOICE",
                   "members": [
                     {
-                      "type": "FIELD",
-                      "name": "operand",
-                      "content": {
-                        "type": "SYMBOL",
-                        "name": "_role_operand"
-                      }
-                    },
-                    {
-                      "type": "CHOICE",
+                      "type": "SEQ",
                       "members": [
                         {
-                          "type": "SYMBOL",
-                          "name": "_third_condition_after_1"
+                          "type": "FIELD",
+                          "name": "operand",
+                          "content": {
+                            "type": "SYMBOL",
+                            "name": "_role_operand"
+                          }
                         },
                         {
-                          "type": "BLANK"
+                          "type": "CHOICE",
+                          "members": [
+                            {
+                              "type": "CHOICE",
+                              "members": [
+                                {
+                                  "type": "SYMBOL",
+                                  "name": "_third_condition_after_1"
+                                },
+                                {
+                                  "type": "SYMBOL",
+                                  "name": "_call_tail"
+                                }
+                              ]
+                            },
+                            {
+                              "type": "BLANK"
+                            }
+                          ]
                         }
                       ]
+                    },
+                    {
+                      "type": "SYMBOL",
+                      "name": "_slot_call"
                     }
                   ]
                 },
@@ -6514,27 +7162,45 @@
               "type": "CHOICE",
               "members": [
                 {
-                  "type": "SEQ",
+                  "type": "CHOICE",
                   "members": [
                     {
-                      "type": "FIELD",
-                      "name": "operand",
-                      "content": {
-                        "type": "SYMBOL",
-                        "name": "_role_operand"
-                      }
-                    },
-                    {
-                      "type": "CHOICE",
+                      "type": "SEQ",
                       "members": [
                         {
-                          "type": "SYMBOL",
-                          "name": "_fourth_condition_after_1"
+                          "type": "FIELD",
+                          "name": "operand",
+                          "content": {
+                            "type": "SYMBOL",
+                            "name": "_role_operand"
+                          }
                         },
                         {
-                          "type": "BLANK"
+                          "type": "CHOICE",
+                          "members": [
+                            {
+                              "type": "CHOICE",
+                              "members": [
+                                {
+                                  "type": "SYMBOL",
+                                  "name": "_fourth_condition_after_1"
+                                },
+                                {
+                                  "type": "SYMBOL",
+                                  "name": "_call_tail"
+                                }
+                              ]
+                            },
+                            {
+                              "type": "BLANK"
+                            }
+                          ]
                         }
                       ]
+                    },
+                    {
+                      "type": "SYMBOL",
+                      "name": "_slot_call"
                     }
                   ]
                 },
@@ -6565,27 +7231,36 @@
               "type": "CHOICE",
               "members": [
                 {
-                  "type": "SEQ",
+                  "type": "CHOICE",
                   "members": [
                     {
-                      "type": "FIELD",
-                      "name": "operand",
-                      "content": {
-                        "type": "SYMBOL",
-                        "name": "_system_operand"
-                      }
-                    },
-                    {
-                      "type": "CHOICE",
+                      "type": "SEQ",
                       "members": [
                         {
-                          "type": "SYMBOL",
-                          "name": "_role_trailing"
+                          "type": "FIELD",
+                          "name": "operand",
+                          "content": {
+                            "type": "SYMBOL",
+                            "name": "_system_operand"
+                          }
                         },
                         {
-                          "type": "BLANK"
+                          "type": "CHOICE",
+                          "members": [
+                            {
+                              "type": "SYMBOL",
+                              "name": "_role_trailing"
+                            },
+                            {
+                              "type": "BLANK"
+                            }
+                          ]
                         }
                       ]
+                    },
+                    {
+                      "type": "SYMBOL",
+                      "name": "_slot_call"
                     }
                   ]
                 },
@@ -6616,27 +7291,45 @@
               "type": "CHOICE",
               "members": [
                 {
-                  "type": "SEQ",
+                  "type": "CHOICE",
                   "members": [
                     {
-                      "type": "FIELD",
-                      "name": "operand",
-                      "content": {
-                        "type": "SYMBOL",
-                        "name": "_role_operand"
-                      }
-                    },
-                    {
-                      "type": "CHOICE",
+                      "type": "SEQ",
                       "members": [
                         {
-                          "type": "SYMBOL",
-                          "name": "_second_system_after_1"
+                          "type": "FIELD",
+                          "name": "operand",
+                          "content": {
+                            "type": "SYMBOL",
+                            "name": "_role_operand"
+                          }
                         },
                         {
-                          "type": "BLANK"
+                          "type": "CHOICE",
+                          "members": [
+                            {
+                              "type": "CHOICE",
+                              "members": [
+                                {
+                                  "type": "SYMBOL",
+                                  "name": "_second_system_after_1"
+                                },
+                                {
+                                  "type": "SYMBOL",
+                                  "name": "_call_tail"
+                                }
+                              ]
+                            },
+                            {
+                              "type": "BLANK"
+                            }
+                          ]
                         }
                       ]
+                    },
+                    {
+                      "type": "SYMBOL",
+                      "name": "_slot_call"
                     }
                   ]
                 },
@@ -6667,27 +7360,45 @@
               "type": "CHOICE",
               "members": [
                 {
-                  "type": "SEQ",
+                  "type": "CHOICE",
                   "members": [
                     {
-                      "type": "FIELD",
-                      "name": "operand",
-                      "content": {
-                        "type": "SYMBOL",
-                        "name": "_role_operand"
-                      }
-                    },
-                    {
-                      "type": "CHOICE",
+                      "type": "SEQ",
                       "members": [
                         {
-                          "type": "SYMBOL",
-                          "name": "_third_system_after_1"
+                          "type": "FIELD",
+                          "name": "operand",
+                          "content": {
+                            "type": "SYMBOL",
+                            "name": "_role_operand"
+                          }
                         },
                         {
-                          "type": "BLANK"
+                          "type": "CHOICE",
+                          "members": [
+                            {
+                              "type": "CHOICE",
+                              "members": [
+                                {
+                                  "type": "SYMBOL",
+                                  "name": "_third_system_after_1"
+                                },
+                                {
+                                  "type": "SYMBOL",
+                                  "name": "_call_tail"
+                                }
+                              ]
+                            },
+                            {
+                              "type": "BLANK"
+                            }
+                          ]
                         }
                       ]
+                    },
+                    {
+                      "type": "SYMBOL",
+                      "name": "_slot_call"
                     }
                   ]
                 },
@@ -6718,27 +7429,45 @@
               "type": "CHOICE",
               "members": [
                 {
-                  "type": "SEQ",
+                  "type": "CHOICE",
                   "members": [
                     {
-                      "type": "FIELD",
-                      "name": "operand",
-                      "content": {
-                        "type": "SYMBOL",
-                        "name": "_role_operand"
-                      }
-                    },
-                    {
-                      "type": "CHOICE",
+                      "type": "SEQ",
                       "members": [
                         {
-                          "type": "SYMBOL",
-                          "name": "_second_and_third_system_after_1"
+                          "type": "FIELD",
+                          "name": "operand",
+                          "content": {
+                            "type": "SYMBOL",
+                            "name": "_role_operand"
+                          }
                         },
                         {
-                          "type": "BLANK"
+                          "type": "CHOICE",
+                          "members": [
+                            {
+                              "type": "CHOICE",
+                              "members": [
+                                {
+                                  "type": "SYMBOL",
+                                  "name": "_second_and_third_system_after_1"
+                                },
+                                {
+                                  "type": "SYMBOL",
+                                  "name": "_call_tail"
+                                }
+                              ]
+                            },
+                            {
+                              "type": "BLANK"
+                            }
+                          ]
                         }
                       ]
+                    },
+                    {
+                      "type": "SYMBOL",
+                      "name": "_slot_call"
                     }
                   ]
                 },
@@ -6769,27 +7498,45 @@
               "type": "CHOICE",
               "members": [
                 {
-                  "type": "SEQ",
+                  "type": "CHOICE",
                   "members": [
                     {
-                      "type": "FIELD",
-                      "name": "operand",
-                      "content": {
-                        "type": "SYMBOL",
-                        "name": "_role_operand"
-                      }
-                    },
-                    {
-                      "type": "CHOICE",
+                      "type": "SEQ",
                       "members": [
                         {
-                          "type": "SYMBOL",
-                          "name": "_third_and_fourth_system_after_1"
+                          "type": "FIELD",
+                          "name": "operand",
+                          "content": {
+                            "type": "SYMBOL",
+                            "name": "_role_operand"
+                          }
                         },
                         {
-                          "type": "BLANK"
+                          "type": "CHOICE",
+                          "members": [
+                            {
+                              "type": "CHOICE",
+                              "members": [
+                                {
+                                  "type": "SYMBOL",
+                                  "name": "_third_and_fourth_system_after_1"
+                                },
+                                {
+                                  "type": "SYMBOL",
+                                  "name": "_call_tail"
+                                }
+                              ]
+                            },
+                            {
+                              "type": "BLANK"
+                            }
+                          ]
                         }
                       ]
+                    },
+                    {
+                      "type": "SYMBOL",
+                      "name": "_slot_call"
                     }
                   ]
                 },
@@ -6820,27 +7567,45 @@
               "type": "CHOICE",
               "members": [
                 {
-                  "type": "SEQ",
+                  "type": "CHOICE",
                   "members": [
                     {
-                      "type": "FIELD",
-                      "name": "operand",
-                      "content": {
-                        "type": "SYMBOL",
-                        "name": "_role_operand"
-                      }
-                    },
-                    {
-                      "type": "CHOICE",
+                      "type": "SEQ",
                       "members": [
                         {
-                          "type": "SYMBOL",
-                          "name": "_second_to_fourth_system_after_1"
+                          "type": "FIELD",
+                          "name": "operand",
+                          "content": {
+                            "type": "SYMBOL",
+                            "name": "_role_operand"
+                          }
                         },
                         {
-                          "type": "BLANK"
+                          "type": "CHOICE",
+                          "members": [
+                            {
+                              "type": "CHOICE",
+                              "members": [
+                                {
+                                  "type": "SYMBOL",
+                                  "name": "_second_to_fourth_system_after_1"
+                                },
+                                {
+                                  "type": "SYMBOL",
+                                  "name": "_call_tail"
+                                }
+                              ]
+                            },
+                            {
+                              "type": "BLANK"
+                            }
+                          ]
                         }
                       ]
+                    },
+                    {
+                      "type": "SYMBOL",
+                      "name": "_slot_call"
                     }
                   ]
                 },
@@ -6871,27 +7636,45 @@
               "type": "CHOICE",
               "members": [
                 {
-                  "type": "SEQ",
+                  "type": "CHOICE",
                   "members": [
                     {
-                      "type": "FIELD",
-                      "name": "operand",
-                      "content": {
-                        "type": "SYMBOL",
-                        "name": "_role_operand"
-                      }
-                    },
-                    {
-                      "type": "CHOICE",
+                      "type": "SEQ",
                       "members": [
                         {
-                          "type": "SYMBOL",
-                          "name": "_third_to_fifth_system_after_1"
+                          "type": "FIELD",
+                          "name": "operand",
+                          "content": {
+                            "type": "SYMBOL",
+                            "name": "_role_operand"
+                          }
                         },
                         {
-                          "type": "BLANK"
+                          "type": "CHOICE",
+                          "members": [
+                            {
+                              "type": "CHOICE",
+                              "members": [
+                                {
+                                  "type": "SYMBOL",
+                                  "name": "_third_to_fifth_system_after_1"
+                                },
+                                {
+                                  "type": "SYMBOL",
+                                  "name": "_call_tail"
+                                }
+                              ]
+                            },
+                            {
+                              "type": "BLANK"
+                            }
+                          ]
                         }
                       ]
+                    },
+                    {
+                      "type": "SYMBOL",
+                      "name": "_slot_call"
                     }
                   ]
                 },
@@ -7634,17 +8417,8 @@
                   "type": "FIELD",
                   "name": "name",
                   "content": {
-                    "type": "CHOICE",
-                    "members": [
-                      {
-                        "type": "SYMBOL",
-                        "name": "_definition_name"
-                      },
-                      {
-                        "type": "SYMBOL",
-                        "name": "concatenation"
-                      }
-                    ]
+                    "type": "SYMBOL",
+                    "name": "_definition_name"
                   }
                 },
                 {

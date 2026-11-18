@@ -18,3 +18,67 @@ nop %% ret
     mnemonic: (mnemonic))
   (instruction
     mnemonic: (mnemonic)))
+
+================================================================================
+A C call after an operand is an operand after an ARM register and a decorator after x86 operands
+================================================================================
+
+orreq ip, ip, r6 ARM_BE8(, lsl #24)
+vptestmb %zmm2, %zmm2, %k0 COND_MASK(k2)
+vmovdqu8 (%rax) M(k1), %zmm0
+mov r0, sym F(x)
+add r0, r1 F(x) r2
+
+--------------------------------------------------------------------------------
+
+(source_file
+  (instruction
+    mnemonic: (mnemonic)
+    operand: (register)
+    operand: (register)
+    operand: (register)
+    operand: (macro_call
+      function: (identifier)
+      arguments: (argument_list
+        argument: (shift
+          operator: (shift_operator)
+          amount: (immediate
+            value: (integer))))))
+  (instruction
+    mnemonic: (mnemonic)
+    operand: (register)
+    operand: (register)
+    operand: (decorated_operand
+      operand: (register)
+      decorator: (macro_call
+        function: (identifier)
+        arguments: (argument_list
+          argument: (identifier)))))
+  (instruction
+    mnemonic: (mnemonic)
+    operand: (decorated_operand
+      operand: (memory_operand
+        base: (register))
+      decorator: (macro_call
+        function: (identifier)
+        arguments: (argument_list
+          argument: (identifier))))
+    operand: (register))
+  (instruction
+    mnemonic: (mnemonic)
+    operand: (register)
+    operand: (typed_operand
+      type: (identifier)
+      operand: (macro_call
+        function: (identifier)
+        arguments: (argument_list
+          argument: (identifier)))))
+  (instruction
+    mnemonic: (mnemonic)
+    operand: (register)
+    operand: (register)
+    operand: (macro_call
+      function: (identifier)
+      arguments: (argument_list
+        argument: (identifier)))
+    operand: (register)))

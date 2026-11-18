@@ -1066,17 +1066,20 @@ After `[` or `{` an element is required. `[]` holds a missing element, `{}` a mi
 lane, parses the same way. The scanner closes `[` and `{` at the end of a line, before a separator
 and before any character that cannot continue them (see The external scanner).
 
-A C macro call in an operand list or a register list of ARM and ARM (Apple) needs no comma before or
-after it, since cpp expands it to operands and their commas or to nothing.
+A C macro call in an operand list or a register list of ARM, ARM (Apple) and Assembly needs no comma
+before or after it (cpp expands it to operands with their commas, or to nothing).
 
-| Place                          | Example                                         |
-| ------------------------------ | ----------------------------------------------- |
-| after an operand               | `orreq ip, ip, r6 ARM_BE8(, lsl #24)`           |
-| before an operand              | `add r0, F(x) r1`                               |
-| between register list elements | `push {r4 UNWIND(fpreg,) lr}` (in Assembly too) |
+| Place                              | Example                                 |
+| ---------------------------------- | --------------------------------------- |
+| after an operand                   | `orreq ip, ip, r6 ARM_BE8(, lsl #24)`   |
+| before an operand                  | `add r0, F(x) r1`                       |
+| between register list elements     | `push {r4 UNWIND(fpreg,) lr}`           |
+| in an instruction with typed slots | `b.eq F(x) label`, `ldr x0, label F(x)` |
 
-An operator after the call continues an expression (`add r0, F(x) - r1`). As a limit, a call in an
-Assembly operand list needs its commas (`add r0, r1 F(x)` is an error).
+An operator after the call continues an expression (`add r0, F(x) - r1`). The operands after a call
+in an instruction with typed slots are untyped. In Assembly a call after an x86 register or an AT&T
+memory operand is a decorator (`%k0 COND_MASK(k2)`, `(%rax) M(k1)`), and a name before a call is a
+typed operand (`mov r0, sym F(x)`).
 
 ### Relocations
 
@@ -2339,9 +2342,21 @@ from a scratch copy:
 
 A run of C calls before an operand is one hidden rule, and a plain operand stays inline. Wrapping
 every operand in a hidden rule took 31 states more off ARM and cost 6 points more on `basics`, one
-reduction per operand. Writing the run inline in each list position cost 125 states more. A
-parameter name built from arguments would cost ARM (Apple) 234 states, from its comma-only
-parameter lists, so only the macro name takes one.
+reduction per operand. Writing the run inline in each list position cost 125 states more.
+
+C calls without commas in Assembly operands and in typed slots, and parameter names built from
+arguments, then grew x86 (GAS) from 4,063 to 4,067 states, Assembly from 5,784 to 6,363, ARM from
+2,748 to 2,795 and ARM (Apple) from 2,433 to 2,706. On `basics` Assembly costs 0.29% more, ARM
+0.13%, ARM (Apple) 0.12% less and x86 (GAS) 0.07% less. Removing one change at a time:
+
+| Change                                         | x86 (GAS) | Assembly | ARM | ARM (Apple) |
+| ---------------------------------------------- | --------- | -------- | --- | ----------- |
+| C calls without commas in Assembly operands    | -         | 57       | -   | -           |
+| C calls in typed slots                         | -         | 166      | 45  | 44          |
+| names built from arguments (parameter, `.irp`) | 4         | 4        | 2   | 229         |
+
+The call forms of typed slots are two hidden rules shared by every instruction with typed slots.
+Written inline in each slot they cost Assembly 1,340 states, ARM 397 and ARM (Apple) 396.
 
 NASM parses 60% slower than M4 on the fixtures and 72% on `basics`, since its grammar grew from 71
 states to 4341 to read the preprocessor, macro calls and structures. Removing one rule at a time

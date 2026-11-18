@@ -4,25 +4,27 @@ const { commaList, operatorToken, precedence } = require('../core.js');
 
 const COMMA_SEPARATED_LISTS = ['ARM_APPLE'];
 const DARWIN_LOCALS = ['ARM_APPLE'];
-const CALL_LISTS = ['ARM', 'ARM_APPLE'];
+const CALL_LISTS = ['AUTO', 'ARM', 'ARM_APPLE'];
 
 function operandList($, name) {
     return commaList($, field(name, $._operand));
 }
 
-function instructionOperands(ctx, $) {
-    const calls = CALL_LISTS.includes(ctx.dialect);
+function operandItem(ctx, $) {
     const operand = field('operand', $._instruction_operand);
-    const item = calls ? choice(operand, $._call_run) : operand;
-    return seq(
-        item,
-        repeat(
-            choice(
-                seq(',', choice(item, $._missing_operand)),
-                ...(calls ? [seq($._call_gap, item)] : []),
-            ),
-        ),
+    return CALL_LISTS.includes(ctx.dialect) ? choice(operand, $._call_run) : operand;
+}
+
+function operandStep(ctx, $) {
+    const item = operandItem(ctx, $);
+    return choice(
+        seq(',', choice(item, $._missing_operand)),
+        ...(CALL_LISTS.includes(ctx.dialect) ? [seq($._call_gap, item)] : []),
     );
+}
+
+function instructionOperands(ctx, $) {
+    return seq(operandItem(ctx, $), repeat(operandStep(ctx, $)));
 }
 
 function joinedValues($, value) {
@@ -220,6 +222,7 @@ module.exports = (ctx) => {
                     $.identifier,
                     alias($._dot_identifier, $.identifier),
                     $.macro_argument,
+                    $.concatenation,
                 ),
             parameter: ($) =>
                 seq(
@@ -372,7 +375,7 @@ module.exports = (ctx) => {
                     seq(
                         alias($._macro_open, '.macro'),
                         choice(
-                            field('name', choice($._definition_name, $.concatenation)),
+                            field('name', $._definition_name),
                             $._missing_name,
                         ),
                         optional(','),
@@ -514,3 +517,4 @@ module.exports.cppArguments = cppArguments;
 module.exports.cppRules = cppRules;
 module.exports.joinedValues = joinedValues;
 module.exports.macroArgumentList = macroArgumentList;
+module.exports.operandStep = operandStep;

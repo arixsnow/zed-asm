@@ -1822,6 +1822,10 @@
         {
           "type": "SYMBOL",
           "name": "macro_argument"
+        },
+        {
+          "type": "SYMBOL",
+          "name": "concatenation"
         }
       ]
     },
@@ -3955,68 +3959,76 @@
       ]
     },
     "decorated_operand": {
-      "type": "SEQ",
-      "members": [
-        {
-          "type": "FIELD",
-          "name": "operand",
-          "content": {
-            "type": "CHOICE",
-            "members": [
-              {
-                "type": "SYMBOL",
-                "name": "_x86_register"
-              },
-              {
-                "type": "ALIAS",
-                "content": {
+      "type": "PREC_RIGHT",
+      "value": 0,
+      "content": {
+        "type": "SEQ",
+        "members": [
+          {
+            "type": "FIELD",
+            "name": "operand",
+            "content": {
+              "type": "CHOICE",
+              "members": [
+                {
                   "type": "SYMBOL",
-                  "name": "_att_memory"
+                  "name": "_x86_register"
                 },
-                "named": true,
-                "value": "memory_operand"
-              },
-              {
-                "type": "SYMBOL",
-                "name": "_expression"
-              }
-            ]
-          }
-        },
-        {
-          "type": "REPEAT1",
-          "content": {
-            "type": "CHOICE",
-            "members": [
-              {
-                "type": "FIELD",
-                "name": "decorator",
-                "content": {
-                  "type": "SYMBOL",
-                  "name": "decorator"
-                }
-              },
-              {
-                "type": "SEQ",
-                "members": [
-                  {
+                {
+                  "type": "ALIAS",
+                  "content": {
                     "type": "SYMBOL",
-                    "name": "_call_gap"
+                    "name": "_att_memory"
                   },
+                  "named": true,
+                  "value": "memory_operand"
+                },
+                {
+                  "type": "SYMBOL",
+                  "name": "_expression"
+                }
+              ]
+            }
+          },
+          {
+            "type": "REPEAT1",
+            "content": {
+              "type": "PREC",
+              "value": 0,
+              "content": {
+                "type": "CHOICE",
+                "members": [
                   {
                     "type": "FIELD",
                     "name": "decorator",
                     "content": {
                       "type": "SYMBOL",
-                      "name": "macro_call"
+                      "name": "decorator"
                     }
+                  },
+                  {
+                    "type": "SEQ",
+                    "members": [
+                      {
+                        "type": "SYMBOL",
+                        "name": "_call_gap"
+                      },
+                      {
+                        "type": "FIELD",
+                        "name": "decorator",
+                        "content": {
+                          "type": "SYMBOL",
+                          "name": "macro_call"
+                        }
+                      }
+                    ]
                   }
                 ]
               }
-            ]
+            }
           }
-        }
-      ]
+        ]
+      }
     },
     "_intel_macro_call": {
       "type": "SEQ",
@@ -6102,17 +6114,8 @@
                   "type": "FIELD",
                   "name": "name",
                   "content": {
-                    "type": "CHOICE",
-                    "members": [
-                      {
-                        "type": "SYMBOL",
-                        "name": "_definition_name"
-                      },
-                      {
-                        "type": "SYMBOL",
-                        "name": "concatenation"
-                      }
-                    ]
+                    "type": "SYMBOL",
+                    "name": "_definition_name"
                   }
                 },
                 {
@@ -7146,40 +7149,56 @@
       "type": "CHOICE",
       "members": [
         {
-          "type": "ALIAS",
+          "type": "PREC",
+          "value": 0,
           "content": {
-            "type": "SYMBOL",
-            "name": "_register"
-          },
-          "named": true,
-          "value": "register"
+            "type": "ALIAS",
+            "content": {
+              "type": "SYMBOL",
+              "name": "_register"
+            },
+            "named": true,
+            "value": "register"
+          }
         },
         {
-          "type": "ALIAS",
+          "type": "PREC",
+          "value": 0,
           "content": {
-            "type": "SYMBOL",
-            "name": "_percent_name"
-          },
-          "named": true,
-          "value": "register"
+            "type": "ALIAS",
+            "content": {
+              "type": "SYMBOL",
+              "name": "_percent_name"
+            },
+            "named": true,
+            "value": "register"
+          }
         },
         {
-          "type": "ALIAS",
+          "type": "PREC",
+          "value": 0,
           "content": {
-            "type": "SYMBOL",
-            "name": "_register_call"
-          },
-          "named": true,
-          "value": "register"
+            "type": "ALIAS",
+            "content": {
+              "type": "SYMBOL",
+              "name": "_register_call"
+            },
+            "named": true,
+            "value": "register"
+          }
         },
         {
-          "type": "ALIAS",
+          "type": "PREC",
+          "value": 0,
           "content": {
-            "type": "SYMBOL",
-            "name": "_register_concatenation"
-          },
-          "named": true,
-          "value": "concatenation"
+            "type": "ALIAS",
+            "content": {
+              "type": "SYMBOL",
+              "name": "_register_concatenation"
+            },
+            "named": true,
+            "value": "concatenation"
+          }
         }
       ]
     },

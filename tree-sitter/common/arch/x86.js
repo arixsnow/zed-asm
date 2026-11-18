@@ -18,9 +18,15 @@ function intelLevels(ctx) {
     };
 }
 
+function x86Decorators(ctx) {
+    const level = ctx.archs.includes('arm') ? 2 : 0;
+    return { level, decorates: (rule) => prec(level, rule) };
+}
+
 module.exports = (ctx) => {
     const intel = intelLevels(ctx);
     const { levels } = intel;
+    const { decorates } = x86Decorators(ctx);
     return {
         rules: {
             _intel_decorated: ($) =>
@@ -60,7 +66,7 @@ module.exports = (ctx) => {
                 ),
         },
         choices: {
-            _x86_register: [($) => alias($._register, $.register)],
+            _x86_register: [($) => decorates(alias($._register, $.register))],
             _intel_operand: [($) => $._plain_intel_operand],
             _plain_intel_operand: [
                 ($) => $._intel_expression,
@@ -122,3 +128,4 @@ module.exports = (ctx) => {
 };
 
 module.exports.intelLevels = intelLevels;
+module.exports.x86Decorators = x86Decorators;

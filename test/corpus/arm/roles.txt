@@ -452,3 +452,47 @@ b.cs 1f
   (instruction
     mnemonic: (mnemonic)
     operand: (numeric_label)))
+
+================================================================================
+A C call in an instruction with typed slots leaves the operands after it untyped
+================================================================================
+
+ldr x0, label F(x)
+b.eq F(x) label
+cbz x0, F(x) lbl
+msr spsel, x0 F(x)
+
+--------------------------------------------------------------------------------
+
+(source_file
+  (instruction
+    mnemonic: (mnemonic)
+    operand: (register)
+    operand: (identifier)
+    operand: (macro_call
+      function: (identifier)
+      arguments: (argument_list
+        argument: (identifier))))
+  (instruction
+    mnemonic: (mnemonic)
+    operand: (macro_call
+      function: (identifier)
+      arguments: (argument_list
+        argument: (identifier)))
+    operand: (identifier))
+  (instruction
+    mnemonic: (mnemonic)
+    operand: (register)
+    operand: (macro_call
+      function: (identifier)
+      arguments: (argument_list
+        argument: (identifier)))
+    operand: (identifier))
+  (instruction
+    mnemonic: (mnemonic)
+    operand: (register)
+    operand: (register)
+    operand: (macro_call
+      function: (identifier)
+      arguments: (argument_list
+        argument: (identifier)))))

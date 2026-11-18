@@ -7,7 +7,7 @@ const {
     joinedValues,
     macroArgumentList,
 } = require('../syntax/gas.js');
-const { intelLevels } = require('./x86.js');
+const { intelLevels, x86Decorators } = require('./x86.js');
 
 const PREFIX_SEMICOLONS = ['AUTO'];
 
@@ -29,6 +29,7 @@ module.exports = (ctx) => {
         return {};
     }
     const prefixSemicolons = PREFIX_SEMICOLONS.includes(ctx.dialect);
+    const { level: decoratorLevel, decorates } = x86Decorators(ctx);
     const intel = intelLevels(ctx);
     const { levels } = intel;
     return {
@@ -121,19 +122,24 @@ module.exports = (ctx) => {
                     ),
                 ),
             decorated_operand: ($) =>
-                seq(
-                    field(
-                        'operand',
-                        choice(
-                            $._x86_register,
-                            alias($._att_memory, $.memory_operand),
-                            $._expression,
+                prec.right(
+                    decoratorLevel,
+                    seq(
+                        field(
+                            'operand',
+                            choice(
+                                $._x86_register,
+                                alias($._att_memory, $.memory_operand),
+                                $._expression,
+                            ),
                         ),
-                    ),
-                    repeat1(
-                        choice(
-                            field('decorator', $.decorator),
-                            seq($._call_gap, field('decorator', $.macro_call)),
+                        repeat1(
+                            decorates(
+                                choice(
+                                    field('decorator', $.decorator),
+                                    seq($._call_gap, field('decorator', $.macro_call)),
+                                ),
+                            ),
                         ),
                     ),
                 ),
@@ -201,9 +207,9 @@ module.exports = (ctx) => {
         },
         choices: {
             _x86_register: [
-                ($) => alias($._percent_name, $.register),
-                ($) => alias($._register_call, $.register),
-                ($) => alias($._register_concatenation, $.concatenation),
+                ($) => decorates(alias($._percent_name, $.register)),
+                ($) => decorates(alias($._register_call, $.register)),
+                ($) => decorates(alias($._register_concatenation, $.concatenation)),
             ],
             _intel_operand: [($) => $.decorator],
             _plain_intel_operand: [($) => $.immediate],
