@@ -141,3 +141,33 @@ movl $9 %eax, %ebx
         left: (integer)
         right: (identifier)))
     operand: (register)))
+
+================================================================================
+A dollar prefixes an immediate only in an instruction operand
+================================================================================
+
+movl $4, %eax
+m $1, $x
+.long $4, $foo + 4
+
+--------------------------------------------------------------------------------
+
+(source_file
+  (instruction
+    mnemonic: (mnemonic)
+    operand: (immediate
+      value: (integer))
+    operand: (register))
+  (macro_call
+    function: (identifier)
+    arguments: (argument_list
+      argument: (immediate
+        value: (integer))
+      argument: (immediate
+        value: (identifier))))
+  (directive
+    name: (directive_name)
+    argument: (identifier)
+    argument: (binary_expression
+      left: (identifier)
+      right: (integer))))

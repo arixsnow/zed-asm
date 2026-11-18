@@ -5,7 +5,8 @@ const GAS_NAME = '[A-Za-z0-9_.$]';
 const GAS_NAME_START = '[A-Za-z_]';
 const GAS_IDENTIFIER = `${GAS_NAME_START}${GAS_NAME}*`;
 const GAS_DOT_NAME = `\\.${GAS_NAME}+`;
-const GAS_MACRO_ARGUMENT = '\\\\(\\.?[A-Za-z_][A-Za-z0-9_.$]*|@|\\+)';
+const GAS_DOLLAR_NAME = `\\$${GAS_NAME}*`;
+const GAS_MACRO_ARGUMENT = "\\\\(\\.?[A-Za-z_][A-Za-z0-9_.$]*'?|@|\\+)";
 const GAS_QUOTED_NAME = '"(?:[^"\\\\]|\\\\.)*"';
 const GAS_INTEGER_DIGITS = '(0[xX][0-9a-fA-F]+|0[bB][01]+|[0-9]+)';
 const GAS_INTEGER_SUFFIX = '([uU][lL]{0,2}|[lL]{1,2}[uU]?)?';
@@ -41,6 +42,7 @@ module.exports = {
         nameCharacter: new RegExp(GAS_NAME),
         identifier: new RegExp(GAS_IDENTIFIER),
         dotIdentifier: new RegExp(GAS_DOT_NAME),
+        dollarName: new RegExp(GAS_DOLLAR_NAME),
         localIdentifier: new RegExp(`\\.L${GAS_NAME}*`),
         integer: new RegExp(`${GAS_INTEGER_DIGITS}${GAS_INTEGER_SUFFIX}`),
         clangInteger: new RegExp(`${GAS_INTEGER_DIGITS}${CLANG_INTEGER_SUFFIX}`),
@@ -63,10 +65,11 @@ module.exports = {
             const word = [
                 name,
                 GAS_DOT_NAME,
+                GAS_DOLLAR_NAME,
                 dollarLabels ? '[0-9]+\\$?' : '[0-9]+',
                 GAS_QUOTED_NAME,
             ];
-            const head = [name, GAS_DOT_NAME, GAS_MACRO_ARGUMENT];
+            const head = [name, GAS_DOT_NAME, GAS_DOLLAR_NAME, GAS_MACRO_ARGUMENT];
             const piece = [GAS_MACRO_ARGUMENT, '\\\\\\(\\)', `${GAS_NAME}+`];
             return new RegExp(
                 [

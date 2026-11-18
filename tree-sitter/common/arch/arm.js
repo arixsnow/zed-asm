@@ -123,26 +123,14 @@ module.exports = (ctx) => {
             _register_name: ($) =>
                 choice(
                     alias($._arm_register, $.register),
-                    prec(1, $.identifier),
+                    prec(1, $._symbol),
                     prec(1, $.macro_argument),
+                    prec(1, $.concatenation),
                     alias($._arm_register_concatenation, $.concatenation),
                     ...(positionalArguments ? [alias($._darwin_argument, $.macro_argument)] : []),
                 ),
             _arm_register_concatenation: ($) =>
-                prec(
-                    1,
-                    seq(
-                        choice(
-                            alias($._arm_register, $.register),
-                            $.identifier,
-                            $.macro_argument,
-                            ...(positionalArguments
-                                ? [alias($._darwin_argument, $.macro_argument)]
-                                : []),
-                        ),
-                        $._glued_pieces,
-                    ),
-                ),
+                prec(1, seq(alias($._arm_register, $.register), $._glued_pieces)),
             writeback: ($) =>
                 prec(1, seq(field('register', $._register_name), alias($._writeback_bang, '!'))),
             indexed_register: ($) =>
@@ -189,7 +177,12 @@ module.exports = (ctx) => {
                 prec.right(seq(
                     '{',
                     choice($._list_item, $._missing_register),
-                    repeat(seq(',', choice($._list_item, $._missing_register))),
+                    repeat(
+                        choice(
+                            seq(',', choice($._list_item, $._missing_register)),
+                            seq($._call_gap, $._list_item),
+                        ),
+                    ),
                     choice('}', $._unclosed_brace),
                     optional(
                         seq('[', field('index', $._expression), choice(']', $._unclosed_index)),
@@ -199,10 +192,7 @@ module.exports = (ctx) => {
             _list_item: ($) =>
                 choice(
                     field('element', $._list_element),
-                    seq(
-                        repeat1(field('element', $.macro_call)),
-                        optional(field('element', $._list_element)),
-                    ),
+                    seq(field('element', $.macro_call), optional($._list_item)),
                 ),
             _list_element: ($) => choice($._register_name, $.indexed_register, $.register_range),
             register_range: ($) =>
@@ -210,6 +200,12 @@ module.exports = (ctx) => {
                     field('start', $._register_name),
                     alias($._range_dash, '-'),
                     choice(field('end', $._register_name), $._missing_register),
+                ),
+            _register_value_range: ($) =>
+                seq(
+                    field('start', alias($._arm_register, $.register)),
+                    alias($._range_dash, '-'),
+                    choice(field('end', alias($._arm_register, $.register)), $._missing_register),
                 ),
             register_alias: ($) =>
                 seq(
@@ -349,6 +345,7 @@ module.exports = (ctx) => {
             _register_operand: ($) =>
                 choice(
                     alias($._arm_register, $.register),
+                    alias($._arm_register_concatenation, $.concatenation),
                     $.indexed_register,
                     $.writeback,
                     $.predicate,
@@ -368,14 +365,16 @@ module.exports = (ctx) => {
                 ($) => alias($._register_directive, $.directive),
                 ...(linkerHints ? [($) => alias($._linker_hint, $.directive)] : []),
             ],
-            immediate: [
-                ($) =>
-                    seq(
-                        alias($._hash, '#'),
-                        field('value', choice($._expression, alias($._dot_float, $.float))),
-                    ),
+            _immediate_prefix: [
+                ($) => alias($._hash, '#'),
+                ...(gnu ? [($) => alias($._dollar, '$')] : []),
             ],
+            _immediate_value: [($) => $._expression, ($) => alias($._dot_float, $.float)],
             _value: [($) => $.immediate],
+            _call_item: [($) => alias($._register_value_range, $.register_range)],
+            ...(positionalArguments
+                ? { _glue_head: [($) => alias($._darwin_argument, $.macro_argument)] }
+                : {}),
             _instruction_operand: [
                 ($) => $._register_operand,
                 ($) => $.signed_register,

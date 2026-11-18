@@ -130,3 +130,35 @@ A macro argument may stand where only a register may
             (identifier))
           index: (integer))
         operand: (register)))))
+
+================================================================================
+Literal text, an argument closed by an apostrophe and an indexed dot name
+================================================================================
+
+.macro m a
+nop\(lit)
+add_carry \a'x, .b[15], 8
+.endm
+
+--------------------------------------------------------------------------------
+
+(source_file
+  (macro_definition
+    name: (identifier)
+    parameter: (parameter
+      name: (identifier))
+    body: (body
+      (instruction
+        mnemonic: (concatenation
+          (identifier)
+          (identifier)))
+      (macro_call
+        function: (identifier)
+        arguments: (argument_list
+          argument: (concatenation
+            (macro_argument)
+            (identifier))
+          argument: (indexed_register
+            register: (identifier)
+            index: (integer))
+          argument: (integer))))))

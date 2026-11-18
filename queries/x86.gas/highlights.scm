@@ -1,8 +1,5 @@
 ; SPDX-License-Identifier: MIT
 
-(immediate
-    "$" @punctuation.special)
-
 (symbol_type
     (identifier) @type.builtin)
 

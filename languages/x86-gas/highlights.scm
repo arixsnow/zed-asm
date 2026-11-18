@@ -149,7 +149,7 @@
     (#match? @_section "^\\.(?i:section|pushsection)$"))
 
 (immediate
-    "$" @punctuation.special)
+    prefix: _ @punctuation.special)
 
 (symbol_type
     (identifier) @type.builtin)

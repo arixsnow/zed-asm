@@ -245,3 +245,183 @@ nop
     parameter: (identifier)
     value: (integer)
     body: (body)))
+
+================================================================================
+A keyword argument may be named like a register
+================================================================================
+
+do_thumb_abort fsr=r1, pc=r4, psr = r5
+
+--------------------------------------------------------------------------------
+
+(source_file
+  (macro_call
+    function: (identifier)
+    arguments: (argument_list
+      argument: (keyword_argument
+        name: (identifier)
+        value: (register))
+      argument: (keyword_argument
+        name: (identifier)
+        value: (register))
+      argument: (keyword_argument
+        name: (identifier)
+        value: (register)))))
+
+================================================================================
+Alternate macro mode reads %expr, <text> and quoted text as arguments
+================================================================================
+
+.altmacro
+put_pic %(.Lpic_idx - 1)
+do_def_pic %.Lpic_idx, x
+m <q r>, 'a''b', <a!>b>
+m a <b <c> d> e
+m a<b c>
+.irp r, <a b>, c
+.endr
+.noaltmacro
+m %function
+
+--------------------------------------------------------------------------------
+
+(source_file
+  (directive
+    name: (directive_name))
+  (macro_call
+    function: (identifier)
+    arguments: (argument_list
+      argument: (unary_expression
+        argument: (parenthesized_expression
+          (binary_expression
+            left: (local_identifier)
+            right: (integer))))))
+  (macro_call
+    function: (identifier)
+    arguments: (argument_list
+      argument: (unary_expression
+        argument: (local_identifier))
+      argument: (identifier)))
+  (macro_call
+    function: (identifier)
+    arguments: (argument_list
+      argument: (string)
+      argument: (string)
+      argument: (string)))
+  (macro_call
+    function: (identifier)
+    arguments: (argument_list
+      argument: (identifier)
+      argument: (string)
+      argument: (identifier)))
+  (macro_call
+    function: (identifier)
+    arguments: (argument_list
+      argument: (identifier)
+      argument: (string)))
+  (repeat_block
+    parameter: (identifier)
+    value: (string)
+    value: (identifier)
+    body: (body))
+  (directive
+    name: (directive_name))
+  (macro_call
+    function: (identifier)
+    arguments: (argument_list
+      argument: (symbol_type))))
+
+================================================================================
+A register glued to a macro argument, a label named by an argument and a register range as an argument
+================================================================================
+
+.macro m sz, last, pass, name, tgt
+uabd v4\sz, v20\sz, v21\sz
+dup v16\sz, v0\last
+\pass: add r0, r1, r2
+.L\pass\@: lsl r9, #1
+\name .req \tgt
+.endm
+neon_load_multi d0-d3, src
+F(d0-d3, x)
+m a-b, 1-2
+
+--------------------------------------------------------------------------------
+
+(source_file
+  (macro_definition
+    name: (identifier)
+    parameter: (parameter
+      name: (identifier))
+    parameter: (parameter
+      name: (identifier))
+    parameter: (parameter
+      name: (identifier))
+    parameter: (parameter
+      name: (identifier))
+    parameter: (parameter
+      name: (identifier))
+    body: (body
+      (instruction
+        mnemonic: (mnemonic)
+        operand: (concatenation
+          (register)
+          (macro_argument))
+        operand: (concatenation
+          (register)
+          (macro_argument))
+        operand: (concatenation
+          (register)
+          (macro_argument)))
+      (instruction
+        mnemonic: (mnemonic)
+        operand: (concatenation
+          (register)
+          (macro_argument))
+        operand: (concatenation
+          (register)
+          (macro_argument)))
+      (label
+        name: (macro_argument))
+      (instruction
+        mnemonic: (mnemonic)
+        operand: (register)
+        operand: (register)
+        operand: (register))
+      (label
+        name: (concatenation
+          (local_identifier)
+          (macro_argument)
+          (macro_argument)))
+      (instruction
+        mnemonic: (mnemonic)
+        operand: (register)
+        operand: (immediate
+          value: (integer)))
+      (register_alias
+        name: (macro_argument)
+        directive: (directive_name)
+        register: (macro_argument))))
+  (macro_call
+    function: (identifier)
+    arguments: (argument_list
+      argument: (register_range
+        start: (register)
+        end: (register))
+      argument: (identifier)))
+  (macro_call
+    function: (identifier)
+    arguments: (argument_list
+      argument: (register_range
+        start: (register)
+        end: (register))
+      argument: (identifier)))
+  (macro_call
+    function: (identifier)
+    arguments: (argument_list
+      argument: (binary_expression
+        left: (identifier)
+        right: (identifier))
+      argument: (binary_expression
+        left: (integer)
+        right: (integer)))))

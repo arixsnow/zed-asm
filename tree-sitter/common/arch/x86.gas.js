@@ -133,7 +133,7 @@ module.exports = (ctx) => {
                     repeat1(
                         choice(
                             field('decorator', $.decorator),
-                            seq($._decorator_gap, field('decorator', $.macro_call)),
+                            seq($._call_gap, field('decorator', $.macro_call)),
                         ),
                     ),
                 ),
@@ -252,15 +252,14 @@ module.exports = (ctx) => {
                         ),
                     ),
             ],
-            immediate: [
-                ($) => seq('$', field('value', $._expression)),
-            ],
+            _immediate_prefix: [($) => alias($._dollar, '$')],
+            _immediate_value: [($) => $._expression],
             symbol_type: [($) => seq(alias($._type_mark, '@'), choice($.identifier, $.integer))],
             _statement: [
                 ($) => alias($._syntax_directive, $.directive),
                 ($) => alias($._decorated_call_statement, $.macro_call),
             ],
-            _value: [($) => $.immediate, ($) => alias($._register, $.register)],
+            _value: [($) => alias($._register, $.register)],
             _expression: [
                 ($) => alias($._word_binary, $.binary_expression),
                 ($) => alias($._word_unary, $.unary_expression),
@@ -272,6 +271,7 @@ module.exports = (ctx) => {
                 ($) => alias($._register_call, $.register),
             ],
             _plain_att_operand: [
+                ($) => $.immediate,
                 ($) => alias($._register_concatenation, $.concatenation),
                 ($) => alias($._att_memory, $.memory_operand),
                 ($) => $.indirect,

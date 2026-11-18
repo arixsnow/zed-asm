@@ -124,6 +124,10 @@
           "named": true
         },
         {
+          "type": "register_range",
+          "named": true
+        },
+        {
           "type": "relocation",
           "named": true
         },
@@ -275,6 +279,10 @@
             "named": true
           },
           {
+            "type": "register_range",
+            "named": true
+          },
+          {
             "type": "relocation",
             "named": true
           },
@@ -323,6 +331,10 @@
         "required": true,
         "types": [
           {
+            "type": "concatenation",
+            "named": true
+          },
+          {
             "type": "identifier",
             "named": true
           },
@@ -332,6 +344,10 @@
           },
           {
             "type": "location_counter",
+            "named": true
+          },
+          {
+            "type": "macro_argument",
             "named": true
           }
         ]
@@ -1195,6 +1211,20 @@
     "type": "immediate",
     "named": true,
     "fields": {
+      "prefix": {
+        "multiple": false,
+        "required": true,
+        "types": [
+          {
+            "type": "#",
+            "named": false
+          },
+          {
+            "type": "$",
+            "named": false
+          }
+        ]
+      },
       "value": {
         "multiple": false,
         "required": false,
@@ -1473,6 +1503,10 @@
           },
           {
             "type": "identifier",
+            "named": true
+          },
+          {
+            "type": "local_identifier",
             "named": true
           },
           {
@@ -1854,6 +1888,10 @@
             "named": true
           },
           {
+            "type": "register_range",
+            "named": true
+          },
+          {
             "type": "relocation",
             "named": true
           },
@@ -2117,6 +2155,10 @@
         "multiple": false,
         "required": false,
         "types": [
+          {
+            "type": "concatenation",
+            "named": true
+          },
           {
             "type": "identifier",
             "named": true
@@ -2631,6 +2673,10 @@
             "named": true
           },
           {
+            "type": "register_range",
+            "named": true
+          },
+          {
             "type": "relocation",
             "named": true
           },
@@ -3104,6 +3150,10 @@
         "required": true,
         "types": [
           {
+            "type": "concatenation",
+            "named": true
+          },
+          {
             "type": "identifier",
             "named": true
           },
@@ -3113,6 +3163,10 @@
           },
           {
             "type": "location_counter",
+            "named": true
+          },
+          {
+            "type": "macro_argument",
             "named": true
           }
         ]
@@ -3131,6 +3185,10 @@
           },
           {
             "type": "indexed_register",
+            "named": true
+          },
+          {
+            "type": "local_identifier",
             "named": true
           },
           {
@@ -3163,6 +3221,10 @@
           },
           {
             "type": "indexed_register",
+            "named": true
+          },
+          {
+            "type": "local_identifier",
             "named": true
           },
           {
@@ -3264,6 +3326,10 @@
             "named": true
           },
           {
+            "type": "local_identifier",
+            "named": true
+          },
+          {
             "type": "macro_argument",
             "named": true
           },
@@ -3283,6 +3349,10 @@
           },
           {
             "type": "identifier",
+            "named": true
+          },
+          {
+            "type": "local_identifier",
             "named": true
           },
           {
@@ -3585,6 +3655,10 @@
           },
           {
             "type": "register_list",
+            "named": true
+          },
+          {
+            "type": "register_range",
             "named": true
           },
           {
@@ -4240,6 +4314,10 @@
             "named": false
           },
           {
+            "type": "%",
+            "named": false
+          },
+          {
             "type": "+",
             "named": false
           },
@@ -4332,6 +4410,10 @@
           },
           {
             "type": "identifier",
+            "named": true
+          },
+          {
+            "type": "local_identifier",
             "named": true
           },
           {

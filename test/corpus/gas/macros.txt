@@ -207,3 +207,81 @@ A conditional closer inside a repeat block is text of the repeat block
         body: (body
           (directive
             name: (directive_name)))))))
+
+================================================================================
+A comma may follow the macro name, and a macro argument may name an assigned symbol
+================================================================================
+
+.macro loadsp, rb, tmp1, tmp2
+.endm
+.macro m,
+.endm
+.macro r sym
+\sym = 1
+\sym\()_x = 2
+.endm
+
+--------------------------------------------------------------------------------
+
+(source_file
+  (macro_definition
+    name: (identifier)
+    parameter: (parameter
+      name: (identifier))
+    parameter: (parameter
+      name: (identifier))
+    parameter: (parameter
+      name: (identifier))
+    body: (body))
+  (macro_definition
+    name: (identifier)
+    body: (body))
+  (macro_definition
+    name: (identifier)
+    parameter: (parameter
+      name: (identifier))
+    body: (body
+      (assignment
+        name: (macro_argument)
+        value: (integer))
+      (assignment
+        name: (concatenation
+          (macro_argument)
+          (identifier))
+        value: (integer)))))
+
+================================================================================
+A macro defined in a macro may take its name from an argument
+================================================================================
+
+.macro vvc_w_avg bit_depth
+.macro vvc_w_avg_\bit_depth\()_2_4 tap
+.if \tap == 2
+nop
+.endif
+.endm
+.endm
+
+--------------------------------------------------------------------------------
+
+(source_file
+  (macro_definition
+    name: (identifier)
+    parameter: (parameter
+      name: (identifier))
+    body: (body
+      (macro_definition
+        name: (concatenation
+          (identifier)
+          (macro_argument)
+          (identifier))
+        parameter: (parameter
+          name: (identifier))
+        body: (body
+          (conditional
+            condition: (binary_expression
+              left: (macro_argument)
+              right: (integer))
+            body: (body
+              (instruction
+                mnemonic: (mnemonic)))))))))

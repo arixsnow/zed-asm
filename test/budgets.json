@@ -1,71 +1,71 @@
 {
     "asm_auto": {
-        "states": 5601,
-        "parserBytes": 5891700,
+        "states": 5784,
+        "parserBytes": 6150686,
         "inputs": {
             "basics": {
                 "sha256": "5b535b2258bf3b16b42cb8b66836e7e10ccc515ad5cd0cdc1908b4f17887113f",
-                "cycles": 309430
+                "cycles": 317122
             },
             "fixtures": {
                 "sha256": "c4f75407f7798af38679a01a8b680df60b411f53aed7559373fbb71b8072b72f",
-                "cycles": 39724377
+                "cycles": 40590771
             }
         }
     },
     "asm_arm": {
-        "states": 2375,
-        "parserBytes": 2517450,
+        "states": 2748,
+        "parserBytes": 2928421,
         "inputs": {
             "basics": {
                 "sha256": "59ac6e338a3acd90fe14217ced1d4bea5bfc7401fa11a96030897db6c5072706",
-                "cycles": 371801
+                "cycles": 388264
             },
             "fixtures": {
                 "sha256": "817b98d8f742a62b7de67771fff0b8877a6e06022c16e5d50101463df498b938",
-                "cycles": 21172511
+                "cycles": 21670677
             }
         }
     },
     "asm_arm_apple": {
-        "states": 2086,
-        "parserBytes": 2226189,
+        "states": 2433,
+        "parserBytes": 2600053,
         "inputs": {
             "basics": {
                 "sha256": "5c0f0a74f6c85309b219c57876a0e5efb1b9889798b40373d5bb26e361c556fc",
-                "cycles": 426690
+                "cycles": 445315
             },
             "fixtures": {
                 "sha256": "86b09593ea680776b95d0ed28b31fcefb866cfcaf188078cae9d63c51b38ea18",
-                "cycles": 6138544
+                "cycles": 6303011
             }
         }
     },
     "asm_x86_gas": {
-        "states": 3937,
-        "parserBytes": 4079136,
+        "states": 4063,
+        "parserBytes": 4244518,
         "inputs": {
             "basics": {
                 "sha256": "5b535b2258bf3b16b42cb8b66836e7e10ccc515ad5cd0cdc1908b4f17887113f",
-                "cycles": 313897
+                "cycles": 323303
             },
             "fixtures": {
                 "sha256": "fbcdd776e64890c8704cc3fcdf3954d8e122e59e040777f2d6bcd0515c72aeb2",
-                "cycles": 12274615
+                "cycles": 12505824
             }
         }
     },
     "asm_x86_nasm": {
         "states": 4341,
-        "parserBytes": 5943471,
+        "parserBytes": 5945905,
         "inputs": {
             "basics": {
                 "sha256": "d3e6ac7d9f280469f08d06cf461725c5285dbb96aed86c91220440b156d726ce",
-                "cycles": 233289
+                "cycles": 233647
             },
             "fixtures": {
                 "sha256": "cb5a14e6332ca13e759edd773b95bd1989eb0a91c20bc443b3ddd3999a3b12f2",
-                "cycles": 15240345
+                "cycles": 15305447
             }
         }
     }

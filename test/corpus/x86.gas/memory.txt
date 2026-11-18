@@ -348,3 +348,30 @@ movq 8(%rsp,%r\base\()d,4), %rax
             (identifier))
           scale: (integer))
         operand: (register)))))
+
+================================================================================
+A register name glued to ( is a name
+================================================================================
+
+movq %r8, R8(%rsp)
+movl CR4(%edi), %eax
+fld %st(1)
+
+--------------------------------------------------------------------------------
+
+(source_file
+  (instruction
+    mnemonic: (mnemonic)
+    operand: (register)
+    operand: (memory_operand
+      displacement: (identifier)
+      base: (register)))
+  (instruction
+    mnemonic: (mnemonic)
+    operand: (memory_operand
+      displacement: (identifier)
+      base: (register))
+    operand: (register))
+  (instruction
+    mnemonic: (mnemonic)
+    operand: (register)))

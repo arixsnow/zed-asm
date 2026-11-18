@@ -44,3 +44,40 @@ b L(x)
       arguments: (argument_list
         argument: (integer)))
     argument: (local_identifier)))
+
+================================================================================
+A C call needs no comma before or after it in an operand list
+================================================================================
+
+add x0, x1 F(x)
+add x0, F(x) x1
+add x0, F(x) - x1
+
+--------------------------------------------------------------------------------
+
+(source_file
+  (instruction
+    mnemonic: (mnemonic)
+    operand: (register)
+    operand: (register)
+    operand: (macro_call
+      function: (identifier)
+      arguments: (argument_list
+        argument: (identifier))))
+  (instruction
+    mnemonic: (mnemonic)
+    operand: (register)
+    operand: (macro_call
+      function: (identifier)
+      arguments: (argument_list
+        argument: (identifier)))
+    operand: (register))
+  (instruction
+    mnemonic: (mnemonic)
+    operand: (register)
+    operand: (binary_expression
+      left: (macro_call
+        function: (identifier)
+        arguments: (argument_list
+          argument: (identifier)))
+      right: (identifier))))

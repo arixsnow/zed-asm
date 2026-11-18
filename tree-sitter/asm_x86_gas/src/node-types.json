@@ -251,6 +251,10 @@
         "required": true,
         "types": [
           {
+            "type": "concatenation",
+            "named": true
+          },
+          {
             "type": "identifier",
             "named": true
           },
@@ -260,6 +264,10 @@
           },
           {
             "type": "location_counter",
+            "named": true
+          },
+          {
+            "type": "macro_argument",
             "named": true
           }
         ]
@@ -705,10 +713,6 @@
             "named": true
           },
           {
-            "type": "immediate",
-            "named": true
-          },
-          {
             "type": "integer",
             "named": true
           },
@@ -905,10 +909,6 @@
             "named": true
           },
           {
-            "type": "immediate",
-            "named": true
-          },
-          {
             "type": "integer",
             "named": true
           },
@@ -1037,10 +1037,6 @@
             "named": true
           },
           {
-            "type": "immediate",
-            "named": true
-          },
-          {
             "type": "integer",
             "named": true
           },
@@ -1115,6 +1111,16 @@
     "type": "immediate",
     "named": true,
     "fields": {
+      "prefix": {
+        "multiple": false,
+        "required": true,
+        "types": [
+          {
+            "type": "$",
+            "named": false
+          }
+        ]
+      },
       "value": {
         "multiple": false,
         "required": false,
@@ -1677,6 +1683,10 @@
         "multiple": false,
         "required": false,
         "types": [
+          {
+            "type": "concatenation",
+            "named": true
+          },
           {
             "type": "identifier",
             "named": true
@@ -3169,6 +3179,10 @@
         "types": [
           {
             "type": "!",
+            "named": false
+          },
+          {
+            "type": "%",
             "named": false
           },
           {

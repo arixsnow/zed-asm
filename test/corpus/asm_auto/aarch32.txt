@@ -1144,3 +1144,69 @@ addx r0, r1
     arguments: (argument_list
       argument: (register)
       argument: (register))))
+
+================================================================================
+Dollar immediates and dollar names
+================================================================================
+
+tstne r2, $0x0000ff00
+orr r1, r1, r1, lsl $8
+ldr r2, [r1, $4]
+add r0, r1, R8(x)
+.word $4, $foo
+
+--------------------------------------------------------------------------------
+
+(source_file
+  (instruction
+    mnemonic: (mnemonic)
+    operand: (register)
+    operand: (immediate
+      value: (integer)))
+  (instruction
+    mnemonic: (mnemonic)
+    operand: (register)
+    operand: (register)
+    operand: (register)
+    operand: (shift
+      operator: (shift_operator)
+      amount: (immediate
+        value: (integer))))
+  (instruction
+    mnemonic: (mnemonic)
+    operand: (register)
+    operand: (memory_operand
+      operand: (register)
+      operand: (immediate
+        value: (integer))))
+  (instruction
+    mnemonic: (mnemonic)
+    operand: (register)
+    operand: (register)
+    operand: (macro_call
+      function: (identifier)
+      arguments: (argument_list
+        argument: (identifier))))
+  (directive
+    name: (directive_name)
+    argument: (identifier)
+    argument: (identifier)))
+
+================================================================================
+A C call after a register list element needs no comma before it
+================================================================================
+
+push {r4 UNWIND(fpreg,) lr}
+
+--------------------------------------------------------------------------------
+
+(source_file
+  (instruction
+    mnemonic: (mnemonic)
+    operand: (register_list
+      element: (register)
+      element: (macro_call
+        function: (identifier)
+        arguments: (argument_list
+          argument: (identifier)))
+      element: (register))))

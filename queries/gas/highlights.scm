@@ -98,3 +98,6 @@
     .
     argument: (identifier) @namespace
     (#match? @_section "^\\.(?i:section|pushsection)$"))
+
+(immediate
+    prefix: _ @punctuation.special)

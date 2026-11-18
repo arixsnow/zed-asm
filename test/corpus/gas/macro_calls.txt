@@ -317,3 +317,39 @@ WRAP(nop) /* note */
     arguments: (argument_list
       argument: (identifier)))
   (block_comment))
+
+================================================================================
+A name longer than every keyword is a name
+================================================================================
+
+a_macro_name_longer_than_every_keyword_of_gas 1, 2
+
+--------------------------------------------------------------------------------
+
+(source_file
+  (macro_call
+    function: (identifier)
+    arguments: (argument_list
+      argument: (integer)
+      argument: (integer))))
+
+================================================================================
+A macro argument list may start with its comma
+================================================================================
+
+diff_pixels , aligned=1
+innerloop16 , do_preload
+
+--------------------------------------------------------------------------------
+
+(source_file
+  (macro_call
+    function: (identifier)
+    arguments: (argument_list
+      argument: (keyword_argument
+        name: (identifier)
+        value: (integer))))
+  (macro_call
+    function: (identifier)
+    arguments: (argument_list
+      argument: (identifier))))

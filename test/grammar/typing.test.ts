@@ -34,7 +34,7 @@ interface Tree {
 const LEXING = statementLexing(
     readFileSync(join(ROOT, 'tree-sitter', 'common', 'scanner.h'), 'utf8'),
 );
-const SYNTAX_DIRECTIVE = /^\s*\.(?:intel|att)_syntax\b/i;
+const MODE_LINE = /^\s*\.(?:intel_syntax|att_syntax|altmacro|noaltmacro)\b/i;
 const BLOCK_TYPES = new Set([
     'macro_definition',
     'conditional',
@@ -243,7 +243,7 @@ function typingFailures(grammar: string, label: string, text: string): string[] 
     const failures: string[] = [];
     const lines = text.split('\n');
     for (const [index, { row, typed, source }] of typing.entries()) {
-        if (SYNTAX_DIRECTIVE.test(lines[row])) {
+        if (MODE_LINE.test(lines[row])) {
             continue;
         }
         const touching = baseline.nodes.filter((node) =>
@@ -262,7 +262,12 @@ function typingFailures(grammar: string, label: string, text: string): string[] 
             reach(grammar, baseline, lines, row),
             reach(grammar, parsed[index], typedLines, row),
         );
-        const typedRows = logicalRows(grammar, baseline, lines, [row]);
+        const typedRows = [
+            ...new Set([
+                ...logicalRows(grammar, baseline, lines, [row]),
+                ...logicalRows(grammar, parsed[index], typedLines, [row]),
+            ]),
+        ];
         const delimiters = logicalRows(
             grammar,
             baseline,

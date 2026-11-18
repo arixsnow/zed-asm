@@ -10,6 +10,7 @@ import { parseFiles, PRINTABLE, treeText } from '../lib/parse.ts';
 interface Lexical {
     identifier: RegExp;
     dotIdentifier: RegExp;
+    dollarName?: RegExp;
 }
 
 const LEXICAL: Record<string, Lexical> = createRequire(import.meta.url)(
@@ -48,9 +49,13 @@ function localPrefix(language: Language): string {
 }
 
 function expectedName(language: Language, name: string): string | null {
-    const { identifier, dotIdentifier } = LEXICAL[language.syntax];
+    const { identifier, dotIdentifier, dollarName } = LEXICAL[language.syntax];
     const matches = (pattern: RegExp) => new RegExp(`^(?:${pattern.source})$`).test(name);
-    if (!matches(identifier) && !matches(dotIdentifier)) {
+    if (
+        !matches(identifier) &&
+        !matches(dotIdentifier) &&
+        (dollarName === undefined || !matches(dollarName))
+    ) {
         return null;
     }
     const unescaped = language.syntax === 'nasm' ? name.replace(/^\$/, '') : name;

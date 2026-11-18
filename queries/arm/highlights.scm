@@ -1,8 +1,5 @@
 ; SPDX-License-Identifier: MIT
 
-(immediate
-    "#" @punctuation.special)
-
 (literal_pool
     "=" @punctuation.special)
 

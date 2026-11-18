@@ -164,3 +164,53 @@ Positional arguments glued to the text after them
         operand: (concatenation
           (macro_argument)
           (identifier))))))
+
+================================================================================
+Alternate macro mode reads %expr, <text> and quoted text as arguments
+================================================================================
+
+.altmacro
+put_pic %(Lpic_idx - 1)
+do_def_pic %Lpic_idx, x
+m <q r>, 'a''b', <a!>b>
+.irp r, <a b>, c
+.endr
+.noaltmacro
+m %function
+
+--------------------------------------------------------------------------------
+
+(source_file
+  (directive
+    name: (directive_name))
+  (macro_call
+    function: (identifier)
+    arguments: (argument_list
+      argument: (unary_expression
+        argument: (parenthesized_expression
+          (binary_expression
+            left: (local_identifier)
+            right: (integer))))))
+  (macro_call
+    function: (identifier)
+    arguments: (argument_list
+      argument: (unary_expression
+        argument: (local_identifier))
+      argument: (identifier)))
+  (macro_call
+    function: (identifier)
+    arguments: (argument_list
+      argument: (string)
+      argument: (string)
+      argument: (string)))
+  (repeat_block
+    parameter: (identifier)
+    value: (string)
+    value: (identifier)
+    body: (body))
+  (directive
+    name: (directive_name))
+  (macro_call
+    function: (identifier)
+    arguments: (argument_list
+      argument: (symbol_type))))

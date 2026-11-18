@@ -81,3 +81,18 @@ nop
       argument: (identifier)))
   (instruction
     mnemonic: (mnemonic)))
+
+================================================================================
+A name longer than every keyword is a name
+================================================================================
+
+HEVC_PUT_HEVC_QPEL_AVX512ICL 4, 8
+
+--------------------------------------------------------------------------------
+
+(source_file
+  (macro_call
+    function: (identifier)
+    arguments: (argument_list
+      argument: (integer)
+      argument: (integer))))

@@ -71,7 +71,7 @@ enum SemicolonMode {
 #define ASM_HASH_IMMEDIATES        1
 #define ASM_HASH_NEEDS_VALUE       0
 #define ASM_AT_COMMENTS            1
-#define ASM_DOLLAR_IMMEDIATES      0
+#define ASM_DOLLAR_IMMEDIATES      1
 #define ASM_DARWIN_LOCALS          0
 #define ASM_DARWIN_ARGUMENTS       0
 #define ASM_COLON_TYPE_MARK        0
@@ -187,6 +187,8 @@ enum TokenType {
     LINE_COMMENT,
     PREPROC_DIRECTIVE,
     HASH,
+    DOLLAR,
+    DOLLAR_NAME,
     AT_ATTACHED,
     TYPE_MARK,
     SEPARATOR,
@@ -236,6 +238,7 @@ enum TokenType {
     GLUED_EXPANSION,
     BLANK,
     JOINING_BLANK,
+    KEYWORD_WORD,
     PREFIX_WORD,
     PREFIX_SEMICOLON,
     MACRO_OPEN,
@@ -251,6 +254,10 @@ enum TokenType {
     FLOAT_DATA_DIRECTIVE,
     FLOAT_SPACE_DIRECTIVE,
     STRING_DIRECTIVE,
+    ALTMACRO,
+    NOALTMACRO,
+    ALTMACRO_PERCENT,
+    ALTMACRO_STRING,
     CFI_REGISTER_DIRECTIVE,
     UNWIND_REGISTER_DIRECTIVE,
     LINKER_HINT_DIRECTIVE,
@@ -301,7 +308,7 @@ enum TokenType {
     CALL_MNEMONIC,
     PERCENT_CALL,
     PROBE_AT,
-    DECORATOR_GAP,
+    CALL_GAP,
     RELOCATION_SUFFIX,
     MEMORY_ADDRESS,
     PSEUDO_PREFIX,
@@ -377,6 +384,7 @@ enum TokenType {
 #define DEFAULT_X86_SYNTAX (ASM_INTEL_ONLY ? X86_INTEL | X86_NOPREFIX : 0U)
 #define CLOSED_INPUT_BIT   0x01U
 #define X86_SYNTAX_SHIFT   1U
+#define ALTMACRO_BIT       0x08U
 #define OPEN_CALLS_BYTES   4U
 #define BYTE_BITS          8U
 #define BYTE_MASK          0xFFU
@@ -451,6 +459,7 @@ enum ElementBits {
 
 struct Scanner {
     bool closed_input;
+    bool altmacro;
     unsigned char x86_syntax;
     uint32_t open_calls;
 };
@@ -458,7 +467,7 @@ struct Scanner {
 #include "words.h"
 
 enum {
-    STATEMENT_WORD_CAPACITY = WORD_LENGTH + 1,
+    STATEMENT_WORD_CAPACITY = WORD_LENGTH + 2,
 };
 
 #define ANY_CASE       0U
@@ -987,6 +996,8 @@ static inline bool statement_keyword_fits(const bool *valid)
         || valid[FLOAT_DATA_DIRECTIVE]
         || valid[FLOAT_SPACE_DIRECTIVE]
         || valid[STRING_DIRECTIVE]
+        || valid[ALTMACRO]
+        || valid[NOALTMACRO]
         || valid[CFI_REGISTER_DIRECTIVE]
         || valid[UNWIND_REGISTER_DIRECTIVE]
         || valid[LINKER_HINT_DIRECTIVE]
@@ -1684,8 +1695,6 @@ static void take_word_char(TSLexer *lexer, char *word, size_t *length)
         if (*length + 1 < STATEMENT_WORD_CAPACITY) {
             word[*length] = (char)codepoint;
             (*length)++;
-        } else {
-            word[0] = '\0';
         }
     }
     advance(lexer);
@@ -1700,8 +1709,6 @@ static void read_alnum(TSLexer *lexer, char *word)
         if (length + 1 < STATEMENT_WORD_CAPACITY) {
             word[length] = (char)lexer->lookahead;
             length++;
-        } else {
-            word[0] = '\0';
         }
         advance(lexer);
     }
@@ -2809,6 +2816,15 @@ static bool operand_after(TSLexer *lexer)
     }
 }
 
+static bool keyword_follows(TSLexer *lexer)
+{
+    if (!advance_blanks(lexer) || lexer->lookahead != '=') {
+        return false;
+    }
+    advance(lexer);
+    return lexer->lookahead != '=';
+}
+
 static bool shift_amount_follows(TSLexer *lexer)
 {
     return advance_blanks(lexer)
@@ -2828,6 +2844,7 @@ struct OperandWord {
     const struct WordEntry *entry;
     unsigned char cases;
     bool upper_tail;
+    bool called;
 };
 
 struct OperandRole {
@@ -2850,6 +2867,7 @@ static bool read_operand_word(TSLexer *lexer, struct OperandWord *word)
         take_word_char(lexer, word->text, &length);
     }
     word->entry = word_entry(word->text);
+    word->called = lexer->lookahead == '(';
     return !stray;
 }
 
@@ -2911,12 +2929,15 @@ static bool operand_role(const bool *valid, const struct Scanner *scanner,
     }
     if (register_fits(valid, scanner)) {
         entry = x86_register(word->text, word->entry, scanner->x86_syntax);
-        if (entry != NULL) {
+        if (entry != NULL && (!word->called || entry->indexes > 0)) {
             return take_role(role, REGISTER, entry, FOLLOW_REGISTER_INDEX);
         }
     }
     if (ASM_X86_OPERANDS && valid[PREFIX_WORD] && is_prefix(word->entry, scanner->x86_syntax)) {
         return take_role(role, PREFIX_WORD, NULL, FOLLOW_NOTHING);
+    }
+    if (word->called) {
+        return false;
     }
     if (arm_register_fits(valid) && register_role(word->text, word->entry, ARM_SCOPES) != NULL) {
         return take_role(role, ARM_REGISTER, NULL, FOLLOW_NOTHING);
@@ -2986,6 +3007,13 @@ static void follow_x86_syntax(struct Scanner *scanner, TSSymbol symbol)
             break;
         default:
             break;
+    }
+}
+
+static void follow_altmacro(struct Scanner *scanner, TSSymbol symbol)
+{
+    if (symbol == ALTMACRO || symbol == NOALTMACRO) {
+        scanner->altmacro = symbol == ALTMACRO;
     }
 }
 
@@ -3403,11 +3431,14 @@ static bool read_glued_escape(TSLexer *lexer, const bool *valid, TSSymbol *symbo
     advance(lexer);
     if (lexer->lookahead == '(') {
         advance(lexer);
-        if (lexer->lookahead != ')' || !valid[GLUED_SEPARATOR]) {
+        *symbol = lexer->lookahead == ')' ? GLUED_SEPARATOR : GLUED_TEXT;
+        while (lexer->lookahead != ')' && !at_line_end(lexer)) {
+            advance(lexer);
+        }
+        if (lexer->lookahead != ')' || !valid[*symbol]) {
             return false;
         }
         advance(lexer);
-        *symbol = GLUED_SEPARATOR;
         return true;
     }
     if (!valid[GLUED_ARGUMENT]) {
@@ -3422,6 +3453,9 @@ static bool read_glued_escape(TSLexer *lexer, const bool *valid, TSSymbol *symbo
         return false;
     }
     while (is_word_char(lexer->lookahead)) {
+        advance(lexer);
+    }
+    if (lexer->lookahead == '\'') {
         advance(lexer);
     }
     return true;
@@ -3448,13 +3482,21 @@ static bool scan_glued(TSLexer *lexer, const bool *valid, bool closing)
     return false;
 }
 
+static bool take_darwin_argument(TSLexer *lexer)
+{
+    if (!is_digit(lexer->lookahead) && lexer->lookahead != 'n') {
+        return false;
+    }
+    advance(lexer);
+    return finish_token(lexer, DARWIN_ARGUMENT);
+}
+
 static bool scan_darwin_argument(TSLexer *lexer, const bool *valid, bool closing)
 {
     lexer->mark_end(lexer);
     advance(lexer);
-    if (is_digit(lexer->lookahead) || lexer->lookahead == 'n') {
-        advance(lexer);
-        return finish_token(lexer, DARWIN_ARGUMENT);
+    if (take_darwin_argument(lexer)) {
+        return true;
     }
     if (closing) {
         return close_construct(lexer, valid);
@@ -3484,16 +3526,33 @@ static bool memory_name_ends(TSLexer *lexer)
     return lexer->lookahead == ',' || at_line_end(lexer);
 }
 
-static bool memory_argument_follows(TSLexer *lexer)
+static bool memory_word_ends(TSLexer *lexer)
 {
-    advance(lexer);
-    if (!argument_name_follows(lexer)) {
-        return false;
-    }
     while (is_word_char(lexer->lookahead)) {
         advance(lexer);
     }
     return memory_name_ends(lexer);
+}
+
+static bool memory_argument_follows(TSLexer *lexer)
+{
+    advance(lexer);
+    return argument_name_follows(lexer) && memory_word_ends(lexer);
+}
+
+static bool memory_index_follows(TSLexer *lexer)
+{
+    advance(lexer);
+    if (!advance_blanks(lexer)) {
+        return false;
+    }
+    if (lexer->lookahead == '%' || is_digit(lexer->lookahead)) {
+        return true;
+    }
+    if (lexer->lookahead == '\\') {
+        return memory_argument_follows(lexer);
+    }
+    return is_alpha(lexer->lookahead) && memory_word_ends(lexer);
 }
 
 static enum ParenthesisContent parenthesis_content(TSLexer *lexer, unsigned char x86_syntax)
@@ -3509,8 +3568,11 @@ static enum ParenthesisContent parenthesis_content(TSLexer *lexer, unsigned char
     if (!advance_blanks(lexer)) {
         return CONTENT_OTHER;
     }
-    if (att && (lexer->lookahead == '%' || lexer->lookahead == ',')) {
+    if (att && lexer->lookahead == '%') {
         return CONTENT_MEMORY;
+    }
+    if (att && lexer->lookahead == ',') {
+        return memory_index_follows(lexer) ? CONTENT_MEMORY : CONTENT_OTHER;
     }
     if (att && lexer->lookahead == '\\') {
         return memory_argument_follows(lexer) ? CONTENT_NAMES : CONTENT_OTHER;
@@ -4103,7 +4165,7 @@ static enum ScanDecision scan_word_token(TSLexer *lexer, const bool *valid,
     const struct Scanner *scanner, uint32_t blanks)
 {
     const int32_t first = lexer->lookahead;
-    struct OperandWord word = {{0}, NULL, 0, false};
+    struct OperandWord word = {{0}, NULL, 0, false, false};
     struct OperandRole role = {0, FOLLOW_NOTHING, NULL};
 
     lexer->mark_end(lexer);
@@ -4113,6 +4175,15 @@ static enum ScanDecision scan_word_token(TSLexer *lexer, const bool *valid,
     if (label_fits(valid)) {
         return scan_word_label(lexer, valid, scanner,
             ASM_DARWIN_LOCALS && first == 'L' ? LOCAL_LABEL_NAME : GLOBAL_LABEL_NAME, &word);
+    }
+    if (valid[KEYWORD_WORD]) {
+        lexer->mark_end(lexer);
+        if (keyword_follows(lexer)) {
+            lexer->result_symbol = KEYWORD_WORD;
+            return SCAN_FOUND;
+        }
+        return decided(operand_role(valid, scanner, &word, &role)
+            && finish_operand_word(lexer, &role));
     }
     if (!operand_role(valid, scanner, &word, &role)) {
         return unread_word(lexer, valid, first, blanks);
@@ -4236,6 +4307,11 @@ static inline __attribute__((always_inline)) enum ScanDecision scan_blank(TSLexe
     const int32_t first = lexer->lookahead;
     TSSymbol symbol = BLANK;
 
+    if (scanner->altmacro && first == '<' && valid[BLANK] && scrubs_blank(valid)) {
+        lexer->mark_end(lexer);
+        lexer->result_symbol = BLANK;
+        return SCAN_FOUND;
+    }
     if (blanks == 0
         || (!valid[BLANK] && !valid[JOINING_BLANK])
         || (first == ':' && colon_fits(valid))) {
@@ -4424,11 +4500,15 @@ static bool call_name_follows(TSLexer *lexer)
 static enum ScanDecision scan_operand_gap(TSLexer *lexer, const bool *valid, uint32_t blanks)
 {
     const int32_t first = lexer->lookahead;
+    const bool closes = closable(valid) && closes_before(first, valid);
 
-    if (blanks > 0 && !valid[OPERAND_GAP] && valid[DECORATOR_GAP] && is_alpha(first)) {
+    if (blanks > 0 && !valid[OPERAND_GAP] && valid[CALL_GAP] && is_alpha(first)) {
         lexer->mark_end(lexer);
-        lexer->result_symbol = DECORATOR_GAP;
-        return call_name_follows(lexer) ? SCAN_FOUND : SCAN_NOT_FOUND;
+        lexer->result_symbol = CALL_GAP;
+        if (call_name_follows(lexer)) {
+            return SCAN_FOUND;
+        }
+        return closes ? decided(close_construct(lexer, valid)) : SCAN_NOT_FOUND;
     }
     if (!valid[OPERAND_GAP] || blanks == 0 || !starts_gapped_operand(first)) {
         return SCAN_UNDECIDED;
@@ -4473,6 +4553,72 @@ static enum ScanDecision scan_mark(TSLexer *lexer, const bool *valid)
     return SCAN_UNDECIDED;
 }
 
+static enum ScanDecision scan_dollar(TSLexer *lexer, const bool *valid,
+    const struct Scanner *scanner)
+{
+    char word[STATEMENT_WORD_CAPACITY] = {0};
+    size_t length = 0;
+    const bool prefix = valid[DOLLAR] && (valid[ARM_REGISTER] || valid[MEMORY_ADDRESS]);
+    const bool darwin = ASM_DARWIN_ARGUMENTS && valid[DARWIN_ARGUMENT];
+    const bool label = valid[GLOBAL_LABEL_NAME];
+
+    if (!prefix && !darwin && !label && !valid[DOLLAR_NAME]) {
+        return SCAN_UNDECIDED;
+    }
+    take_word_char(lexer, word, &length);
+    if (darwin && take_darwin_argument(lexer)) {
+        return SCAN_FOUND;
+    }
+    if (prefix && !(ASM_ARM_OPERANDS && lexer->lookahead == ':')) {
+        return decided(finish_token(lexer, DOLLAR));
+    }
+    while (is_word_char(lexer->lookahead)) {
+        take_word_char(lexer, word, &length);
+    }
+    lexer->mark_end(lexer);
+    if (label
+        && advance_blanks(lexer)
+        && lexer->lookahead == ':'
+        && scan_colon_label(lexer, valid, scanner, GLOBAL_LABEL_NAME, word, word_entry(word))) {
+        return SCAN_FOUND;
+    }
+    lexer->result_symbol = DOLLAR_NAME;
+    return valid[DOLLAR_NAME] ? SCAN_FOUND : SCAN_NOT_FOUND;
+}
+
+static bool scan_altmacro_string(TSLexer *lexer)
+{
+    const int32_t quote = lexer->lookahead;
+    int32_t codepoint = 0;
+    unsigned nest = 0;
+    bool escaped = false;
+
+    advance(lexer);
+    while (!at_line_end(lexer)) {
+        codepoint = lexer->lookahead;
+        advance(lexer);
+        if (codepoint == '!') {
+            if (!at_line_end(lexer)) {
+                advance(lexer);
+            }
+        } else if (quote == '<' && codepoint == '<') {
+            nest++;
+        } else if (quote == '<' && codepoint == '>') {
+            if (nest == 0) {
+                break;
+            }
+            nest--;
+        } else if (quote == '\'' && codepoint == '\'' && !escaped) {
+            if (lexer->lookahead != '\'') {
+                break;
+            }
+            advance(lexer);
+        }
+        escaped = codepoint == '\\' && !escaped;
+    }
+    return finish_token(lexer, ALTMACRO_STRING);
+}
+
 static enum ScanDecision scan_expected_token(TSLexer *lexer, const bool *valid,
     const struct Scanner *scanner, uint32_t blanks)
 {
@@ -4481,6 +4627,9 @@ static enum ScanDecision scan_expected_token(TSLexer *lexer, const bool *valid,
 
     if (mark != SCAN_UNDECIDED) {
         return mark;
+    }
+    if (scanner->altmacro && valid[ALTMACRO_STRING] && (first == '<' || first == '\'')) {
+        return decided(scan_altmacro_string(lexer));
     }
     if (first == ':' && (colon_fits(valid) || valid[REFERENCE_COLON])) {
         return scan_colon(lexer, valid, blanks);
@@ -4501,6 +4650,45 @@ static enum ScanDecision scan_expected_token(TSLexer *lexer, const bool *valid,
     if (is_alpha(first) && (valid[SYNTAX_PREFIX] || valid[SYNTAX_NOPREFIX])) {
         return decided(scan_syntax_argument(lexer, valid));
     }
+    if (ASM_GNU_SYNTAX && first == '$') {
+        return scan_dollar(lexer, valid, scanner);
+    }
+    return SCAN_UNDECIDED;
+}
+
+static enum ScanDecision scan_percent_operand(TSLexer *lexer, const bool *valid,
+    const struct Scanner *scanner, const struct Gap *gap)
+{
+    TSSymbol symbol = BLANK;
+
+    if (scanner->altmacro && valid[ALTMACRO_PERCENT]) {
+        advance(lexer);
+        return decided(finish_token(lexer, ALTMACRO_PERCENT));
+    }
+    if (ASM_PERCENT_SEPARATOR && valid[SEPARATOR]) {
+        return scan_percent_separator(lexer, valid, scanner, gap->blanks);
+    }
+    if (!ASM_PERCENT_MACROS && gap->blanks > 0 && blank_fits('%', valid, &symbol)) {
+        return scan_blank(lexer, valid, scanner, gap->blanks);
+    }
+    if (ASM_PERCENT_MACROS || valid[REMAINDER]) {
+        return scan_percent(lexer, valid, scanner, gap);
+    }
+    if (ASM_X86_OPERANDS && (valid[REGISTER] || valid[PERCENT_CALL])) {
+        return decided(scan_percent_register(lexer, valid, scanner));
+    }
+    return SCAN_UNDECIDED;
+}
+
+static enum ScanDecision scan_word_operand(TSLexer *lexer, const bool *valid,
+    const struct Scanner *scanner, uint32_t blanks)
+{
+    if (valid[RELOCATION_NAME]) {
+        return scan_relocation_name(lexer, valid);
+    }
+    if (operand_word_fits(valid, scanner) || valid[KEYWORD_WORD]) {
+        return scan_word_token(lexer, valid, scanner, blanks);
+    }
     return SCAN_UNDECIDED;
 }
 
@@ -4510,28 +4698,17 @@ static enum ScanDecision scan_operand_token(TSLexer *lexer, const bool *valid,
     const int32_t first = lexer->lookahead;
     const uint32_t blanks = gap->blanks;
     enum ScanDecision decision = SCAN_UNDECIDED;
-    TSSymbol symbol = BLANK;
 
-    if (first == '%' && ASM_PERCENT_SEPARATOR && valid[SEPARATOR]) {
-        return scan_percent_separator(lexer, valid, scanner, blanks);
+    if (first == '%') {
+        decision = scan_percent_operand(lexer, valid, scanner, gap);
+    } else if (is_alpha(first) && !statement_role_fits(valid)) {
+        decision = scan_word_operand(lexer, valid, scanner, blanks);
     }
-    if (first == '%' && !ASM_PERCENT_MACROS && blanks > 0 && blank_fits(first, valid, &symbol)) {
-        return scan_blank(lexer, valid, scanner, blanks);
-    }
-    if (first == '%' && (ASM_PERCENT_MACROS || valid[REMAINDER])) {
-        return scan_percent(lexer, valid, scanner, gap);
-    }
-    if (first == '%' && ASM_X86_OPERANDS && (valid[REGISTER] || valid[PERCENT_CALL])) {
-        return decided(scan_percent_register(lexer, valid, scanner));
+    if (decision != SCAN_UNDECIDED) {
+        return decision;
     }
     if (is_digit(first) && (valid[SECTION_TYPE_WORD] || valid[DOLLAR_LABEL])) {
         return scan_digit_word(lexer, valid, blanks);
-    }
-    if (is_alpha(first) && valid[RELOCATION_NAME]) {
-        return scan_relocation_name(lexer, valid);
-    }
-    if (is_alpha(first) && operand_word_fits(valid, scanner) && !statement_role_fits(valid)) {
-        return scan_word_token(lexer, valid, scanner, blanks);
     }
     if (first == '{' && (valid[DECORATOR] || valid[PSEUDO_PREFIX] || valid[BRACE_OPEN])) {
         return scan_braced(lexer, valid, scanner, blanks);
@@ -4847,11 +5024,13 @@ unsigned ASM_EXPORT(_external_scanner_serialize)(void *payload, char *buffer)
     unsigned length = 1;
 
     if (!scanner->closed_input
+        && !scanner->altmacro
         && scanner->x86_syntax == DEFAULT_X86_SYNTAX
         && scanner->open_calls == 0) {
         return 0;
     }
     buffer[0] = (char)((scanner->closed_input ? CLOSED_INPUT_BIT : 0U)
+        | (scanner->altmacro ? ALTMACRO_BIT : 0U)
         | ((unsigned)scanner->x86_syntax << X86_SYNTAX_SHIFT));
     if (scanner->open_calls == 0) {
         return length;
@@ -4870,7 +5049,8 @@ void ASM_EXPORT(_external_scanner_deserialize)(void *payload, const char *buffer
     unsigned index = 1;
 
     scanner->closed_input = (state & CLOSED_INPUT_BIT) != 0;
-    scanner->x86_syntax = length > 0 ? (unsigned char)(state >> X86_SYNTAX_SHIFT)
+    scanner->altmacro = (state & ALTMACRO_BIT) != 0;
+    scanner->x86_syntax = length > 0 ? (unsigned char)((state & ~ALTMACRO_BIT) >> X86_SYNTAX_SHIFT)
                                      : DEFAULT_X86_SYNTAX;
     scanner->open_calls = 0;
     while (index < length && index <= OPEN_CALLS_BYTES) {
@@ -4911,6 +5091,7 @@ bool ASM_EXPORT(_external_scanner_scan)(void *payload, TSLexer *lexer, const boo
     if (found) {
         follow_x86_syntax(scanner, lexer->result_symbol);
         follow_calls(scanner, lexer->result_symbol, valid_symbols);
+        follow_altmacro(scanner, lexer->result_symbol);
     }
     return found;
 }

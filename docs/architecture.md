@@ -142,10 +142,10 @@ inside it, and a block between two global labels belongs to the label block befo
 a rule of its own. A name the header requires closes like a missing operand when the line ends
 early, so a header being typed never takes in the next line. A closer ends its block whatever
 follows it, and the rest of its line must be empty. `.endif nop` closes and then reports `nop`, as
-GNU as does. A blank in a parameter or value list follows GNU as's input scrubber, as in a macro
-call (see Blocks, labels and directive forms). In ARM `.irp r x0 #1` has the one value `x0#1`, and
-`.macro m a, b=1 #1` has the default `1#1` and `b=1 -2` the default `1-2` (measured). In x86 (GAS)
-`#1` is a comment, and `b=1 -2` is an error, as GNU as for x86 reports it ("Bad parameter list").
+GNU as does. A blank in a parameter or value list follows the macro call rule (see Blocks, labels
+and directive forms). In ARM `.irp r x0 #1` has the one value `x0#1`, `.macro m a, b=1 #1` the
+default `1#1` and `b=1 -2` the default `1-2`. In x86 (GAS) `#1` is a comment and `b=1 -2` an error,
+as in GNU as ("Bad parameter list").
 
 A block open at the end of the file ends there, with a hidden zero-width token from the scanner, as
 tree-sitter-python writes its dedents at the end of a file. The token is hidden so that the tree
@@ -174,13 +174,25 @@ fits. A second `.else` in a conditional, or `.elseif` after `.else`, which both 
 becomes a token no rule accepts and parses as an error.
 
 `\name`, `\@` and `\+` are `macro_argument` nodes. Text glued to an argument forms a `concatenation`
-(`no\s`, `\name\()_start`, `.Lx\@`), which may be a mnemonic, an operand or a label. A label named
-that way starts no block, since its name exists only after expansion. The scanner reads glued pieces
-only where nothing separates them from the piece before, and never during error recovery, so
-recovery cannot glue the next line onto a name. Macro calls take keyword arguments (`m b=2, a=1`).
-ARM (Apple) adds Apple's positional arguments `$0` to `$9` and `$n` and requires commas between
-parameters, as its assembler does. Apple's clang substitutes a positional argument whatever follows
-it, so `$0.16b` and `$0abc` are the argument glued to text.
+(`no\s`, `\name\()_start`, `.Lx\@`), which may be a mnemonic, an operand, a label, or the name of
+a macro (`.macro w_avg_\bd\()_2 tap`), an assignment (`\sym\()_x = 2`) or a register alias
+(`\name .req \tgt`). An ARM register glued to
+an argument heads the concatenation as a `register` (`v4\sz`). A label named that way starts no
+block, since its name exists only after expansion. The macro reader of GNU as (`macro.c`) gives
+the glued forms below.
+
+| Form                                                                                                | Reading                                      | Example     |
+| --------------------------------------------------------------------------------------------------- | -------------------------------------------- | ----------- |
+| `\()`                                                                                               | a separator between glued pieces             | `\a\()_x`   |
+| `\(text)`                                                                                           | the literal text, an `identifier` piece      | `nop\(lit)` |
+| `\name'`                                                                                            | the argument, its closing apostrophe dropped | `\a'x`      | The scanner reads glued pieces |
+| only where nothing separates them from the piece before, and never during error recovery, so        |                                              |             |
+| recovery cannot glue the next line onto a name. Macro calls take keyword arguments (`m b=2, a=1`).  |                                              |             |
+| A keyword's name is a word followed by `=` (not `==`), with blanks allowed, so a register name may  |                                              |             |
+| be one (`do_thumb_abort fsr=r1, pc=r4, psr = r5`).                                                  |                                              |             |
+| ARM (Apple) adds Apple's positional arguments `$0` to `$9` and `$n` and requires commas between     |                                              |             |
+| parameters, as its assembler does. Apple's clang substitutes a positional argument whatever follows |                                              |             |
+| it, so `$0.16b` and `$0abc` are the argument glued to text.                                         |                                              |             |
 
 A statement ends at a newline, a statement separator or the end of the file. GNU as reads a missing
 final newline as one ("end of file not at end of a line; newline inserted"), and the scanner reads
@@ -219,8 +231,11 @@ Three tests cover this:
    final newline, and of every corpus example, and requires every other line to parse as before.
    Exempt are the lines a typed line continues into through a join (any line but a GNU-syntax line
    comment), the lines an unclosed `/*` reaches up to its `*/` or the end of the file, the lines an
-   unclosed C macro call takes up to its `)`, and, for a line that holds a block's opener, clause or
-   closer, the other such lines of that block and of the blocks around it.
+   unclosed C macro call takes up to its `)`, and, for a typed line that holds a block's opener,
+   clause or closer, also on a line it joins before or after the typing, the other such lines of
+   that block and of the blocks around it. A mode line
+   (`.intel_syntax`, `.att_syntax`, `.altmacro`, `.noaltmacro`) is not checked, since its mode
+   changes the lines after it.
 2. The same file types every printable character after each kind of open construct, in every
    grammar, before a next line and as the last line of a file without a final newline, inside a
    `.if` and a `.rept` (a label block in NASM) that the end of the file closes. The lines before
@@ -245,13 +260,14 @@ build concatenates fragments from general to specific, so later patterns overrid
 ## The external scanner
 
 `tree-sitter/common/scanner.h` makes every lexing decision that depends on the dialect or on what
-the parser expects next. Its state has three values. They are whether it has written the zero-width
-tokens that end the input (see Grammar modules), the x86 syntax mode (see x86 operands), and the
-number of open C macro calls (see Expressions, C macro calls). It serializes to zero bytes while all
-three hold their initial values, to one byte for the first two, and to five bytes while a call is
-open. Incremental reparsing therefore reuses any subtree before the first mode line, open call or
-end of input. Each grammar's generated `src/scanner.c` defines `ASM_GRAMMAR_NAME` and one
-`ASM_DIALECT_*` macro and includes it. Defining none or two is a compile error.
+the parser expects next. Its state has four values. They are whether it has written the zero-width
+tokens that end the input (see Grammar modules), the x86 syntax mode (see x86 operands), the
+alternate macro mode (see Blocks, labels and directive forms), and the number of open C macro calls
+(see Expressions, C macro calls). It serializes to zero bytes while all four hold their initial
+values, to one byte for the first three, and to five bytes while a call is open. Incremental
+reparsing therefore reuses any subtree before the first mode line, open call or end of input. Each
+grammar's generated `src/scanner.c` defines `ASM_GRAMMAR_NAME` and one `ASM_DIALECT_*` macro and
+includes it. Defining none or two is a compile error.
 
 What the assemblers do, measured with GNU as 2.46.1 (x86-64, AArch64) and 2.45 (AArch32), clang
 22.1, nasm 3.02 and yasm 1.3.0:
@@ -340,8 +356,10 @@ Generated tables). The scanner hashes a word once and reads every role it has fr
 (directive, instruction, register, prefix and the rest), each with its architecture, token and
 flags. The indent pattern reads the block words from the tables. The flags state, for example, that
 a reserved word is never a label, and that in NASM a word can make the name before it a label
-(`x db 1`) or an assignment name (`len equ 5`). The scanner reads a word into a buffer one byte
-longer than the longest word of its dictionary, so a longer word is no keyword. tree-sitter's
+(`x db 1`) or an assignment name (`len equ 5`). The scanner keeps a word's first characters, one
+more than the longest word of its dictionary. A longer word matches no keyword, whole or with an
+affix, and reads as a name (a 45-character `a_macro_name_longer_than_every_keyword_of_gas 1, 2` is a
+macro call). tree-sitter's
 runtime gives a wasm grammar only a few C library functions, so the hash is the scanner's own.
 
 During error recovery the scanner reads no label and no block closer. Every parse state that accepts
@@ -384,7 +402,7 @@ closes before any character that cannot start it:
 | `_missing_label_operand`     | an ARM branch target                                                                      | a value, `[` or `=`                                             |
 | `_missing_argument`          | a directive argument or an `.irp` value                                                   | a value                                                         |
 | `_missing_register_argument` | an argument of `.cfi_offset`, `.save` and the other register directives                   | a value, in ARM also `{`                                        |
-| `_missing_element`           | an element of an ARM bracket                                                              | an expression, in Assembly also `$`                             |
+| `_missing_element`           | an element of an ARM bracket                                                              | an expression, in Assembly and ARM also `$`                     |
 | `_missing_expression`        | an expression                                                                             | an expression                                                   |
 | `_missing_register`          | a register list element, a range end, a `.req` register                                   | a letter, `_` or `\`, in ARM (Apple) also `$`                   |
 | `_missing_name`              | a `.macro` name or parameter, an `.irp` parameter, the statement after `{vex}` or `times` | a letter, `_`, `\`, or `.` before a letter                      |
@@ -488,16 +506,14 @@ in either), and a restriction holds only if every source that lists the word imp
 case-limited only if all of them limit it). Each reader tags what its source states, and
 `scripts/lib/keywords/shapes.ts` merges the tags into scanner tokens and flags.
 
-The symbol characters of GNU as's input scrubber (`app.c`) are generated too, as strings named
-`ASM_<scope>_SYMBOL_CHARACTERS`. `ASM_GNU_SYMBOL_CHARACTERS` holds the characters `app.c`'s `lex`
-table marks as symbol components (letters, digits, `_`, `.` and `$`), and the reader stops if the
-table no longer marks the bytes from 128 up, which the scanner reads as symbol characters too. Each
-target's string holds its `tc_symbol_chars` without its comment, line comment and line separator
-characters, as `do_scrub_begin` overrides them, for an ELF Linux build (`OBJ_ELF` and `TE_LINUX`
-defined, so x86's PE-only `@` and `?` stay out). The reader preprocesses the target's `tc-*.h` and
-the declarations in its `tc-*.c` with gcc for that build. The strings are `%(*-[` for x86 (GAS),
-`[]{}` for AArch32 and none for AArch64. `words.h` holds each language's union of the strings it
-reads as two 64-bit masks over ASCII, `SYMBOL_CHARACTERS` (see Blocks, labels and directive forms).
+The strings `ASM_<scope>_SYMBOL_CHARACTERS` hold the symbol characters of GNU as's input scrubber
+(`app.c`). `ASM_GNU_SYMBOL_CHARACTERS` is the symbol components of `app.c`'s `lex` table (letters,
+digits, `_`, `.`, `$`). The bytes from 128 up are symbol characters too, and the reader stops if
+`lex` changes that. A target's string is its `tc_symbol_chars` minus its comment, line comment and
+line separator characters (`do_scrub_begin`), read from `tc-*.h` and `tc-*.c` through gcc for an
+ELF Linux build (`OBJ_ELF`, `TE_LINUX`). The strings are `%(*-[` for x86, `[]{}` for AArch32 and
+empty for AArch64. `words.h` holds each language's union as two 64-bit ASCII masks,
+`SYMBOL_CHARACTERS`.
 
 nasm's token classes (registers, prefixes, operand words, decorators) come from nasm alone, so where
 nasm and yasm read a word differently, the grammar follows nasm. Statement words are the union with
@@ -563,6 +579,11 @@ clang's other words are left out, and those lines read as comments, as the assem
 `#`. `__preprocessed_import` needs C++ modules. `__include_macros` is an error outside clang's own
 buffers, and GCC does not know it. The generator stops if any of these facts changes, and on a
 handler it has no form for.
+
+Directive lines are preprocessor lines, comments are comments, and every other line parses as
+assembly, in every branch of a conditional group. No condition is evaluated, `#if 0` included. C
+text outside a comment is an error (the C declarations in glibc's `#ifdef __svml_*_typedef`
+groups).
 
 The directive word is compared as written, so `#DEFINE` is a comment. It ends where a C identifier
 ends. `.` and `$` are not identifier characters in assembler-with-cpp mode, so `#endif.x` is
@@ -694,12 +715,16 @@ grammar reads:
   call stands for a macro that expands to a string (`.ascii KERN_WARNING "..."` in the Linux
   sources). Every other directive separates its arguments with commas and may leave one empty.
 - Macro definitions with the parameters `a`, `a=default`, `a:req` and `a:vararg`, separated by
-  commas or blanks (only commas in ARM (Apple)), closed by `.endm` or `.endmacro`.
-- Macro arguments `\name`, `\@` and `\+`, alone or glued to text, and keyword arguments in calls.
+  commas or blanks (only commas in ARM (Apple)), closed by `.endm` or `.endmacro`. A comma may
+  follow the name (`.macro loadsp, rb`), as in both assemblers.
+- Macro arguments `\name`, `\@` and `\+`, alone or glued to text, keyword arguments in calls, and
+  an empty first argument (`diff_pixels , aligned=1`).
+- `.altmacro` and `.noaltmacro` (see Alternate macro mode).
   Apple's `$0` to `$9` and `$n` in ARM (Apple) only.
 - Conditionals with every `.if` opener measured, `.elseif` and `.else`, closed by `.endif`, and
   repeat blocks with `.rept`, `.irp` and `.irpc`, closed by `.endr`. `.irp` values are separated
-  by commas or blanks (only commas in ARM (Apple)).
+  by commas or blanks (only commas in ARM (Apple)). Every branch of a conditional parses, `.if 0`
+  included.
 
 A macro call has the form of an instruction, and its arguments may be separated by blanks. GNU as
 ("Multiple arguments can be separated by blanks or commas") and clang ELF split `m 1 2` into two
@@ -712,38 +737,38 @@ an operand may be a macro that expands first (see NASM, Macro calls and macro wo
 arguments and `.if` conditions are separated by commas (`.byte 1 2` is an error). As a limit, a
 macro named like an instruction (`.macro mov a b`, then `mov 1 2`) reads as the instruction.
 
-In a macro call, an `.irp` or `.irpc` value list and a macro parameter list a blank follows GNU as,
-which splits the items at the blanks its input scrubber (`app.c`) keeps (`macro.c`,
-`get_any_string`). The scrubber keeps a blank after a symbol character or a string only before a
-symbol character, a quote or a backslash, and drops it before anything else. The symbol characters
-are the GNU ones and the target's own (see Generated tables). ARM reads the AArch64 and AArch32
-characters, x86 (GAS) the x86 ones and Assembly all of them. A kept blank is the separating blank, a
-zero-width scanner token, so `m a "b"` and `m a \b` are two arguments everywhere, and `m 1 -2` and
-`m foo (%rax)` are two in x86 (GAS) and Assembly. Where GNU as drops the blank, an operator that
-continues the expression leaves one expression (`m 1 -2` in ARM is `1-2`), a `(` after a name opens
-a call or a relocation suffix (`m F (1)`, `m sym (GOT)` in ARM), and any other start of a value
-follows a joining blank, a hidden zero-width scanner token, so that the values around it form one
-`argument` (`m x0 #1` in ARM, `m a ~b` everywhere). `1B` stays an error. clang ELF splits at every
-blank that no operator follows (`parseMacroArgument`), so it reads `m 1 -2` as one argument in x86
-too. ARM (Apple) follows Apple's clang, which never splits at a blank, and every blank between two
-of its values is a joining blank. In Assembly no blank is written before `#`, which after code is
-x86's comment (`movq %rax, %rbx #save`).
+A blank in a macro call, an `.irp` or `.irpc` value list or a macro parameter list follows GNU as's
+input scrubber (`app.c`) and macro reader (`macro.c`, `get_any_string`). After a symbol character
+or a string, a blank before a symbol character, a quote or a backslash separates two items. Every
+other blank is dropped. The symbol characters are generated per target (see Generated tables). ARM
+takes the AArch64 and AArch32 characters, x86 (GAS) the x86 ones and Assembly both. Separated:
+`m a "b"` and `m a \b` everywhere, `m 1 -2` and `m foo (%rax)` in x86 (GAS) and Assembly.
 
-An ARM shift joins its amount (`lsl #2`). The shift words are the ones the assemblers take with an
-amount (`lsl lsr asr ror asl msl` and the extends `uxtb`...`sxtx`, measured). Such a word alone is
-an ordinary symbol. In a macro list a shift also takes its amount across a kept blank, as GNU as
-passes it whole to a `:vararg` parameter, the only parameter that takes it (FFmpeg's
-`add_sh r2, r2, r4, asr r3`, whose `sh` is `:vararg`). For other parameters GNU as splits it into
-`asr` and `r3`, and a macro with no parameter left then fails with "too many positional arguments"
-(measured). The grammar does not see a macro's definition. Neither assembler splits an argument
-inside parentheses. Parentheses that hold no expression are an `argument_list`, whose items are
-split at commas and at blanks before a character that starts an operand and cannot continue the
-one before. C macro call arguments follow their own rule (see Expressions, C macro calls).
+| After a dropped blank      | Reads as                                 | Example                         |
+| -------------------------- | ---------------------------------------- | ------------------------------- |
+| an operator                | one expression                           | `m 1 -2` in ARM                 |
+| `(` after a name           | a call or a relocation suffix            | `m F (1)`, `m sym (GOT)` in ARM |
+| any other start of a value | one `argument` holding the joined values | `m x0 #1` in ARM, `m a ~b`      |
 
-The scanner does not see the character before a blank, so as a limit a kept blank separates after
-`)`, after `]` and `}` in x86 (GAS), and after a character constant, where GNU as drops
-it (`m 4(%rsp) 8(%rsp)` is one argument in GNU as). An operator is never an item of its own
-(`m 1 - 2` is three arguments in GNU as for x86 and two in the grammar).
+The separating and the joining blank are zero-width scanner tokens. Assembly writes neither before
+`#` (x86's comment). clang ELF splits at every blank no operator follows (`parseMacroArgument`), and
+reads x86 `m 1 -2` as one argument. ARM (Apple) follows Apple's clang, which never splits at a
+blank, and joins every two blank-separated values.
+
+An ARM shift joins its amount (`lsl #2`), also across a kept blank in a macro list (FFmpeg's
+`add_sh r2, r2, r4, asr r3`), which is GNU as's reading for a `:vararg` parameter. The shift words
+are the ones the assemblers take with an amount (`lsl lsr asr ror asl msl` and the extends
+`uxtb`...`sxtx`, measured). Alone they are symbols. Neither assembler splits an argument inside
+parentheses. Parentheses that hold no expression are an `argument_list`, split at commas and at
+blanks before a character that starts an operand and cannot continue the one before. C macro call
+arguments follow their own rule (see Expressions, C macro calls).
+
+Limits:
+
+- A kept blank separates after `)`, after `]` and `}` in x86 (GAS), and after a character constant,
+  where GNU as drops it (`m 4(%rsp) 8(%rsp)` is one argument in GNU as).
+- An operator is never an item of its own (`m 1 - 2` in x86 is three arguments in GNU as).
+- A shift passed to a plain parameter is two arguments in GNU as (`asr`, `r3`).
 
 NASM names follow what nasm 3.02 and yasm 1.3.0 accept. A name is an optional `$`, which turns a
 reserved word into a name (`$eax` is a symbol, not the register), then a letter, `_`, `?`, `@` or
@@ -756,6 +781,24 @@ instruction expected"), and only yasm accepts `..x:` and `....:` (nasm reports "
 symbol"). The grammar reads all of them, as labels and in operands, since each is valid for one of
 the language's assemblers. A `$` starts a name only before a letter, `_`, `?`, `@`, `.` or another
 `$`. A `$` alone is the current position, so an operand may start at any `$`.
+
+### Alternate macro mode
+
+`.altmacro` turns GNU as's alternate macro mode on and `.noaltmacro` turns it off. The words are
+generated from GNU as's `s_altmacro` entries and clang's `DK_ALTMACRO` and `DK_NOALTMACRO`. The
+scanner keeps the mode, in text order, in one bit of its state. Every GNU-syntax language reads it.
+In the mode a macro call argument, a keyword argument's value and an `.irp` or `.irpc` value may
+also be the items below, as GNU as's `get_any_string` and `getstring` read them.
+
+| Item     | Node                                                    | Example                    |
+| -------- | ------------------------------------------------------- | -------------------------- |
+| `%expr`  | `unary_expression` with the operator `%`                | `put_pic %(.Lpic_idx - 1)` |
+| `<text>` | `string`, nested pairs inside, `!` escaping a character | `m <q r>, <a!>b>`          |
+| `'text'` | `string`, `''` for a quote                              | `m 'it''s'`                |
+
+A `<` ends the argument before it, glued or after a blank (`m a<b c>` is `a` and `<b c>`). An
+unclosed `<text` or `'text` ends at the line end. Outside the mode `%` and `<` are operators
+(`m %function`, `m a<b`).
 
 ## Expressions
 
@@ -786,6 +829,22 @@ own order and reads `shl`, `shr` and `mod` at level 1, `and`, `or` and `xor` at 
 (`2 + 3 shl 1` is 8 in GNU as, 10 in clang). The grammar follows GNU as. Precedence shapes the tree
 only, never a color.
 
+In GNU syntax `$` starts a name (`$x:`, `.word $4`, `foo+$bar`), as `LEX_DOLLAR` makes it in GNU as
+and clang reads it. Before an operand where an immediate fits and a register may stand, `$` is the
+immediate prefix instead. That holds in instruction operands, macro arguments and the ARM directives
+with register operands (see ARM operands, Directives with register operands).
+
+| Input                        | x86 (GAS)    | ARM and Assembly                | ARM (Apple)                     |
+| ---------------------------- | ------------ | ------------------------------- | ------------------------------- |
+| `mov $4, %eax`, `add r0, $4` | an immediate | an immediate, as `#4`           | the macro argument `$4`         |
+| `add x0, x1, $foo`           | -            | an immediate                    | the name `$foo`                 |
+| `.word $4`, `.long $foo + 4` | the names    | the names                       | `$4` an argument, `$foo` a name |
+| `$x:`                        | a label      | a label                         | a label                         |
+| `movw r0, $:lower16:x`       | -            | an error, as in both assemblers | an error                        |
+
+In ARM (Apple) `$0` to `$9` and `$n` are macro arguments before any other reading. As a limit,
+`.pad $4` reads `$4` as a name, while GNU as reads the immediate 4 there.
+
 A quoted name is a symbol where a symbol is needed, as a label (`"a b":`), in an operand, after `$`,
 with `@PLT` or `:lo12:`, and in memory operands. GNU as and clang accept all of these on every
 target, and gcc's Intel output quotes every symbol. A quoted operand alone stays a string, since GNU
@@ -810,23 +869,23 @@ In `.S` files the C preprocessor runs before the assembler, so the source contai
 (`PER_CPU_VAR(x)`, `USER(9f, ldr x0, [x1])`, `L(loop)`). The GNU-syntax languages read them by these
 rules:
 
-| Construct                                                        | Reading                                                                                                                                                                                                                                                               |
-| ---------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `name(`                                                          | `macro_call` with the fields `function` and `arguments`, except AT&T memory, whose parentheses start with a register or a comma (`sym(%rip)`, `t(,%rax,8)`)                                                                                                           |
-| `name (`                                                         | a call (`.word F (1)`), inside a call argument too unless the parentheses hold an AT&T memory operand with a register (`END (SYM (a, b))`), and two arguments where GNU as keeps the blank in a macro list (`m F (1)` in x86 (GAS) and Assembly)                      |
-| statement `name(...)`                                            | a call statement when the parentheses end the statement at a line end, separator or comment, also after x86 decorators, which become `decorator` children (`_ASM_EXTABLE(1b, 3b)`, `ENTRY_P2ALIGN (STRCHR, 5)`, `CMP_R1_S2_VMM (%VMM(0), (%rsi), %VMM(1), %k1){%k2}`) |
-| statement `name(...)` and operands                               | an `instruction` whose `mnemonic` is the call, when `(` follows the name directly and a blank and an operand follow the parentheses (`__ASM_SIZE(push,) %__ASM_REG(dx)`)                                                                                              |
-| instruction name before `(`                                      | a call when `(` follows directly (`PLD( pld [r1] )`, `BX(ip)`), and the instruction when a blank separates them (`lgdt (%eax)`)                                                                                                                                       |
-| `name(...):`                                                     | a `label` whose `name` is the call (`L(loop):`)                                                                                                                                                                                                                       |
-| line end inside a call                                           | a blank, at any nesting depth inside the call                                                                                                                                                                                                                         |
-| argument                                                         | empty, one item, or a run of items                                                                                                                                                                                                                                    |
-| item                                                             | an instruction operand (an Intel operand in Intel mode), a pp-number or a probe argument                                                                                                                                                                              |
-| probe argument                                                   | `probe_argument` with the fields `size` and `operand`, a size (an integer, a negated integer or a name) glued to `@` and an operand (`4@%eax`, `-4@8(%esp)`, `LP_SIZE@%RDI_LP`, `8@x0`)                                                                               |
-| statement in an argument                                         | split at the dialect's separator (see The external scanner), and may start with labels (`EXC(1: movw (%esi), %bx)`)                                                                                                                                                   |
-| blank, then `[`, `(`, or an operator directly before its operand | the next item (`pld [r1, #-4]`, `movw (%esi)`, `jmp *%\reg`)                                                                                                                                                                                                          |
-| operator with blanks on both sides                               | a binary operator (`i + 2`)                                                                                                                                                                                                                                           |
-| digit word                                                       | an assembler number when one matches the whole word (`1f`, `1.5`, `1e+5`), otherwise a pp-number                                                                                                                                                                      |
-| pp-number                                                        | one `identifier`, an assembler number token followed by the scanner's glued text (`128_more`, `28bytes`)                                                                                                                                                              |
+| Construct                                                        | Reading                                                                                                                                                                                                                                                                             |
+| ---------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `name(`                                                          | `macro_call` with the fields `function` and `arguments`, except AT&T memory, whose parentheses start with a register, or with a comma that an index or a scale follows (`sym(%rip)`, `t(,%rax,8)`, `4(,1)`). Otherwise `(,` opens a call whose first argument is empty (`F(, x y)`) |
+| `name (`                                                         | a call (`.word F (1)`), inside a call argument too unless the parentheses hold an AT&T memory operand with a register (`END (SYM (a, b))`), and two arguments where GNU as keeps the blank in a macro list (`m F (1)` in x86 (GAS) and Assembly)                                    |
+| statement `name(...)`                                            | a call statement when the parentheses end the statement at a line end, separator or comment, also after x86 decorators, which become `decorator` children (`_ASM_EXTABLE(1b, 3b)`, `ENTRY_P2ALIGN (STRCHR, 5)`, `CMP_R1_S2_VMM (%VMM(0), (%rsi), %VMM(1), %k1){%k2}`)               |
+| statement `name(...)` and operands                               | an `instruction` whose `mnemonic` is the call, when `(` follows the name directly and a blank and an operand follow the parentheses (`__ASM_SIZE(push,) %__ASM_REG(dx)`)                                                                                                            |
+| instruction name before `(`                                      | a call when `(` follows directly (`PLD( pld [r1] )`, `BX(ip)`), and the instruction when a blank separates them (`lgdt (%eax)`)                                                                                                                                                     |
+| `name(...):`                                                     | a `label` whose `name` is the call (`L(loop):`)                                                                                                                                                                                                                                     |
+| line end inside a call                                           | a blank, at any nesting depth inside the call                                                                                                                                                                                                                                       |
+| argument                                                         | empty, one item, or a run of items                                                                                                                                                                                                                                                  |
+| item                                                             | an instruction operand (an Intel operand in Intel mode), a pp-number or a probe argument                                                                                                                                                                                            |
+| probe argument                                                   | `probe_argument` with the fields `size` and `operand`, a size (an integer, a negated integer or a name) glued to `@` and an operand (`4@%eax`, `-4@8(%esp)`, `LP_SIZE@%RDI_LP`, `8@x0`)                                                                                             |
+| statement in an argument                                         | split at the dialect's separator (see The external scanner), and may start with labels (`EXC(1: movw (%esi), %bx)`)                                                                                                                                                                 |
+| blank, then `[`, `(`, or an operator directly before its operand | the next item (`pld [r1, #-4]`, `movw (%esi)`, `jmp *%\reg`)                                                                                                                                                                                                                        |
+| operator with blanks on both sides                               | a binary operator (`i + 2`)                                                                                                                                                                                                                                                         |
+| digit word                                                       | an assembler number when one matches the whole word (`1f`, `1.5`, `1e+5`), otherwise a pp-number                                                                                                                                                                                    |
+| pp-number                                                        | one `identifier`, an assembler number token followed by the scanner's glued text (`128_more`, `28bytes`)                                                                                                                                                                            |
 
 GCC's manual says arguments "can cross as many lines in the source file as you wish", and a blank
 may stand between the macro name and `(`. The rules for instruction names and for blanks inside
@@ -863,7 +922,8 @@ inside a file, so one grammar reads all of it.
 The register names are generated from `reg_names` in GNU as's `tc-aarch64.c` and `tc-arm.c`, and
 from LLVM's register matchers with the aliases its parsers add. ARM takes the GNU as and LLVM names,
 ARM (Apple) LLVM's AArch64 names, and Assembly both. The scanner reads a register as one whole word,
-suffix included, and looks it up.
+suffix included, and looks it up. A register word glued to `(` is a name (`R8(x)` is a call), since
+no assembler takes a register there.
 
 | Family          | Names                                                                                                                            | Suffix                                                                                                                |
 | --------------- | -------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------- |
@@ -994,7 +1054,7 @@ directives with register operands (see Directives with register operands).
 | `signed_register`  | `-r2`, `+r2`                                                                                                                                                        | `sign`, `register`              |
 | `writeback`        | `r0!`                                                                                                                                                               | `register`                      |
 | `register_list`    | `{` elements `}` with an optional lane `[1]` (also after a blank) and `^`, a C macro call also an element with no comma needed after it (`{r4, UNWIND(fpreg,) pc}`) | `element`, `index`              |
-| `register_range`   | `r4-r7`, `v0.16b - v3.16b`, `{v31.16b-v2.16b}`                                                                                                                      | `start`, `end`                  |
+| `register_range`   | `r4-r7`, `v0.16b - v3.16b`, `{v31.16b-v2.16b}`, and two registers in a macro or C call argument (`neon_load_multi d0-d3, src`)                                      | `start`, `end`                  |
 | `literal_pool`     | `=expr`, in any operand (`ldr x0, =sym`, and `ldr q0, =sym` in clang)                                                                                               | `value`                         |
 | `shift`            | a shift with an immediate or register amount (`lsl #3`, `lsl 3`, `lsl r2`), an extend with an optional amount (`sxtw`, `uxtw #2`), `rrx`, SVE `mul vl` and `mul #4` | `operator`, `amount`            |
 | `condition`        | a condition word in a condition slot                                                                                                                                | -                               |
@@ -1006,9 +1066,17 @@ After `[` or `{` an element is required. `[]` holds a missing element, `{}` a mi
 lane, parses the same way. The scanner closes `[` and `{` at the end of a line, before a separator
 and before any character that cannot continue them (see The external scanner).
 
-A C macro call in a register list may supply the comma after it, since cpp expands it to elements
-and their comma or to nothing (`UNWIND(fpreg,)` in the Linux sources), so the next element may
-follow it after a blank.
+A C macro call in an operand list or a register list of ARM and ARM (Apple) needs no comma before or
+after it, since cpp expands it to operands and their commas or to nothing.
+
+| Place                          | Example                                         |
+| ------------------------------ | ----------------------------------------------- |
+| after an operand               | `orreq ip, ip, r6 ARM_BE8(, lsl #24)`           |
+| before an operand              | `add r0, F(x) r1`                               |
+| between register list elements | `push {r4 UNWIND(fpreg,) lr}` (in Assembly too) |
+
+An operator after the call continues an expression (`add r0, F(x) - r1`). As a limit, a call in an
+Assembly operand list needs its commas (`add r0, r1 F(x)` is an error).
 
 ### Relocations
 
@@ -1041,11 +1109,11 @@ AArch32 code also writes a relocation after its operand, in parentheses (`.word 
 its table lists (`sym(Got)` is an error), and its table spells the upper case of `gottpoff_fdpic` as
 `GOTTPOFF_FDIC`, which the grammar reads too. Both take a blank before `(` and an addend after it
 (`sym(GOT)+4`). GNU as also applies the name to the whole expression before it (`sym+4(GOT)`), and
-the grammar reads it the same way. In a blank-separated `.irp` list ARM reads `a (b)` as the call
-`a(b)`, since GNU as for ARM drops the blank, and Assembly as the two values `a` and `(b)`, since
-GNU as for x86 keeps it. This form reads in Assembly and ARM. The scanner reads its names. After
-`(` it reads the name as a whole word, and it does not split a blank-separated operand before `(`
-and a name, so `bl sym (PLT)` is one operand, as both assemblers read it.
+the grammar reads it the same way. In a blank-separated `.irp` list `a (b)` is the call `a(b)` in
+ARM and the two values `a` and `(b)` in Assembly. This form reads in Assembly and ARM. The scanner
+reads its names. After `(` it reads the name as a whole word, and it does not split a
+blank-separated operand before `(` and a name, so `bl sym (PLT)` is one operand, as both assemblers
+read it.
 
 ### Directives with register operands
 
@@ -1190,7 +1258,7 @@ serialized state, and none in a file that never leaves AT&T.
 | `indirect`               | AT&T `*%rax`, `*(%rax)`, `*8(,%rax,8)`                                                                                                                | `operand`                                           |
 | `decorated_operand`      | an operand and its decorators (`%zmm3{%k1}{z}`, `sym{%k1}`)                                                                                           | `operand`, `decorator`                              |
 | `decorator`              | see Decorators                                                                                                                                        | -                                                   |
-| `immediate`              | AT&T `$expr`                                                                                                                                          | `value`                                             |
+| `immediate`              | AT&T `$expr` in an instruction operand (`.long $4` is the symbol `$4`)                                                                                | `prefix`, `value`                                   |
 | `prefix`                 | see Prefixes, as fields of `instruction`                                                                                                              | -                                                   |
 | `operator_word`          | Intel `shl`, `and`, `eq`, `not`, `offset`, `imagerel`, `short` in an expression                                                                       | -                                                   |
 
@@ -1228,7 +1296,9 @@ Every assembler reads every name in any case. In AT&T syntax a register is `%` a
 blanks allowed after `%` (`% rax`). An index follows `st`, `mm`, `xmm` or `ymm` in parentheses, with
 blanks allowed anywhere (`% st ( 1 )`), and is an integer below the register's count, 8 for `st` and
 `mm` and 16 for `xmm` and `ymm`. GNU as reads one digit there, clang and yasm an integer token. The
-grammar takes clang's integer, suffixes included, so `%st(0x1)` and `%st(1u)` are `%st(1)`.
+grammar takes clang's integer, suffixes included, so `%st(0x1)` and `%st(1u)` are `%st(1)`. Any
+other register word glued to `(` is a name, since no assembler takes a register there. In Assembly
+`R8(%rsp)` is memory with the displacement `R8`, where ARM's `r8` would otherwise read.
 
 In an instruction operand `%` and a name is a `register` also when the name is no register
 (`%VRCX`), since GNU as reads only a register after `%` there and cpp may build the name. `%`, a
@@ -2245,10 +2315,33 @@ states and compiles under the pragma.
 Macro names in token positions and the blank rule of GNU macro lists grew the parse states of x86
 (GAS) from 2,885 to 3,937, of Assembly from 4,304 to 5,601, of ARM from 1,999 to 2,375 and of ARM
 (Apple) from 1,847 to 2,086, with the lexers unchanged. On `basics` Assembly costs 0.5% more, ARM
-0.6% and ARM (Apple) 0.1%. x86 (GAS) then has 93 large states, against 52, whose rows tree-sitter
-indexes directly instead of searching a compressed row. On `basics` its estimated cycles fall 8.2%,
-nearly all of it in `ts_language_next_state` and `ts_language_table_entry` (9.4M to 1.7M and 6.8M
-to 4.3M, profiled before the blank rule).
+0.6% and ARM (Apple) 0.1%. x86 (GAS) has 93 large states (52 before), indexed directly, and costs
+8.2% less, nearly all of it in `ts_language_next_state` and `ts_language_table_entry` (9.4M to
+1.7M and 6.8M to 4.3M, profiled before the blank rule).
+
+The GNU macro forms, the `$` immediates and names, alternate macro mode and C calls without commas
+grew the parse states of x86 (GAS) from 3,937 to 4,063, of Assembly from 5,601 to 5,784, of ARM
+from 2,375 to 2,748 and of ARM (Apple) from 2,086 to 2,433. On `basics` Assembly costs 2.5% more,
+ARM 4.4%, ARM (Apple) 4.4%, x86 (GAS) 3.0% and x86 (NASM) 0.2%. Removing one change at a time
+from a scratch copy:
+
+| Change                                | x86 (GAS) | Assembly | ARM | ARM (Apple) |
+| ------------------------------------- | --------- | -------- | --- | ----------- |
+| C calls without commas in operands    | -         | -        | 224 | 215         |
+| `$` names in data                     | 76        | 90       | 63  | 51          |
+| names and arguments as register names | -         | 41       | 51  | 56          |
+| a register heading a concatenation    | -         | 17       | 21  | 17          |
+| register ranges in call arguments     | -         | 20       | 20  | 15          |
+| alternate macro mode items            | 12        | 12       | 12  | 9           |
+| an empty first macro argument         | 10        | 10       | 5   | 5           |
+| a comma after the macro name          | 6         | 6        | 6   | 6           |
+| a macro name built from arguments     | 3         | 3        | 5   | 5           |
+
+A run of C calls before an operand is one hidden rule, and a plain operand stays inline. Wrapping
+every operand in a hidden rule took 31 states more off ARM and cost 6 points more on `basics`, one
+reduction per operand. Writing the run inline in each list position cost 125 states more. A
+parameter name built from arguments would cost ARM (Apple) 234 states, from its comma-only
+parameter lists, so only the macro name takes one.
 
 NASM parses 60% slower than M4 on the fixtures and 72% on `basics`, since its grammar grew from 71
 states to 4341 to read the preprocessor, macro calls and structures. Removing one rule at a time
@@ -2296,7 +2389,7 @@ Rules for parse cost:
   range, the same range that capturing every child gives. `(_)* @function.inside` makes tree-sitter
   keep a candidate per child, which takes 1 s for a function of 10,000 lines and 16 s for 40,000,
   against 5 and 22 ms.
-- The scanner state is three values (see The external scanner), serialized to zero bytes while all
+- The scanner state is four values (see The external scanner), serialized to zero bytes while all
   hold their initial values, so no token before the first mode line, open call or end of input
   stores state. The scanner reads past a line end only across a backslash-newline join, through a
   `/*` comment, and inside a C macro call, where it reads the first character after the line end and

@@ -47,6 +47,8 @@ const GNU_SEMANTIC_SHAPES = new Map<string, string>([
     ['binutils:float_cons', 'FLOAT_DATA_DIRECTIVE'],
     ['binutils:s_float_space', 'FLOAT_SPACE_DIRECTIVE'],
     ['binutils:stringer', 'STRING_DIRECTIVE'],
+    ['binutils:s_altmacro:1', 'ALTMACRO'],
+    ['binutils:s_altmacro:0', 'NOALTMACRO'],
     ...['SINGLE', 'FLOAT', 'DC_S', 'DOUBLE', 'DC_D'].map((kind): [string, string] => [
         `llvm:DK_${kind}`,
         'FLOAT_DATA_DIRECTIVE',
@@ -61,6 +63,8 @@ const GNU_SEMANTIC_SHAPES = new Map<string, string>([
     ['llvm:DK_ELSEIF', 'ELSEIF'],
     ['llvm:DK_ELSE', 'ELSE'],
     ['llvm:DK_ENDIF', 'CONDITIONAL_CLOSE'],
+    ['llvm:DK_ALTMACRO', 'ALTMACRO'],
+    ['llvm:DK_NOALTMACRO', 'NOALTMACRO'],
     ['llvm:DK_MACRO', 'MACRO_OPEN'],
     ['llvm:DK_ENDM', 'MACRO_CLOSE'],
     ['llvm:DK_ENDMACRO', 'MACRO_CLOSE'],

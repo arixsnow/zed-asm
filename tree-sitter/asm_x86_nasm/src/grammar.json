@@ -6956,6 +6956,14 @@
     },
     {
       "type": "SYMBOL",
+      "name": "_dollar"
+    },
+    {
+      "type": "SYMBOL",
+      "name": "_dollar_name"
+    },
+    {
+      "type": "SYMBOL",
       "name": "_at_attached"
     },
     {
@@ -7152,6 +7160,10 @@
     },
     {
       "type": "SYMBOL",
+      "name": "_keyword_word"
+    },
+    {
+      "type": "SYMBOL",
       "name": "_prefix_word"
     },
     {
@@ -7209,6 +7221,22 @@
     {
       "type": "SYMBOL",
       "name": "_string_directive"
+    },
+    {
+      "type": "SYMBOL",
+      "name": "_altmacro"
+    },
+    {
+      "type": "SYMBOL",
+      "name": "_noaltmacro"
+    },
+    {
+      "type": "SYMBOL",
+      "name": "_altmacro_percent"
+    },
+    {
+      "type": "SYMBOL",
+      "name": "_altmacro_string"
     },
     {
       "type": "SYMBOL",
@@ -7412,7 +7440,7 @@
     },
     {
       "type": "SYMBOL",
-      "name": "_decorator_gap"
+      "name": "_call_gap"
     },
     {
       "type": "SYMBOL",

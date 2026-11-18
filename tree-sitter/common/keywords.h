@@ -16587,7 +16587,7 @@ enum {
     X(".allocstack", GENERIC_DIRECTIVE, 0) \
     X(".allow_index_reg", GENERIC_DIRECTIVE, 0) \
     X(".alt_entry", GENERIC_DIRECTIVE, 0) \
-    X(".altmacro", GENERIC_DIRECTIVE, 0) \
+    X(".altmacro", ALTMACRO, 0) \
     X(".arch", GENERIC_DIRECTIVE, 0) \
     X(".ascii", STRING_DIRECTIVE, 0) \
     X(".asciz", STRING_DIRECTIVE, 0) \
@@ -16835,7 +16835,7 @@ enum {
     X(".mri", GENERIC_DIRECTIVE, 0) \
     X(".name", GENERIC_DIRECTIVE, 0) \
     X(".no_dead_strip", GENERIC_DIRECTIVE, 0) \
-    X(".noaltmacro", GENERIC_DIRECTIVE, 0) \
+    X(".noaltmacro", NOALTMACRO, 0) \
     X(".noformat", GENERIC_DIRECTIVE, 0) \
     X(".nolist", GENERIC_DIRECTIVE, 0) \
     X(".non_lazy_symbol_pointer", GENERIC_DIRECTIVE, 0) \
@@ -17020,7 +17020,7 @@ enum {
     X(".align", GENERIC_DIRECTIVE, 0) \
     X(".align32", GENERIC_DIRECTIVE, 0) \
     X(".alt_entry", GENERIC_DIRECTIVE, 0) \
-    X(".altmacro", GENERIC_DIRECTIVE, 0) \
+    X(".altmacro", ALTMACRO, 0) \
     X(".arch", GENERIC_DIRECTIVE, 0) \
     X(".arch_extension", GENERIC_DIRECTIVE, 0) \
     X(".ascii", STRING_DIRECTIVE, 0) \
@@ -17235,7 +17235,7 @@ enum {
     X(".mri", GENERIC_DIRECTIVE, 0) \
     X(".name", GENERIC_DIRECTIVE, 0) \
     X(".no_dead_strip", GENERIC_DIRECTIVE, 0) \
-    X(".noaltmacro", GENERIC_DIRECTIVE, 0) \
+    X(".noaltmacro", NOALTMACRO, 0) \
     X(".noformat", GENERIC_DIRECTIVE, 0) \
     X(".nolist", GENERIC_DIRECTIVE, 0) \
     X(".non_lazy_symbol_pointer", GENERIC_DIRECTIVE, 0) \
@@ -17427,7 +17427,7 @@ enum {
     X(".align", GENERIC_DIRECTIVE, 0) \
     X(".align32", GENERIC_DIRECTIVE, 0) \
     X(".alt_entry", GENERIC_DIRECTIVE, 0) \
-    X(".altmacro", GENERIC_DIRECTIVE, 0) \
+    X(".altmacro", ALTMACRO, 0) \
     X(".arch", GENERIC_DIRECTIVE, 0) \
     X(".arch_extension", GENERIC_DIRECTIVE, 0) \
     X(".ascii", STRING_DIRECTIVE, 0) \
@@ -17605,7 +17605,7 @@ enum {
     X(".mod_init_func", GENERIC_DIRECTIVE, 0) \
     X(".mod_term_func", GENERIC_DIRECTIVE, 0) \
     X(".no_dead_strip", GENERIC_DIRECTIVE, 0) \
-    X(".noaltmacro", GENERIC_DIRECTIVE, 0) \
+    X(".noaltmacro", NOALTMACRO, 0) \
     X(".non_lazy_symbol_pointer", GENERIC_DIRECTIVE, 0) \
     X(".objc_cat_cls_meth", GENERIC_DIRECTIVE, 0) \
     X(".objc_cat_inst_meth", GENERIC_DIRECTIVE, 0) \
@@ -17757,7 +17757,7 @@ enum {
     X(".align", GENERIC_DIRECTIVE, 0) \
     X(".align32", GENERIC_DIRECTIVE, 0) \
     X(".alt_entry", GENERIC_DIRECTIVE, 0) \
-    X(".altmacro", GENERIC_DIRECTIVE, 0) \
+    X(".altmacro", ALTMACRO, 0) \
     X(".arch", GENERIC_DIRECTIVE, 0) \
     X(".arch_extension", GENERIC_DIRECTIVE, 0) \
     X(".arm", GENERIC_DIRECTIVE, 0) \
@@ -17985,7 +17985,7 @@ enum {
     X(".mri", GENERIC_DIRECTIVE, 0) \
     X(".name", GENERIC_DIRECTIVE, 0) \
     X(".no_dead_strip", GENERIC_DIRECTIVE, 0) \
-    X(".noaltmacro", GENERIC_DIRECTIVE, 0) \
+    X(".noaltmacro", NOALTMACRO, 0) \
     X(".noformat", GENERIC_DIRECTIVE, 0) \
     X(".nolist", GENERIC_DIRECTIVE, 0) \
     X(".non_lazy_symbol_pointer", GENERIC_DIRECTIVE, 0) \

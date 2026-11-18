@@ -1145,3 +1145,131 @@ addx r0, r1
     arguments: (argument_list
       argument: (register)
       argument: (register))))
+
+================================================================================
+Dollar immediates and dollar names
+================================================================================
+
+tstne r2, $0x0000ff00
+orr r1, r1, r1, lsl $8
+ldr r2, [r1, $4]
+mov r7, $SYS_ify(sigreturn)
+add r0, r1, R8(x)
+add r0, r0, foo+$bar
+.word $4, $foo
+
+--------------------------------------------------------------------------------
+
+(source_file
+  (instruction
+    mnemonic: (mnemonic)
+    operand: (register)
+    operand: (immediate
+      value: (integer)))
+  (instruction
+    mnemonic: (mnemonic)
+    operand: (register)
+    operand: (register)
+    operand: (register)
+    operand: (shift
+      operator: (shift_operator)
+      amount: (immediate
+        value: (integer))))
+  (instruction
+    mnemonic: (mnemonic)
+    operand: (register)
+    operand: (memory_operand
+      operand: (register)
+      operand: (immediate
+        value: (integer))))
+  (instruction
+    mnemonic: (mnemonic)
+    operand: (register)
+    operand: (immediate
+      value: (macro_call
+        function: (identifier)
+        arguments: (argument_list
+          argument: (identifier)))))
+  (instruction
+    mnemonic: (mnemonic)
+    operand: (register)
+    operand: (register)
+    operand: (macro_call
+      function: (identifier)
+      arguments: (argument_list
+        argument: (identifier))))
+  (instruction
+    mnemonic: (mnemonic)
+    operand: (register)
+    operand: (register)
+    operand: (binary_expression
+      left: (identifier)
+      right: (identifier)))
+  (directive
+    name: (directive_name)
+    argument: (identifier)
+    argument: (identifier)))
+
+================================================================================
+A C call needs no comma before or after it in an operand list or a register list
+================================================================================
+
+orreq ip, ip, r6 ARM_BE8(, lsl #24)
+add r0, F(x) r1
+add r0, F(x) G(y) r1
+add r0, F(x) - r1
+push {r4 UNWIND(fpreg,) lr}
+
+--------------------------------------------------------------------------------
+
+(source_file
+  (instruction
+    mnemonic: (mnemonic)
+    operand: (register)
+    operand: (register)
+    operand: (register)
+    operand: (macro_call
+      function: (identifier)
+      arguments: (argument_list
+        argument: (shift
+          operator: (shift_operator)
+          amount: (immediate
+            value: (integer))))))
+  (instruction
+    mnemonic: (mnemonic)
+    operand: (register)
+    operand: (macro_call
+      function: (identifier)
+      arguments: (argument_list
+        argument: (identifier)))
+    operand: (register))
+  (instruction
+    mnemonic: (mnemonic)
+    operand: (register)
+    operand: (macro_call
+      function: (identifier)
+      arguments: (argument_list
+        argument: (identifier)))
+    operand: (macro_call
+      function: (identifier)
+      arguments: (argument_list
+        argument: (identifier)))
+    operand: (register))
+  (instruction
+    mnemonic: (mnemonic)
+    operand: (register)
+    operand: (binary_expression
+      left: (macro_call
+        function: (identifier)
+        arguments: (argument_list
+          argument: (identifier)))
+      right: (identifier)))
+  (instruction
+    mnemonic: (mnemonic)
+    operand: (register_list
+      element: (register)
+      element: (macro_call
+        function: (identifier)
+        arguments: (argument_list
+          argument: (identifier)))
+      element: (register))))

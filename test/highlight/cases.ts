@@ -856,6 +856,40 @@ export const HIGHLIGHT_CASES: HighlightCase[] = [
             [')', 'punctuation.bracket'],
         ],
     },
+    {
+        name: 'ARM: a $ immediate, a keyword argument named like a register and a $ name in data',
+        grammar: 'asm_arm',
+        source: 'tstne r2, $0xff00\ndo_thumb_abort pc=r4\n.word $4\n',
+        expect: [
+            ['tstne', 'keyword'],
+            ['r2', 'variable.special'],
+            ['$', 'punctuation.special'],
+            ['0xff00', 'number'],
+            ['do_thumb_abort', 'function.special'],
+            ['pc', 'variable.parameter'],
+            ['r4', 'variable.special'],
+            ['.word', 'preproc'],
+            ['$4', 'constant'],
+        ],
+    },
+    {
+        name: 'GNU as: alternate macro mode arguments and a C call after an operand',
+        grammar: 'asm_arm',
+        source: ".altmacro\nm %x, <a b>, 'c'\n.noaltmacro\norreq ip, r6 ARM_BE8(, lsl #24)\n",
+        expect: [
+            ['.altmacro', 'preproc'],
+            ['m', 'function.special'],
+            ['%', 'operator'],
+            ['x', 'constant'],
+            ['<a b>', 'string'],
+            ["'c'", 'string'],
+            ['.noaltmacro', 'preproc'],
+            ['orreq', 'keyword'],
+            ['r6', 'variable.special'],
+            ['ARM_BE8', 'function.special'],
+            ['lsl', 'keyword.operator'],
+        ],
+    },
 ];
 
 export const SCOPE_CASES: ScopeCase[] = [

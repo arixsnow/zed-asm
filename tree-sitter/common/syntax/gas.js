@@ -4,15 +4,24 @@ const { commaList, operatorToken, precedence } = require('../core.js');
 
 const COMMA_SEPARATED_LISTS = ['ARM_APPLE'];
 const DARWIN_LOCALS = ['ARM_APPLE'];
+const CALL_LISTS = ['ARM', 'ARM_APPLE'];
 
 function operandList($, name) {
     return commaList($, field(name, $._operand));
 }
 
-function instructionOperands($) {
+function instructionOperands(ctx, $) {
+    const calls = CALL_LISTS.includes(ctx.dialect);
+    const operand = field('operand', $._instruction_operand);
+    const item = calls ? choice(operand, $._call_run) : operand;
     return seq(
-        field('operand', $._instruction_operand),
-        repeat(seq(',', choice(field('operand', $._instruction_operand), $._missing_operand))),
+        item,
+        repeat(
+            choice(
+                seq(',', choice(item, $._missing_operand)),
+                ...(calls ? [seq($._call_gap, item)] : []),
+            ),
+        ),
     );
 }
 
@@ -42,10 +51,9 @@ function argumentGroup($, item) {
 }
 
 function macroArgumentList(ctx, $, item, joined) {
-    return seq(
-        field('argument', delimited($, item, joined)),
-        listRest(ctx, $, 'argument', item, joined, $._missing_operand),
-    );
+    const first = field('argument', delimited($, item, joined));
+    const rest = listRest(ctx, $, 'argument', item, joined, $._missing_operand);
+    return choice(seq(first, rest), seq(',', choice(first, $._missing_operand), rest));
 }
 
 function cppArguments($, marker, argument) {
@@ -169,6 +177,7 @@ module.exports = (ctx) => {
                             ),
                         ),
                     ),
+                    field('name', alias(choice($._altmacro, $._noaltmacro), $.directive_name)),
                     seq(
                         field('name', alias($._float_data_directive, $.directive_name)),
                         optional(commaList($, field('argument', $._float_value))),
@@ -207,7 +216,11 @@ module.exports = (ctx) => {
                 ),
 
             _definition_name: ($) =>
-                choice($.identifier, alias($._dot_identifier, $.identifier), $.macro_argument),
+                choice(
+                    $.identifier,
+                    alias($._dot_identifier, $.identifier),
+                    $.macro_argument,
+                ),
             parameter: ($) =>
                 seq(
                     field('name', $._definition_name),
@@ -293,6 +306,25 @@ module.exports = (ctx) => {
             _argument_group: ($) => argumentGroup($, $._call_item),
             ...cppRules('', ($) => $._call_item, ($) => $.macro_call),
             _call_label: ($) => seq(field('name', alias($._macro_label, $.macro_call)), ':'),
+            ...(CALL_LISTS.includes(ctx.dialect)
+                ? {
+                    _call_run: ($) =>
+                        prec(
+                            -1,
+                            seq(
+                                field('operand', $.macro_call),
+                                choice(field('operand', $._instruction_operand), $._call_run),
+                            ),
+                        ),
+                }
+                : {}),
+            _altmacro_value: ($) =>
+                seq(
+                    field('operator', alias($._altmacro_percent, '%')),
+                    field('argument', $._expression),
+                ),
+            immediate: ($) =>
+                seq(field('prefix', $._immediate_prefix), field('value', $._immediate_value)),
             probe_argument: ($) =>
                 seq(
                     field(
@@ -339,7 +371,11 @@ module.exports = (ctx) => {
                 ($) =>
                     seq(
                         alias($._macro_open, '.macro'),
-                        choice(field('name', $._definition_name), $._missing_name),
+                        choice(
+                            field('name', choice($._definition_name, $.concatenation)),
+                            $._missing_name,
+                        ),
+                        optional(','),
                         optional(
                             seq(
                                 field('parameter', $.parameter),
@@ -407,6 +443,7 @@ module.exports = (ctx) => {
             _line_content: [($) => $.preproc_line, ($) => $.preproc_define],
             _symbol: [
                 ($) => alias($._dot_identifier, $.identifier),
+                ($) => alias($._dollar_name, $.identifier),
                 ...(dotLocals ? [($) => alias($._local_identifier, $.local_identifier)] : []),
             ],
             _mnemonic: [($) => $.macro_argument, ($) => $.concatenation],
@@ -424,9 +461,11 @@ module.exports = (ctx) => {
                 ($) => $._symbol,
                 ($) => alias($.string, $.identifier),
                 ($) => $.location_counter,
+                ($) => $.macro_argument,
+                ($) => $.concatenation,
             ],
             _glue_head: [($) => $._symbol, ($) => $.macro_argument],
-            _keyword_name: [($) => $.identifier],
+            _keyword_name: [($) => alias($._keyword_word, $.identifier)],
             _keyword_value: [
                 ($) => field('value', delimited($, $._call_value, $._joined_call_values)),
                 ($) => $._missing_operand,
@@ -439,11 +478,13 @@ module.exports = (ctx) => {
             ],
             _operand: [($) => $._value, ($) => $.keyword_argument],
             _instruction_operand: [($) => $._value],
-            _operands: [($) => instructionOperands($)],
+            _operands: [($) => instructionOperands(ctx, $)],
             _call_item: [
                 ($) => $._instruction_operand,
                 ($) => alias($._pp_number, $.identifier),
                 ($) => $.probe_argument,
+                ($) => alias($._altmacro_string, $.string),
+                ($) => alias($._altmacro_value, $.unary_expression),
             ],
             _expression: [
                 ($) => $._symbol,

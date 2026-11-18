@@ -149,7 +149,7 @@
     (#match? @_section "^\\.(?i:section|pushsection)$"))
 
 (immediate
-    "#" @punctuation.special)
+    prefix: _ @punctuation.special)
 
 (literal_pool
     "=" @punctuation.special)
