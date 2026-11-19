@@ -56,3 +56,8 @@
     include = **/arm/**/*.S
     language = asm_arm
     language = asm_auto
+
+[group "glibc SVML layouts"]
+    source = glibc
+    guard = __svml_*_typedef
+    verified = fcc57fe96f8f27a84f7493d9540a4268b187d67f

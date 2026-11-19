@@ -6,7 +6,15 @@ import { join, relative, sep } from 'node:path';
 
 import { filesUnder, readTextIfExists, ROOT } from './lib/files.ts';
 import { languageArgs } from './lib/grammars.ts';
-import { type FileSet, readPins, type Source } from './lib/real-code.ts';
+import {
+    type ExpectedGroup,
+    type FileSet,
+    guardDefinitions,
+    guardedRows,
+    guardPattern,
+    readPins,
+    type Source,
+} from './lib/real-code.ts';
 import { Report } from './lib/report.ts';
 import { matchesPath, wildmatch } from './lib/wildmatch.ts';
 
@@ -184,6 +192,54 @@ function cloneProblem(source: Source, sets: FileSet[], files: string[]): string 
     return undefined;
 }
 
+function groupProblem(
+    group: ExpectedGroup,
+    source: Source,
+    directory: string,
+    files: string[],
+): string | undefined {
+    if (group.verified !== source.commit) {
+        return `verified at ${group.verified}, but ${source.name} is pinned at ${source.commit}; search the whole tree at the pin for the guards, then set verified`;
+    }
+    const guards = group.guards.map(guardPattern);
+    let groups = 0;
+    for (const file of files) {
+        const text = readFileSync(join(directory, file), 'utf8');
+        const defined = guardDefinitions(text, guards);
+        if (defined.length > 0) {
+            return `${source.name}/${file} defines ${defined.join(', ')}`;
+        }
+        groups += guardedRows(text, guards).groups;
+    }
+    return groups === 0 ? 'the guards guard no group in the checkout' : undefined;
+}
+
+function unexpectedRows(
+    paths: string[],
+    found: Map<string, number[]>,
+    guards: RegExp[],
+): { unexpected: Map<string, number[]>; lines: number; groups: number } {
+    const unexpected = new Map<string, number[]>();
+    let lines = 0;
+    let groups = 0;
+    for (const path of paths) {
+        const rows = found.get(path);
+        if (rows === undefined) {
+            continue;
+        }
+        const guarded = guardedRows(readFileSync(path, 'utf8'), guards);
+        const left = rows.filter((row) => !guarded.rows.has(row));
+        if (left.length < rows.length) {
+            lines += rows.length - left.length;
+            groups += guarded.groups;
+        }
+        if (left.length > 0 || rows.length === 0) {
+            unexpected.set(path, left);
+        }
+    }
+    return { unexpected, lines, groups };
+}
+
 const sourceLines = new Map<string, string[]>();
 
 function lineText(path: string, row: number): string {
@@ -263,6 +319,14 @@ function main(args: string[]): number {
         if (problem !== undefined) {
             continue;
         }
+        for (const group of pins.groups.filter((entry) => entry.source === source.name)) {
+            const stop = groupProblem(group, source, directory, files);
+            report.record(
+                `${group.name}: ${group.guards.join(', ')} verified at ${group.verified}`,
+                stop === undefined,
+                stop,
+            );
+        }
         for (const set of sets) {
             const include = set.include.map(wildmatch);
             const exclude = set.exclude.map(wildmatch);
@@ -286,15 +350,22 @@ function main(args: string[]): number {
         if (paths === undefined) {
             continue;
         }
+        const guards = pins.groups
+            .filter((group) => group.source === set.source)
+            .flatMap((group) => group.guards.map(guardPattern));
         for (const language of set.languages) {
             const found = errors.get(language) ?? new Map<string, number[]>();
-            const failing = paths.filter((path) => found.has(path));
-            let details = summary ? wordCounts(failing, found) : firstErrors(failing, found);
+            const { unexpected, lines, groups } = unexpectedRows(paths, found, guards);
+            const failing = paths.filter((path) => unexpected.has(path));
+            const expected = lines > 0 ? `, ${lines} line(s) expected in ${groups} group(s)` : '';
+            let details = summary
+                ? wordCounts(failing, unexpected)
+                : firstErrors(failing, unexpected);
             if (paths.length === 0) {
                 details = 'the file set names no file';
             }
             report.record(
-                `${set.name} (${language}): ${failing.length} of ${paths.length} file(s) with errors`,
+                `${set.name} (${language}): ${failing.length} of ${paths.length} file(s) with errors${expected}`,
                 paths.length > 0 && failing.length === 0,
                 details,
             );

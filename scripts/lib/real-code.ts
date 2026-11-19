@@ -24,10 +24,37 @@ export interface FileSet {
     languages: string[];
 }
 
+export interface ExpectedGroup {
+    name: string;
+    source: string;
+    guards: string[];
+    verified: string;
+}
+
 export interface Pins {
     sources: Source[];
     files: FileSet[];
+    groups: ExpectedGroup[];
 }
+
+export interface GuardedRows {
+    rows: Set<number>;
+    groups: number;
+}
+
+interface LogicalLine {
+    text: string;
+    first: number;
+    last: number;
+}
+
+interface Branch {
+    skipped: boolean;
+    resolved: boolean;
+    outer: boolean;
+}
+
+type Condition = 'never' | 'always' | 'unknown';
 
 interface Section {
     kind: string;
@@ -44,9 +71,16 @@ const URL = /^https:\/\/\S+$/;
 const BRANCH = /^\S+$/;
 const COMMIT = /^(?:[0-9a-f]{40}|[0-9a-f]{64})$/;
 const GLOB = /^(?![/!])\S*[^\s/]$/;
+const GUARD = /^[A-Za-z_*][A-Za-z0-9_*]*$/;
+const DIRECTIVE = /^\s*#\s*(ifdef|ifndef|if|elifdef|elifndef|elif|else|endif)\b\s*(.*?)\s*$/;
+const DEFINED = /^(!\s*)?defined\s*(?:\(\s*([A-Za-z_]\w*)\s*\)|([A-Za-z_]\w*))$/;
+const NAME = /^([A-Za-z_]\w*)$/;
+const DEFINITION = /^\s*#\s*(?:define|undef)\s+([A-Za-z_]\w*)/;
+const COMMAND_DEFINITION = /-D\s*([A-Za-z_]\w*)/g;
 const KEYS: Record<string, readonly string[]> = {
     source: ['url', 'branch', 'commit'],
     files: ['source', 'include', 'exclude', 'language'],
+    group: ['source', 'guard', 'verified'],
 };
 
 function fail(where: string, problem: string): never {
@@ -185,6 +219,33 @@ function fileSet(section: Section, sources: Source[]): FileSet {
     };
 }
 
+function expectedGroup(section: Section, sources: Source[]): ExpectedGroup {
+    const owner = one(section, 'source');
+    if (!sources.some((candidate) => candidate.name === owner)) {
+        fail(label(section), `names source "${owner}", which no [source] section defines`);
+    }
+    return {
+        name: section.name,
+        source: owner,
+        guards: some(section, 'guard').map((guard) =>
+            checked(
+                section,
+                'guard',
+                guard,
+                GUARD,
+                'a C macro name, * standing for name characters',
+            )
+        ),
+        verified: checked(
+            section,
+            'verified',
+            one(section, 'verified'),
+            COMMIT,
+            'a full commit id',
+        ),
+    };
+}
+
 export function parsePins(text: string): Pins {
     const found = sections(text);
     const sources = found.filter((section) => section.kind === 'source').map(source);
@@ -199,7 +260,168 @@ export function parsePins(text: string): Pins {
             fail(`[source "${named.name}"]`, 'is named by no [files] section');
         }
     }
-    return { sources, files };
+    const groups = found
+        .filter((section) => section.kind === 'group')
+        .map((section) => expectedGroup(section, sources));
+    return { sources, files, groups };
+}
+
+export function guardPattern(guard: string): RegExp {
+    return new RegExp(`^${guard.replaceAll('*', '\\w*')}$`);
+}
+
+function logicalLines(text: string): LogicalLine[] {
+    const lines: LogicalLine[] = [];
+    let line = '';
+    let first = 0;
+    let row = 0;
+    let index = 0;
+    let quote = '';
+    let block = false;
+    const peek = (): string | undefined => {
+        while (text.startsWith('\\\n', index)) {
+            index += 2;
+            row += 1;
+        }
+        return text[index];
+    };
+    for (let char = peek(); char !== undefined; char = peek()) {
+        index += 1;
+        if (char === '\n') {
+            if (!block) {
+                lines.push({ text: line, first, last: row });
+                line = '';
+                quote = '';
+                first = row + 1;
+            }
+            row += 1;
+            continue;
+        }
+        if (block) {
+            if (char === '*' && peek() === '/') {
+                index += 1;
+                block = false;
+            }
+            continue;
+        }
+        if (quote !== '') {
+            line += char;
+            if (char === quote) {
+                quote = '';
+            } else if (char === '\\' && peek() !== undefined && peek() !== '\n') {
+                line += text[index];
+                index += 1;
+            }
+            continue;
+        }
+        if (char === '/' && peek() === '*') {
+            index += 1;
+            block = true;
+            line += ' ';
+            continue;
+        }
+        if (char === '/' && peek() === '/') {
+            while (peek() !== undefined && peek() !== '\n') {
+                index += 1;
+            }
+            line += ' ';
+            continue;
+        }
+        if (char === '"' || char === "'") {
+            quote = char;
+        }
+        line += char;
+    }
+    lines.push({ text: line, first, last: row });
+    return lines;
+}
+
+function addRows(rows: Set<number>, line: LogicalLine): void {
+    for (let row = line.first; row <= line.last; row += 1) {
+        rows.add(row);
+    }
+}
+
+function condition(word: string, rest: string, listed: (name: string) => boolean): Condition {
+    if (word === 'else') {
+        return 'unknown';
+    }
+    if (word === 'if' || word === 'elif') {
+        const defined = DEFINED.exec(rest);
+        if (defined === null || !listed(defined[2] ?? defined[3])) {
+            return 'unknown';
+        }
+        return defined[1] === undefined ? 'never' : 'always';
+    }
+    const name = NAME.exec(rest);
+    if (name === null || !listed(name[1])) {
+        return 'unknown';
+    }
+    return word === 'ifdef' || word === 'elifdef' ? 'never' : 'always';
+}
+
+export function guardedRows(text: string, guards: RegExp[]): GuardedRows {
+    const rows = new Set<number>();
+    const stack: Branch[] = [];
+    const listed = (name: string) => guards.some((guard) => guard.test(name));
+    let groups = 0;
+    for (const line of logicalLines(text)) {
+        const directive = DIRECTIVE.exec(line.text);
+        const inside = stack.at(-1)?.skipped ?? false;
+        const word = directive?.[1];
+        if (word === undefined || (inside && word !== 'endif' && !word.startsWith('el'))) {
+            if (inside) {
+                addRows(rows, line);
+            }
+            if (word !== undefined && word.startsWith('if')) {
+                stack.push({ skipped: true, resolved: false, outer: true });
+            }
+            continue;
+        }
+        if (word.startsWith('if')) {
+            const test = condition(word, directive?.[2] ?? '', listed);
+            groups += test === 'never' ? 1 : 0;
+            stack.push({ skipped: test === 'never', resolved: test === 'always', outer: false });
+            continue;
+        }
+        const top = stack.at(-1);
+        if (top === undefined) {
+            continue;
+        }
+        if (word === 'endif') {
+            stack.pop();
+            if (stack.at(-1)?.skipped ?? false) {
+                addRows(rows, line);
+            }
+            continue;
+        }
+        if (top.outer) {
+            addRows(rows, line);
+            continue;
+        }
+        const test = top.resolved ? 'never' : condition(word, directive?.[2] ?? '', listed);
+        groups += test === 'never' ? 1 : 0;
+        top.skipped = test === 'never';
+        top.resolved = top.resolved || test === 'always';
+    }
+    return { rows, groups };
+}
+
+export function guardDefinitions(text: string, guards: RegExp[]): string[] {
+    const names = new Set<string>();
+    const listed = (name: string) => guards.some((guard) => guard.test(name));
+    for (const line of logicalLines(text)) {
+        const defined = DEFINITION.exec(line.text);
+        if (defined !== null && listed(defined[1])) {
+            names.add(defined[1]);
+        }
+    }
+    for (const [, name] of text.matchAll(COMMAND_DEFINITION)) {
+        if (listed(name)) {
+            names.add(name);
+        }
+    }
+    return [...names].sort();
 }
 
 export function readPins(): Pins {

@@ -6,7 +6,13 @@ import { writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 
 import { emptyDir, ROOT } from '../../scripts/lib/files.ts';
-import { parsePins, readPins } from '../../scripts/lib/real-code.ts';
+import {
+    guardDefinitions,
+    guardedRows,
+    guardPattern,
+    parsePins,
+    readPins,
+} from '../../scripts/lib/real-code.ts';
 import { captureRows, errorRows } from '../../scripts/real-code.ts';
 import { assertThrowsIncluding } from '../lib/assert.ts';
 
@@ -53,6 +59,7 @@ test('a pin file parses into its sources and file sets', () => {
             exclude: ['**/*.lds.S'],
             languages: ['asm_x86_gas', 'asm_auto'],
         }],
+        groups: [],
     });
 });
 
@@ -236,4 +243,107 @@ test('query captures cover every row they span, their text spanning as many line
             ),
         'printed a capture of rows 0-1 in /a.s whose text does not end on its last row',
     );
+});
+
+const GROUP = [
+    '[group "kernel layouts"]',
+    '    source = kernel',
+    '    guard = G_*_typedef',
+    `    verified = ${COMMIT}`,
+    '',
+].join('\n');
+
+test('a group section names its source, its guards and the commit they were verified on', () => {
+    assert.deepStrictEqual(parsePins(`${VALID}\n${GROUP}`).groups, [{
+        name: 'kernel layouts',
+        source: 'kernel',
+        guards: ['G_*_typedef'],
+        verified: COMMIT,
+    }]);
+    const cases: [string, string][] = [
+        [GROUP.replace('source = kernel', 'source = other'), 'names source "other"'],
+        [GROUP.replace('G_*_typedef', 'G-x'), 'guard must be a C macro name'],
+        [
+            GROUP.replace(`verified = ${COMMIT}`, 'verified = main'),
+            'verified must be a full commit id',
+        ],
+        [GROUP.replace(`    verified = ${COMMIT}\n`, ''), 'must set verified once'],
+        [GROUP.replace('    guard = G_*_typedef\n', ''), 'must set guard at least once'],
+        [GROUP.replace('    source = kernel', '    include = x'), 'does not take'],
+    ];
+    for (const [group, message] of cases) {
+        assertThrowsIncluding(() => parsePins(`${VALID}\n${group}`), message);
+    }
+});
+
+test('a guard pattern stands for name characters at each star', () => {
+    const pattern = guardPattern('__svml_*_typedef');
+    assert.ok(pattern.test('__svml_dacos_data_internal_typedef'));
+    assert.ok(!pattern.test('__svml_dacos'));
+    assert.ok(!pattern.test('x__svml_a_typedef'));
+});
+
+test('a branch that tests a listed guard is never taken, as cpp reads it', () => {
+    const guards = [guardPattern('G*')];
+    const rows = (lines: string[]) => {
+        const { rows: found, groups } = guardedRows(lines.join('\n'), guards);
+        return { rows: [...found].sort((left, right) => left - right), groups };
+    };
+    assert.deepStrictEqual(rows(['#ifdef G1', 'c', '#else', 'a', '#endif', 'a']), {
+        rows: [1],
+        groups: 1,
+    });
+    assert.deepStrictEqual(rows(['# ifdef G1', '#if X', 'c', '#else', 'c', '#endif', '#endif']), {
+        rows: [1, 2, 3, 4, 5],
+        groups: 1,
+    });
+    assert.deepStrictEqual(rows(['#ifndef G1', 'a', '#else', 'c', '#endif']), {
+        rows: [3],
+        groups: 1,
+    });
+    assert.deepStrictEqual(rows(['#if defined(G1)', 'c', '#elif defined X', 'a', '#endif']), {
+        rows: [1],
+        groups: 1,
+    });
+    assert.deepStrictEqual(rows(['#if !defined G1', 'a', '#elif Y', 'c', '#else', 'c', '#endif']), {
+        rows: [3, 5],
+        groups: 2,
+    });
+    assert.deepStrictEqual(rows(['#elifdef G1', '#ifdef H', 'a', '#elifdef G2', 'c', '#endif']), {
+        rows: [4],
+        groups: 1,
+    });
+    assert.deepStrictEqual(rows(['#ifdef \\', 'G1', 'c', '#endif']), { rows: [2], groups: 1 });
+    assert.deepStrictEqual(rows(['#ifdef G1 /* note */', 'c', '#endif']), { rows: [1], groups: 1 });
+    assert.deepStrictEqual(rows(['/*', '#ifdef G1', '*/', 'a']), { rows: [], groups: 0 });
+    assert.deepStrictEqual(rows(['#ifdef G1 // note \\', '#endif', 'c', '#endif']), {
+        rows: [2],
+        groups: 1,
+    });
+    assert.deepStrictEqual(rows(['#ifdef G1 /* a', 'b */', 'c', '#endif']), {
+        rows: [2],
+        groups: 1,
+    });
+    assert.deepStrictEqual(rows(['#ifdef G1', '.ascii "\\\\" /*', '#endif */', 'c', '#endif']), {
+        rows: [1, 2, 3],
+        groups: 1,
+    });
+    assert.deepStrictEqual(rows(['#ifdef G1', "# don't /*", '#endif', 'a']), {
+        rows: [1],
+        groups: 1,
+    });
+    assert.deepStrictEqual(rows(['#if 0', 'a', '#endif', '#ifdef H', 'a', '#endif']), {
+        rows: [],
+        groups: 0,
+    });
+});
+
+test('a guard counts as defined when a directive or a -D flag defines it', () => {
+    const guards = [guardPattern('G*')];
+    assert.deepStrictEqual(guardDefinitions('#define G1 1\n# undef G2\n#define H 1', guards), [
+        'G1',
+        'G2',
+    ]);
+    assert.deepStrictEqual(guardDefinitions('CFLAGS += -DG3 -D G4 -DH', guards), ['G3', 'G4']);
+    assert.deepStrictEqual(guardDefinitions('/* #define G5 */\n#ifdef G6', guards), []);
 });
