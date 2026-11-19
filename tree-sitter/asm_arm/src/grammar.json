@@ -385,6 +385,19 @@
         }
       ]
     },
+    "_call_concatenation": {
+      "type": "SEQ",
+      "members": [
+        {
+          "type": "SYMBOL",
+          "name": "macro_call"
+        },
+        {
+          "type": "SYMBOL",
+          "name": "_glued_pieces"
+        }
+      ]
+    },
     "_glued_pieces": {
       "type": "REPEAT1",
       "content": {
@@ -9466,6 +9479,15 @@
           "type": "ALIAS",
           "content": {
             "type": "SYMBOL",
+            "name": "_call_concatenation"
+          },
+          "named": true,
+          "value": "concatenation"
+        },
+        {
+          "type": "ALIAS",
+          "content": {
+            "type": "SYMBOL",
             "name": "string"
           },
           "named": true,
@@ -10115,6 +10137,10 @@
     {
       "type": "SYMBOL",
       "name": "decorator"
+    },
+    {
+      "type": "SYMBOL",
+      "name": "_decorator_open"
     },
     {
       "type": "SYMBOL",

@@ -32,8 +32,10 @@ module.exports = (ctx) => {
             _intel_decorated: ($) =>
                 seq(
                     field('operand', $._intel_expression),
-                    repeat1(field('decorator', $.decorator)),
+                    repeat1(field('decorator', $._decorator_item)),
                 ),
+            _decorator_item: ($) => choice($.decorator, alias($._macro_decorator, $.decorator)),
+            _macro_decorator: ($) => seq($._decorator_open, '{', $._decorator_value, '}'),
             _intel_parenthesized: ($) => seq('(', $._intel_expression, choice(')', $._unclosed)),
             _intel_memory: ($) =>
                 prec.left(

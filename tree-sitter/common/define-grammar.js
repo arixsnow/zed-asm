@@ -145,6 +145,7 @@ const EXTERNALS = [
     '_memory_address',
     '_pseudo_prefix',
     'decorator',
+    '_decorator_open',
     '_macro_close',
     '_conditional_close',
     '_repeat_close',

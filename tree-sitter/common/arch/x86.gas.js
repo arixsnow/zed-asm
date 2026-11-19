@@ -54,7 +54,7 @@ module.exports = (ctx) => {
                 seq(
                     field('function', alias($._macro_name, $.identifier)),
                     field('arguments', alias($._statement_arguments, $.argument_list)),
-                    repeat1(field('decorator', $.decorator)),
+                    repeat1(field('decorator', $._decorator_item)),
                 ),
             _att_memory: ($) =>
                 choice(
@@ -136,7 +136,7 @@ module.exports = (ctx) => {
                         repeat1(
                             decorates(
                                 choice(
-                                    field('decorator', $.decorator),
+                                    field('decorator', $._decorator_item),
                                     seq($._call_gap, field('decorator', $.macro_call)),
                                 ),
                             ),
@@ -149,6 +149,8 @@ module.exports = (ctx) => {
                     field('arguments', alias($._intel_argument_list, $.argument_list)),
                 ),
             _intel_argument_list: ($) => cppArguments($, $._call_arguments, $._intel_cpp_argument),
+            _intel_call_concatenation: ($) =>
+                seq(alias($._intel_macro_call, $.macro_call), $._glued_pieces),
             _intel_call_item: ($) => choice($._intel_operand, alias($._pp_number, $.identifier)),
             ...cppRules(
                 'intel_',
@@ -212,6 +214,7 @@ module.exports = (ctx) => {
                 ($) => decorates(alias($._register_concatenation, $.concatenation)),
             ],
             _intel_operand: [($) => $.decorator],
+            _decorator_value: [($) => $.macro_argument, ($) => $.identifier],
             _plain_intel_operand: [($) => $.immediate],
             _macro_arguments: [
                 ($) =>
@@ -237,6 +240,7 @@ module.exports = (ctx) => {
                 ($) => $.relocation,
                 ($) => $.macro_argument,
                 ($) => $.concatenation,
+                ($) => alias($._intel_call_concatenation, $.concatenation),
             ],
             _intel_binary: INTEL_WORD_OPERATORS.map(([word, sameAs]) => ($) =>
                 prec.left(

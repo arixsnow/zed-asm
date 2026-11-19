@@ -313,6 +313,7 @@ enum TokenType {
     MEMORY_ADDRESS,
     PSEUDO_PREFIX,
     DECORATOR,
+    DECORATOR_OPEN,
     MACRO_CLOSE,
     CONDITIONAL_CLOSE,
     REPEAT_CLOSE,
@@ -3081,6 +3082,11 @@ static bool names_assignment(const struct WordRole *entry, bool upper)
     return has_flag(entry, WORD_NAMES_ASSIGNMENT) && alias_case_fits(entry, upper);
 }
 
+static bool argument_follows(TSLexer *lexer, const char *word)
+{
+    return word[0] != '\0' && advance_blanks(lexer) && lexer->lookahead == ',';
+}
+
 static bool labelled_statement_follows(TSLexer *lexer, const struct Scanner *scanner)
 {
     char next[STATEMENT_WORD_CAPACITY] = {0};
@@ -3088,6 +3094,9 @@ static bool labelled_statement_follows(TSLexer *lexer, const struct Scanner *sca
     const struct WordEntry *entry = read_statement_word(lexer, next, &upper);
     const struct WordRole *following = statement_word(entry);
 
+    if (argument_follows(lexer, next)) {
+        return false;
+    }
     return has_flag(following, WORD_NAMES_LABEL)
         || names_assignment(following, upper)
         || is_prefix(entry, scanner->x86_syntax)
@@ -3178,6 +3187,7 @@ static bool scan_unlisted_word(TSLexer *lexer, const bool *valid, const struct S
         && valid[symbol]
         && instruction == NULL
         && !reserved_name(word, entry, scanner->x86_syntax)
+        && !argument_follows(lexer, next)
         && (has_flag(following, WORD_NAMES_LABEL)
             || is_prefix(next_entry, scanner->x86_syntax)
             || instruction_role(next, next_entry) != NULL
@@ -3652,7 +3662,13 @@ static bool operands_follow(const TSLexer *lexer, const bool *valid, const struc
         && lexer->lookahead != ':';
 }
 
-static bool braced_token_follows(TSLexer *lexer, TSSymbol symbol, bool mark_open);
+enum BracedBody {
+    BRACED_NONE,
+    BRACED_WORD,
+    BRACED_MACRO,
+};
+
+static enum BracedBody braced_body(TSLexer *lexer, TSSymbol symbol, bool mark_open);
 
 static bool scan_operands(TSLexer *lexer, const bool *valid, const struct Scanner *scanner)
 {
@@ -3668,7 +3684,7 @@ static bool scan_operands(TSLexer *lexer, const bool *valid, const struct Scanne
         return true;
     }
     if (lexer->lookahead == '{' && valid[PSEUDO_PREFIX]) {
-        if (braced_token_follows(lexer, PSEUDO_PREFIX, false)) {
+        if (braced_body(lexer, PSEUDO_PREFIX, false) == BRACED_WORD) {
             return finish_token(lexer, PSEUDO_PREFIX);
         }
         return true;
@@ -3938,7 +3954,38 @@ static bool read_decorator_word(TSLexer *lexer, bool (*continues)(int32_t), char
     return !stray && length > 0 && word[0] != '\0';
 }
 
-static bool folded_decorator_follows(TSLexer *lexer)
+static bool names_symbol(const char *word)
+{
+    size_t index = 1;
+
+    if (!starts_symbol(word[0])) {
+        return false;
+    }
+    while (word[index] != '\0') {
+        if (!continues_label(word[index])) {
+            return false;
+        }
+        index++;
+    }
+    return true;
+}
+
+static enum BracedBody unlisted_body(const char *word, const struct WordEntry *found)
+{
+    if (!names_symbol(word)
+        || word_role(found, KIND_DECORATORS, ANY_SCOPE, ANY_CASE) != NULL
+        || register_role(word, found, X86_SCOPES) != NULL) {
+        return BRACED_NONE;
+    }
+    return BRACED_MACRO;
+}
+
+static enum BracedBody word_body(bool listed)
+{
+    return listed ? BRACED_WORD : BRACED_NONE;
+}
+
+static enum BracedBody folded_decorator_body(TSLexer *lexer)
 {
     char word[STATEMENT_WORD_CAPACITY] = {0};
     unsigned char cases = 0;
@@ -3946,14 +3993,17 @@ static bool folded_decorator_follows(TSLexer *lexer)
     const struct WordRole *entry = NULL;
 
     if (!read_decorator_word(lexer, continues_decorator, word, &cases)) {
-        return false;
+        return BRACED_NONE;
     }
     found = word_entry(word);
     entry = decorator_entry(found, cases);
     if (has_flag(entry, DECORATOR_FLAGS)) {
-        return default_flags_follow(lexer);
+        return word_body(default_flags_follow(lexer));
     }
-    return (entry != NULL && !has_flag(entry, DECORATOR_DASHED)) || is_mask_register(word, found);
+    if ((entry != NULL && !has_flag(entry, DECORATOR_DASHED)) || is_mask_register(word, found)) {
+        return BRACED_WORD;
+    }
+    return entry == NULL ? unlisted_body(word, found) : BRACED_NONE;
 }
 
 static bool joined_decorator_fits(const char *head, const char *tail, unsigned char cases)
@@ -3971,7 +4021,7 @@ static bool joined_decorator_fits(const char *head, const char *tail, unsigned c
     return decorator_entry(word_entry(joined), cases) != NULL;
 }
 
-static bool decorator_body_follows(TSLexer *lexer)
+static enum BracedBody decorator_body(TSLexer *lexer)
 {
     char word[STATEMENT_WORD_CAPACITY] = {0};
     char tail[STATEMENT_WORD_CAPACITY] = {0};
@@ -3982,58 +4032,82 @@ static bool decorator_body_follows(TSLexer *lexer)
     const struct WordRole *entry = NULL;
 
     if (ASM_FOLDED_DECORATORS) {
-        return folded_decorator_follows(lexer);
+        return folded_decorator_body(lexer);
     }
     if (lexer->lookahead == '%') {
         advance(lexer);
-        return advance_blanks(lexer)
+        return word_body(advance_blanks(lexer)
             && read_decorator_word(lexer, is_alnum, word, &cases)
-            && is_mask_register(word, word_entry(word));
+            && is_mask_register(word, word_entry(word)));
     }
     if (!read_decorator_word(lexer, is_alnum, word, &cases)) {
-        return false;
+        return BRACED_NONE;
     }
     found = word_entry(word);
     if (is_mask_register(word, found)) {
-        return true;
+        return BRACED_WORD;
     }
     entry = decorator_entry(found, cases);
     if (has_flag(entry, DECORATOR_FLAGS)) {
-        return default_flags_follow(lexer);
+        return word_body(default_flags_follow(lexer));
     }
     spaced = is_blank(lexer->lookahead);
     if (!advance_blanks(lexer)) {
-        return false;
+        return BRACED_NONE;
     }
     if (lexer->lookahead != '-') {
-        return entry != NULL && !has_flag(entry, DECORATOR_DASHED);
+        if (entry == NULL) {
+            return unlisted_body(word, found);
+        }
+        return word_body(!has_flag(entry, DECORATOR_DASHED));
     }
     advance(lexer);
     spaced = spaced || is_blank(lexer->lookahead);
     if (!advance_blanks(lexer) || !read_decorator_word(lexer, is_alnum, tail, &tail_cases)) {
-        return false;
+        return BRACED_NONE;
     }
-    return has_flag(entry, DECORATOR_DASHED)
-        || (!spaced && joined_decorator_fits(word, tail, cases | tail_cases));
+    return word_body(has_flag(entry, DECORATOR_DASHED)
+        || (!spaced && joined_decorator_fits(word, tail, cases | tail_cases)));
 }
 
-static bool braced_token_follows(TSLexer *lexer, TSSymbol symbol, bool mark_open)
+static bool macro_token_body_follows(TSLexer *lexer)
 {
+    advance(lexer);
+    if (ASM_PERCENT_MACROS && (lexer->lookahead == '%' || lexer->lookahead == '$')) {
+        advance(lexer);
+    }
+    if (!is_word_char(lexer->lookahead)) {
+        return false;
+    }
+    while (is_word_char(lexer->lookahead)) {
+        advance(lexer);
+    }
+    return true;
+}
+
+static enum BracedBody braced_body(TSLexer *lexer, TSSymbol symbol, bool mark_open)
+{
+    enum BracedBody body = BRACED_NONE;
+
     advance(lexer);
     if (mark_open) {
         lexer->mark_end(lexer);
     }
     if (!advance_blanks(lexer)) {
-        return false;
+        return BRACED_NONE;
     }
-    if (symbol == PSEUDO_PREFIX ? !pseudo_prefix_follows(lexer) : !decorator_body_follows(lexer)) {
-        return false;
+    if (symbol == PSEUDO_PREFIX) {
+        body = word_body(pseudo_prefix_follows(lexer));
+    } else if (lexer->lookahead == glue_escape()) {
+        body = macro_token_body_follows(lexer) ? BRACED_MACRO : BRACED_NONE;
+    } else {
+        body = decorator_body(lexer);
     }
-    if (!advance_blanks(lexer) || lexer->lookahead != '}') {
-        return false;
+    if (body == BRACED_NONE || !advance_blanks(lexer) || lexer->lookahead != '}') {
+        return BRACED_NONE;
     }
     advance(lexer);
-    return true;
+    return body;
 }
 
 static bool starts_item(int32_t codepoint, const struct Scanner *scanner)
@@ -4052,10 +4126,18 @@ static enum ScanDecision scan_braced(TSLexer *lexer, const bool *valid,
     const bool blank = (ASM_PERCENT_MACROS && valid[BLANK])
         || (blanks > 0 && blank_fits('{', valid, &gap) && starts_item('{', scanner));
     const bool open = valid[BRACE_OPEN] && !blank;
+    enum BracedBody body = BRACED_NONE;
 
     lexer->mark_end(lexer);
-    if ((valid[DECORATOR] || valid[PSEUDO_PREFIX]) && braced_token_follows(lexer, symbol, open)) {
+    if (valid[DECORATOR] || valid[PSEUDO_PREFIX]) {
+        body = braced_body(lexer, symbol, open);
+    }
+    if (body == BRACED_WORD) {
         return decided(finish_token(lexer, symbol));
+    }
+    if (body == BRACED_MACRO && valid[DECORATOR_OPEN] && !open && !(blank && blanks > 0)) {
+        lexer->result_symbol = DECORATOR_OPEN;
+        return SCAN_FOUND;
     }
     if (blank || open) {
         if (open && !valid[DECORATOR] && !valid[PSEUDO_PREFIX]) {

@@ -99,7 +99,6 @@ const REJECTED: [string, number[], string[]][] = [
     ['db 1, \\ 2', [0], ['asm_x86_nasm']],
     ['f: \\\n%define W 1', [1], ['asm_x86_nasm']],
     ['f: \\\n%macro m 0\n%endmacro', [1, 2], ['asm_x86_nasm']],
-    ['vaddps zmm0{k9}, zmm1, zmm2', [0], ['asm_x86_nasm']],
     ['vaddps zmm0, zmm1, zmm2, {rn - sae}', [0], ['asm_x86_nasm']],
     ['{disp8} mov eax, [rbx]', [0], ['asm_x86_nasm']],
     ['vaddps zmm0{k0}, zmm1, zmm2', [0], ['asm_x86_nasm']],

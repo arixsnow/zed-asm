@@ -114,3 +114,37 @@ ccmpb {dfv=} %r9b, %r8b
     operand: (decorator)
     operand: (register)
     operand: (register)))
+
+================================================================================
+A brace group holding a macro argument or a name after an operand is a decorator
+================================================================================
+
+.macro m mask
+vmovdqu8 %zmm0, %zmm1{\mask}
+.endm
+vaddps (%rax), %zmm1, %zmm2 {bcstd}
+
+--------------------------------------------------------------------------------
+
+(source_file
+  (macro_definition
+    name: (identifier)
+    parameter: (parameter
+      name: (identifier))
+    body: (body
+      (instruction
+        mnemonic: (mnemonic)
+        operand: (register)
+        operand: (decorated_operand
+          operand: (register)
+          decorator: (decorator
+            (macro_argument))))))
+  (instruction
+    mnemonic: (mnemonic)
+    operand: (memory_operand
+      base: (register))
+    operand: (register)
+    operand: (decorated_operand
+      operand: (register)
+      decorator: (decorator
+        (identifier)))))

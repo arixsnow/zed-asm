@@ -69,10 +69,13 @@ module.exports = (ctx) => ({
         _macro_item: ($) =>
             choice(
                 $._intel_operand,
+                alias($._pp_number, $.identifier),
                 alias($._brace_group, $.argument_list),
                 alias($._parenthesized_group, $.argument_list),
                 $.macro_reference,
             ),
+        _pp_number: ($) =>
+            seq(alias(choice($.integer, $.float), 'number'), alias($._glued_text, 'text')),
         _parenthesized_group: ($) =>
             prec.dynamic(
                 -1,
@@ -444,6 +447,7 @@ module.exports = (ctx) => ({
         _intel_expression: [
             ($) => $._macro_token,
             ($) => $.macro_call,
+            ($) => alias($._call_concatenation, $.concatenation),
         ],
         _glue_head: [($) => $._symbol, ($) => $._macro_leaf],
         _glued_piece: [

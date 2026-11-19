@@ -497,6 +497,7 @@ module.exports = (ctx) => {
                 ($) => $.parenthesized_expression,
                 ($) => $._missing_expression,
                 ($) => $.macro_call,
+                ($) => alias($._call_concatenation, $.concatenation),
                 ($) => alias($.string, $.identifier),
                 ($) => $.char,
                 ($) => $.relocation,

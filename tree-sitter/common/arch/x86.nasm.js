@@ -95,6 +95,7 @@ module.exports = (ctx) => {
                 ),
         },
         choices: {
+            _decorator_value: [($) => $._macro_leaf, ($) => $.identifier],
             _memory_inside: [
                 ($) =>
                     seq(

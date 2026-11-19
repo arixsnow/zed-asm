@@ -748,6 +748,10 @@
           "named": true
         },
         {
+          "type": "macro_call",
+          "named": true
+        },
+        {
           "type": "register",
           "named": true
         }
@@ -966,6 +970,25 @@
           }
         ]
       }
+    }
+  },
+  {
+    "type": "decorator",
+    "named": true,
+    "fields": {},
+    "children": {
+      "multiple": false,
+      "required": false,
+      "types": [
+        {
+          "type": "identifier",
+          "named": true
+        },
+        {
+          "type": "macro_argument",
+          "named": true
+        }
+      ]
     }
   },
   {
@@ -4611,10 +4634,6 @@
   },
   {
     "type": "condition",
-    "named": true
-  },
-  {
-    "type": "decorator",
     "named": true
   },
   {

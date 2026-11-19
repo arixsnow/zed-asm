@@ -668,6 +668,10 @@
           "named": true
         },
         {
+          "type": "macro_call",
+          "named": true
+        },
+        {
           "type": "register",
           "named": true
         }

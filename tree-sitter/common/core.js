@@ -104,6 +104,7 @@ module.exports = (ctx) => ({
         _unclosed_repeat: ($) => seq($._repeat_header, field('body', $.unclosed_body)),
 
         concatenation: ($) => seq($._glue_head, $._glued_pieces),
+        _call_concatenation: ($) => seq($.macro_call, $._glued_pieces),
         _glued_pieces: ($) => repeat1($._glued_piece),
 
         preproc_params: ($) =>

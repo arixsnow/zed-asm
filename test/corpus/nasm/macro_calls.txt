@@ -96,3 +96,206 @@ HEVC_PUT_HEVC_QPEL_AVX512ICL 4, 8
     arguments: (argument_list
       argument: (integer)
       argument: (integer))))
+
+================================================================================
+A comma after the second word makes the first word a macro call
+================================================================================
+
+%macro t 4
+SBUTTERFLY dq, %2, %3, %4
+AVX_INSTR pfadd, mmx, 1, 0, 1
+%endmacro
+x dq 1
+lbl pfadd mm0, mm1
+
+--------------------------------------------------------------------------------
+
+(source_file
+  (macro_definition
+    name: (identifier)
+    parameters: (parameter_count)
+    body: (body
+      (macro_call
+        function: (identifier)
+        arguments: (argument_list
+          argument: (identifier)
+          argument: (macro_argument)
+          argument: (macro_argument)
+          argument: (macro_argument)))
+      (macro_call
+        function: (identifier)
+        arguments: (argument_list
+          argument: (identifier)
+          argument: (identifier)
+          argument: (integer)
+          argument: (integer)
+          argument: (integer)))))
+  (label_block
+    label: (label
+      name: (identifier))
+    (directive
+      name: (directive_name)
+      argument: (integer)))
+  (label_block
+    label: (label
+      name: (identifier))
+    (instruction
+      mnemonic: (mnemonic)
+      operand: (register)
+      operand: (register))))
+
+================================================================================
+A macro call glued to a name is a concatenation
+================================================================================
+
+%macro t 3
+jmp mangle(private_prefix %+ _x %+ SUFFIX).main
+lea r0, [m(vp9_i%2_%3_internal_10).pass2]
+%endmacro
+
+--------------------------------------------------------------------------------
+
+(source_file
+  (macro_definition
+    name: (identifier)
+    parameters: (parameter_count)
+    body: (body
+      (instruction
+        mnemonic: (mnemonic)
+        operand: (concatenation
+          (macro_call
+            function: (identifier)
+            arguments: (argument_list
+              argument: (concatenation
+                (identifier)
+                (identifier)
+                (identifier))))
+          (identifier)))
+      (instruction
+        mnemonic: (mnemonic)
+        operand: (identifier)
+        operand: (memory_operand
+          address: (concatenation
+            (macro_call
+              function: (identifier)
+              arguments: (argument_list
+                argument: (concatenation
+                  (identifier)
+                  (macro_argument)
+                  (identifier)
+                  (macro_argument)
+                  (identifier))))
+            (identifier)))))))
+
+================================================================================
+Number tokens with letters are macro arguments, as the preprocessor reads them
+================================================================================
+
+%macro t 3
+INV_TXFM_FN %1, %2, 16x16, %3
+ITX_MUL2X_PACK 4, 11003_804, 12140_m16364
+AVX_INSTR pfadd, 3dnow, 1
+%endmacro
+
+--------------------------------------------------------------------------------
+
+(source_file
+  (macro_definition
+    name: (identifier)
+    parameters: (parameter_count)
+    body: (body
+      (macro_call
+        function: (identifier)
+        arguments: (argument_list
+          argument: (macro_argument)
+          argument: (macro_argument)
+          argument: (identifier)
+          argument: (macro_argument)))
+      (macro_call
+        function: (identifier)
+        arguments: (argument_list
+          argument: (integer)
+          argument: (integer)
+          argument: (identifier)))
+      (macro_call
+        function: (identifier)
+        arguments: (argument_list
+          argument: (identifier)
+          argument: (identifier)
+          argument: (integer))))))
+
+================================================================================
+A brace group holding a macro token or a name after an operand is a decorator
+================================================================================
+
+%macro t 6
+pmulld m15, m1, [o(pd_16305)] {bcstd}
+vgatherdps %1{%4}, %2
+vperm m%1{%%mask}, m%2
+%endmacro
+vaddps zmm0{k1}{z}, zmm1, zmm2
+
+--------------------------------------------------------------------------------
+
+(source_file
+  (macro_definition
+    name: (identifier)
+    parameters: (parameter_count)
+    body: (body
+      (instruction
+        mnemonic: (mnemonic)
+        operand: (identifier)
+        operand: (identifier)
+        operand: (decorated_operand
+          operand: (memory_operand
+            address: (macro_call
+              function: (identifier)
+              arguments: (argument_list
+                argument: (identifier))))
+          decorator: (decorator
+            (identifier))))
+      (instruction
+        mnemonic: (mnemonic)
+        operand: (decorated_operand
+          operand: (macro_argument)
+          decorator: (decorator
+            (macro_argument)))
+        operand: (macro_argument))
+      (macro_call
+        function: (identifier)
+        arguments: (argument_list
+          argument: (decorated_operand
+            operand: (concatenation
+              (identifier)
+              (macro_argument))
+            decorator: (decorator
+              (macro_local)))
+          argument: (concatenation
+            (identifier)
+            (macro_argument))))))
+  (instruction
+    mnemonic: (mnemonic)
+    operand: (decorated_operand
+      operand: (register)
+      decorator: (decorator)
+      decorator: (decorator))
+    operand: (register)
+    operand: (register)))
+
+================================================================================
+A name in braces that no table lists is a decorator, since a macro may define it
+================================================================================
+
+vaddps zmm0{k9}, zmm1, zmm2
+
+--------------------------------------------------------------------------------
+
+(source_file
+  (instruction
+    mnemonic: (mnemonic)
+    operand: (decorated_operand
+      operand: (register)
+      decorator: (decorator
+        (identifier)))
+    operand: (register)
+    operand: (register)))

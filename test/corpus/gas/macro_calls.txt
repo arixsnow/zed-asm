@@ -353,3 +353,21 @@ innerloop16 , do_preload
     function: (identifier)
     arguments: (argument_list
       argument: (identifier))))
+
+================================================================================
+A C macro call glued to a name is a concatenation
+================================================================================
+
+.word F(x).y
+
+--------------------------------------------------------------------------------
+
+(source_file
+  (directive
+    name: (directive_name)
+    argument: (concatenation
+      (macro_call
+        function: (identifier)
+        arguments: (argument_list
+          argument: (identifier)))
+      (identifier))))

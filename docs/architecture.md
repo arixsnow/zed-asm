@@ -886,11 +886,14 @@ rules:
 | operator with blanks on both sides                               | a binary operator (`i + 2`)                                                                                                                                                                                                                                                         |
 | digit word                                                       | an assembler number when one matches the whole word (`1f`, `1.5`, `1e+5`), otherwise a pp-number                                                                                                                                                                                    |
 | pp-number                                                        | one `identifier`, an assembler number token followed by the scanner's glued text (`128_more`, `28bytes`)                                                                                                                                                                            |
+| call glued to a name                                             | a `concatenation` where a value stands (`.word F(x).y`)                                                                                                                                                                                                                             |
 
 GCC's manual says arguments "can cross as many lines in the source file as you wish", and a blank
 may stand between the macro name and `(`. The rules for instruction names and for blanks inside
 arguments are preferences by shape, since the preprocessor's reading depends on `#define`s the
-parser does not see. The limits are that `push(%rax)` reads as a call and `X(a -1)` as two items.
+parser does not see. The limits are that `push(%rax)` reads as a call and `X(a -1)` as two items,
+and that `F(x)y` reads as one concatenation, while cpp puts a blank before `y` when the expansion
+ends in a name (`cpp_avoid_paste`).
 `.macro` arguments follow GNU as instead (see Blocks, labels and directive forms).
 
 SystemTap's `sys/sdt.h` turns the arguments of a probe in assembler code into a string in the note
@@ -1393,8 +1396,20 @@ both assemblers take a blank before a decorator. After a name the same shape is 
 (see Operand forms). A C macro call statement may end in decorators, which decorate the last
 operand of its expansion (see Expressions, C macro calls).
 
-The scanner reads a pseudo-prefix and a decorator whole, each from its generated table, so a `{`
-that starts neither closes what is open.
+A brace group after an operand that holds one macro token, or one name the tables list as neither a
+decorator word (in any case) nor a register, is a decorator, since the preprocessor expands it
+before the assembler checks it. The token is the decorator's child. `{Z}` and `{k0}` stay errors,
+and `{k9}` reads as a name.
+
+| Form                           | Tree                                                        |
+| ------------------------------ | ----------------------------------------------------------- |
+| `%zmm1{\mask}` (GNU)           | `(decorator (macro_argument))`                              |
+| `%1{%4}`, `m%1{%%mask}` (NASM) | `(decorator (macro_argument))`, `(decorator (macro_local))` |
+| `[o(pd_16305)] {bcstd}` (NASM) | `(decorator (identifier))`                                  |
+
+The scanner reads a pseudo-prefix and a decorator whole, each from its generated table, and writes
+a zero-width `_decorator_open` before the `{` of such a brace group after an operand, unless a
+separating blank stands before it. A `{` that starts none of them closes what is open.
 
 ### Limits
 
@@ -1641,6 +1656,8 @@ parses with no errors.
 | a word or macro token before an operand    | `XMMWORD [rsp]`, `kmov %3 %1, %1`              | `typed_operand`, the word as `type` |
 | a macro token as a name                    | `%define %$x 1`, `%1:`, `%%a nop`, `%00 equ 3` | the token                           |
 | a glued name, with or without blanks       | `%%top_%$x:`, `_t_ %+ %1:`                     | `concatenation`                     |
+| a call glued to a name                     | `jmp mangle(x).main`, `[m(x).pass2]`           | `concatenation`                     |
+| a number token with letters, an argument   | `INV_TXFM_FN %1, 16x16`, `AVX_INSTR p, 3dnow`  | `identifier`                        |
 | a bare `%word` where an operand fits       | `dir %iffile`, `dir [%iffile]`                 | `macro_expansion`                   |
 
 A word followed by `(` has no other meaning in an expression, so a call needs no blank rule. At the
@@ -1659,9 +1676,11 @@ symbol there as a displacement, and here the blank decides.
 
 A macro token names whatever a symbol names, such as defines, assignments, labels with or without a
 colon, macros, structures, declared symbols and `equ`. A dot name or a `$` name alone on its line is
-a label (`.end`), as nasm reads it, and a plain word alone stays a macro call. A name escaped with
-`$` keeps any name characters after it, `$` included (`$$foo`, `$$$foo`), and `$3` names a symbol
-where only a name can stand, for `[dollarhex off]`.
+a label (`.end`), as nasm reads it, and a plain word alone stays a macro call. A word followed by a
+data word or a mnemonic and then a comma is a macro call with that word as its first argument
+(`SBUTTERFLY dq, %2`, `AVX_INSTR pfadd, mmx`). Both assemblers reject a label there. A name
+escaped with `$` keeps any name characters after it, `$` included (`$$foo`, `$$$foo`), and `$3`
+names a symbol where only a name can stand, for `[dollarhex off]`.
 
 Single-line macro parameters take nasm's modifiers `=x` (evaluate, with a radix such as `=x/x`),
 `&x` and `&&x` (quote), `!x` (keep blanks), `x+` (greedy), and empty parameters (`(a, =b, )`).
@@ -2357,6 +2376,12 @@ arguments, then grew x86 (GAS) from 4,063 to 4,067 states, Assembly from 5,784 t
 
 The call forms of typed slots are two hidden rules shared by every instruction with typed slots.
 Written inline in each slot they cost Assembly 1,340 states, ARM 397 and ARM (Apple) 396.
+
+NASM calls before a word and a comma, calls glued to a name, number tokens in macro arguments and
+brace groups holding a macro token or a name then grew x86 (GAS) from 4,067 to 4,146 states,
+Assembly from 6,363 to 6,469, ARM from 2,795 to 2,819, ARM (Apple) from 2,706 to 2,730 and x86
+(NASM) from 4,341 to 4,543. On `basics` x86 (NASM) costs 0.28% more, ARM (Apple) 0.47%, Assembly
+0.25%, ARM 0.06% and x86 (GAS) 0.04%.
 
 NASM parses 60% slower than M4 on the fixtures and 72% on `basics`, since its grammar grew from 71
 states to 4341 to read the preprocessor, macro calls and structures. Removing one rule at a time

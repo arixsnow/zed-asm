@@ -664,6 +664,10 @@
           "named": true
         },
         {
+          "type": "macro_call",
+          "named": true
+        },
+        {
           "type": "register",
           "named": true
         }
@@ -878,6 +882,25 @@
           }
         ]
       }
+    }
+  },
+  {
+    "type": "decorator",
+    "named": true,
+    "fields": {},
+    "children": {
+      "multiple": false,
+      "required": false,
+      "types": [
+        {
+          "type": "identifier",
+          "named": true
+        },
+        {
+          "type": "macro_argument",
+          "named": true
+        }
+      ]
     }
   },
   {
@@ -3438,10 +3461,6 @@
     "named": true
   },
   {
-    "type": "decorator",
-    "named": true
-  },
-  {
     "type": "directive_name",
     "named": true
   },
@@ -3516,11 +3535,19 @@
     "named": false
   },
   {
+    "type": "{",
+    "named": false
+  },
+  {
     "type": "|",
     "named": false
   },
   {
     "type": "||",
+    "named": false
+  },
+  {
+    "type": "}",
     "named": false
   },
   {
