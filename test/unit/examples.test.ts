@@ -12,14 +12,12 @@ import {
     guardPattern,
     parsePins,
     readPins,
-} from '../../scripts/lib/real-code.ts';
-import { captureRows, errorRows } from '../../scripts/real-code.ts';
+} from '../../scripts/lib/examples.ts';
+import { captureRows, errorRows } from '../../scripts/examples.ts';
 import { assertThrowsIncluding } from '../lib/assert.ts';
 
 const COMMIT = 'a'.repeat(40);
 const VALID = [
-    '# SPDX-License-Identifier: MIT',
-    '',
     '[source "kernel"]',
     '    url = https://example.org/kernel.git',
     '    branch = main',
@@ -75,15 +73,15 @@ test('an invalid pin file fails with a message naming the line or section', () =
             'commit must be a full commit id (got "")',
         ],
         [edited(COMMIT, 'main'), 'commit must be a full commit id (got "main")'],
-        [edited('    branch = main', '\tbranch = main'), 'line 5 must be a [kind "name"] header'],
+        [edited('    branch = main', '\tbranch = main'), 'line 3 must be a [kind "name"] header'],
         [
             edited('    branch = main', '    branch  =  main'),
-            'line 5 must be a [kind "name"] header',
+            'line 3 must be a [kind "name"] header',
         ],
-        [edited('[source "kernel"]', '[Source "kernel"]'), 'line 3 must be a [kind "name"] header'],
+        [edited('[source "kernel"]', '[Source "kernel"]'), 'line 1 must be a [kind "name"] header'],
         [
             edited('[files "kernel x86"]', '[file "kernel x86"]'),
-            'line 8 starts a section of unknown kind "file"',
+            'line 6 starts a section of unknown kind "file"',
         ],
         [
             edited('[files "kernel x86"]', '[constructor "x"]'),
@@ -91,11 +89,11 @@ test('an invalid pin file fails with a message naming the line or section', () =
         ],
         [
             edited('[source "kernel"]', '[source "ker\\"nel"]'),
-            'line 3 must be a [kind "name"] header',
+            'line 1 must be a [kind "name"] header',
         ],
         [
             edited('lib/*.S', 'lib/#.S'),
-            'line 11 has a value git would read as quoted, escaped or commented',
+            'line 9 has a value git would read as quoted, escaped or commented',
         ],
         [
             edited('lib/*.S', '"lib/*.S"'),
@@ -119,7 +117,7 @@ test('an invalid pin file fails with a message naming the line or section', () =
         ],
         [
             edited('lib/*.S', 'lib/[ab.S'),
-            '[files "kernel x86"] (line 8) include "lib/[ab.S" opens a [ it never closes',
+            '[files "kernel x86"] (line 6) include "lib/[ab.S" opens a [ it never closes',
         ],
         [
             edited('**/*.lds.S', '[[:word:]].S'),
@@ -131,7 +129,7 @@ test('an invalid pin file fails with a message naming the line or section', () =
         ],
         [
             edited('    language = asm_auto', '    language = asm_x86_gas'),
-            'line 14 sets language = asm_x86_gas a second time',
+            'line 12 sets language = asm_x86_gas a second time',
         ],
         [edited('asm_auto', 'asm_mips'), 'language must be one of'],
         [
@@ -140,7 +138,7 @@ test('an invalid pin file fails with a message naming the line or section', () =
         ],
         [
             edited('    url = https://example.org/kernel.git\n', ''),
-            '[source "kernel"] (line 3) must set url once (sets it 0 times)',
+            '[source "kernel"] (line 1) must set url once (sets it 0 times)',
         ],
         [
             edited('    branch = main', '    branch = main\n    url = https://example.org/b.git'),
@@ -149,7 +147,7 @@ test('an invalid pin file fails with a message naming the line or section', () =
         [edited('https://example.org', 'http://example.org'), 'url must be an https URL'],
         [
             edited('    branch = main', '    branch = main\n    depth = 1'),
-            'line 6 sets depth, which a source section does not take',
+            'line 4 sets depth, which a source section does not take',
         ],
         [
             edited('    source = kernel', '    source = kernel\n    commit = x'),
@@ -173,17 +171,17 @@ test('an invalid pin file fails with a message naming the line or section', () =
         ],
         [
             `${VALID}\n[files "kernel x86"]\n`,
-            'line 16 repeats [files "kernel x86"] (line 8), which git would merge',
+            'line 14 repeats [files "kernel x86"] (line 6), which git would merge',
         ],
         [
-            edited('# SPDX-License-Identifier: MIT', '# x\n    url = https://a.b'),
-            'line 2 sets a key outside any section',
+            edited('[source "kernel"]', '    url = https://a.b\n[source "kernel"]'),
+            'line 1 sets a key outside any section',
         ],
         [
             `${VALID}\n[source "lonely"]\n    url = https://a.b\n    branch = main\n    commit = ${COMMIT}\n`,
             '[source "lonely"] is named by no [files] section',
         ],
-        ['# SPDX-License-Identifier: MIT\n', 'the file defines no [source] section'],
+        ['# pins\n; pins\n', 'the file defines no [source] section'],
     ];
     for (const [text, message] of cases) {
         assertThrowsIncluding(() => parsePins(text), message);
@@ -191,7 +189,7 @@ test('an invalid pin file fails with a message naming the line or section', () =
 });
 
 test('error rows come from one tree-sitter parse and one query over every file', () => {
-    const directory = join(ROOT, '.build', 'real-code-test');
+    const directory = join(ROOT, '.build', 'examples-test');
     emptyDir(directory);
     const clean = join(directory, 'clean.s');
     const broken = join(directory, 'broken.s');

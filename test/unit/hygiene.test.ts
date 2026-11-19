@@ -9,6 +9,7 @@ import { ROOT } from '../../scripts/lib/files.ts';
 import { repositoryFiles } from '../../scripts/lib/repository.ts';
 
 const TAB_ALLOWED = ['test/corpus/', 'test/fixtures/'];
+const PROSE_WIDTH = 100;
 
 const contents = repositoryFiles(ROOT).map((path) => ({
     path,
@@ -34,6 +35,28 @@ test('hard tabs appear only in test data', () => {
 
 test('every file uses LF line endings', () => {
     assert.deepStrictEqual(offenders((_, bytes) => bytes.includes(0x0d)), []);
+});
+
+function wideProseLines(text: string): number[] {
+    const wide: number[] = [];
+    let fenced = false;
+    for (const [index, line] of text.split('\n').entries()) {
+        if (line.startsWith('```')) {
+            fenced = !fenced;
+        } else if (!fenced && !line.startsWith('|') && line.length > PROSE_WIDTH) {
+            wide.push(index + 1);
+        }
+    }
+    return wide;
+}
+
+test('every prose line of a Markdown file fits in 100 columns', () => {
+    const wide = contents
+        .filter(({ path }) => path.endsWith('.md'))
+        .flatMap(({ path, bytes }) =>
+            wideProseLines(new TextDecoder().decode(bytes)).map((line) => `${path}:${line}`)
+        );
+    assert.deepStrictEqual(wide, []);
 });
 
 test('every hand-written file ends with a newline', () => {

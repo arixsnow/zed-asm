@@ -13,9 +13,9 @@ function packageScripts(): string[] {
 }
 
 function documentedScripts(): string[] {
-    const architecture = readFileSync(join(ROOT, 'docs', 'architecture.md'), 'utf8');
-    const section = /^## Checks\n([\s\S]*?)(?=^## )/m.exec(architecture)?.[1];
-    assert.ok(section !== undefined, 'docs/architecture.md has no Checks section');
+    const checks = readFileSync(join(ROOT, 'docs', 'checks.md'), 'utf8');
+    const section = /^## Commands\n([\s\S]*?)(?=^## )/m.exec(checks)?.[1];
+    assert.ok(section !== undefined, 'docs/checks.md has no Commands section');
     return [...section.matchAll(/^\| `bun run ([\w:-]+)` +\| +\S.*\|$/gm)].map(([, name]) => name);
 }
 

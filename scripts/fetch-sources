@@ -4,7 +4,7 @@
 set -eu
 
 root=$(CDPATH='' cd -- "$(dirname -- "$0")/.." && pwd)
-pins="${root}/test/real-code/sources.gitconfig"
+pins="${root}/test/examples/sources.gitconfig"
 
 fail() {
     printf '%s: %s\n' "$0" "$1" >&2

@@ -14,12 +14,12 @@ import {
     guardPattern,
     readPins,
     type Source,
-} from './lib/real-code.ts';
+} from './lib/examples.ts';
 import { Report } from './lib/report.ts';
 import { matchesPath, wildmatch } from './lib/wildmatch.ts';
 
 const SOURCES = '/sources';
-const SCRATCH = join(ROOT, '.build', 'real-code');
+const SCRATCH = join(ROOT, '.build', 'examples');
 const ERROR_QUERY = '(ERROR) @error\n(MISSING) @missing\n';
 const CAPTURE =
     /^ {4}pattern: +\d+, capture: \d+ - (?:error|missing), start: \((\d+), (\d+)\), end: \((\d+), (\d+)\), text: `/;
@@ -299,7 +299,7 @@ function wordCounts(failing: string[], errors: Map<string, number[]>): string {
 
 function main(args: string[]): number {
     if (args.length > 1 || (args.length === 1 && args[0] !== '--summary')) {
-        console.error('usage: real-code.ts [--summary]');
+        console.error('usage: examples.ts [--summary]');
         return 2;
     }
     const summary = args.length === 1;
@@ -371,7 +371,7 @@ function main(args: string[]): number {
             );
         }
     }
-    return report.finish('all real code parses without errors', 'real-code check(s)');
+    return report.finish('every example parses without errors', 'example check(s)');
 }
 
 if (import.meta.main) {

@@ -7,7 +7,7 @@ import { ROOT } from './files.ts';
 import { manifest } from './manifest.ts';
 import { wildmatch } from './wildmatch.ts';
 
-export const PINS = join(ROOT, 'test', 'real-code', 'sources.gitconfig');
+export const PINS = join(ROOT, 'test', 'examples', 'sources.gitconfig');
 
 export interface Source {
     name: string;
@@ -84,7 +84,7 @@ const KEYS: Record<string, readonly string[]> = {
 };
 
 function fail(where: string, problem: string): never {
-    throw new Error(`test/real-code/sources.gitconfig: ${where} ${problem}`);
+    throw new Error(`test/examples/sources.gitconfig: ${where} ${problem}`);
 }
 
 function label(section: Section): string {

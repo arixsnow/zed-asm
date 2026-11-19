@@ -1,24 +1,26 @@
 # Checks in Zed
 
-These checks cover what only the editor does (language choice, colors, Enter, toggle comment,
-auto-close, word selection, the outline, breadcrumbs, block indentation and vim text objects).
-`scripts/zed` runs them in the real Zed app in Podman, on a virtual display, with nothing installed
-on the host. It builds the extension and, before Zed starts, checks that each grammar built to wasm
-imports only the C functions of tree-sitter's wasm runtime, through which Zed loads grammars. It
-types each case, saves the file and compares the text, or reads what a step copied. An outline check
-picks an entry and types `X` where the cursor lands, so the saved text shows the jump target. The
-vim checks run last, after vim mode is turned on in the settings. The run prints each result as it
-finishes, continues after a failed check, and writes `.build/zed-qa/report.txt` with the Zed log and
-one screenshot per check.
+These checks cover what only the editor does ([editor.md](editor.md)). That is language choice,
+colors, Enter, toggle comment, auto-close, word selection, the outline, breadcrumbs, block
+indentation and vim text objects. Run them before each release and record the Zed version from the
+report.
 
 ```sh
 scripts/zed             # run every check
 scripts/zed --refresh   # first update Zed to its latest release
 ```
 
+`scripts/zed` runs the checks in the real Zed app, in Podman on a virtual display, with nothing
+installed on the host ([checks.md](checks.md#zed)). It builds the extension, and before Zed starts
+it checks that each grammar built to wasm imports only the C functions of tree-sitter's wasm
+runtime. It types each case, saves the file and compares the text, or reads what a step copied. An
+outline check picks an entry and types `X` where the cursor lands, so the saved text shows the jump
+target. The vim checks run last, after vim mode is turned on in the settings. The run prints each
+result as it finishes, continues after a failed check, and writes `.build/zed-qa/report.txt` with
+the Zed log and one screenshot per check.
+
 Checks 1 to 4, 19, 22, 24, 26, 27 and 30 end with `LOOK`. Confirm each on its screenshot. The others
-pass or fail by themselves. A modeline such as `// vim: ft=arm` selects an exact language. Run the
-checks before each release and record the Zed version from the report.
+pass or fail by themselves. A modeline such as `// vim: ft=arm` selects an exact language.
 
 | #  | Do                                                                                                  | Expect                                                       |
 | -- | --------------------------------------------------------------------------------------------------- | ------------------------------------------------------------ |
@@ -39,7 +41,7 @@ checks before each release and record the Zed version from the report.
 | 15 | Press Enter between `{` and `}`                                                                     | A plain new line, with no blank indented line                |
 | 16 | Select `.Lloop_end`, and `%function` in ARM (double-click or Ctrl+D)                                | The whole name is selected                                   |
 | 17 | Pick `helper`, then the nested `.Lloop`, in the outline (Ctrl+Shift+O)                              | The cursor jumps to that label                               |
-| 18 | Type `text` in the outline of a file with `.text` and `.data`                                       | No entry matches, since sections are not listed              |
+| 18 | Type `text` in the outline of a file with `.text` and `.data`                                       | No entry matches, because sections are not listed            |
 | 19 | Put the cursor on the `.Lloop:` line inside `main`                                                  | The breadcrumbs show `main` and `.Lloop`                     |
 | 20 | Type `.macro m`, `nop`, `.endm`, nested `.if`/`.else`/`.endif`, and `.rept`/`.endr`                 | Bodies indent, and closers and clauses align with the opener |
 | 21 | After `main:` and Enter, type `.text`                                                               | `.text` stays indented where it was typed                    |
@@ -58,7 +60,5 @@ checks before each release and record the Zed version from the report.
 | 34 | In NASM, run Move to Enclosing Bracket after `{` in `m {1, 2}` and after `%(` in `db %(1, 2)`       | The cursor jumps to the matching `}` or `)`                  |
 | 35 | Read the Zed log                                                                                    | No errors about the asm grammars or queries                  |
 
-As a limit, at the end of a file, with nothing after the cursor, Zed ignores scope-based settings.
-Enter after `#define X 1` inserts `#` and a space in the GNU-syntax languages, and `/*` closes
-inside a comment. Zed's own languages behave the same. Checks 9, 10 and 13 therefore run with a line
-after the cursor.
+At the end of a file, with nothing after the cursor, Zed ignores scope-based settings
+([editor.md](editor.md#comments)). Checks 9, 10 and 13 run with a line after the cursor.
