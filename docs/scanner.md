@@ -120,6 +120,41 @@ longer word matches no keyword, whole or with an affix, and reads as a name. A 4
 `a_macro_name_longer_than_every_keyword_of_gas 1, 2` is a macro call. The hash is the scanner's own,
 because tree-sitter gives a wasm grammar only a few C library functions.
 
+## Numbers
+
+The scanner reads every number token. In GNU syntax these are `integer`, `float`, `numeric_label`
+and `_dot_float`, a float that starts with `.` (`.5`). In NASM they are `integer`, `float` and
+`_digit_name`, a `$` and a digit followed by name characters (`$1x`). `lexical.js` holds their
+forms as regular expressions, one row per token with its precedence. `bun run build` compiles the
+rows of a syntax into one DFA in `tree-sitter/common/numbers.h`, with a section for the GNU-syntax
+languages, one for ARM (Apple), whose integers take clang's suffixes, and one for NASM. A table maps
+each ASCII character to a class and each state and class to the next state, and names the token
+each state ends. A number costs one lookup per character. The build reads a subset of regular
+expressions (classes, groups, `|`, `?`, `*`, `+` and `{m,n}`, all in ASCII) and stops on anything
+else.
+
+The tables decide as tree-sitter's generated lexer does. The longest match wins. Once a token has
+ended, a transition that only tokens of lower precedence take is cut. `_dot_float` (precedence 1)
+ends `.5x` after `.5`, and `integer` ends `$1x` after `$1`, where `_digit_name` (precedence -1)
+would go on. Of two tokens that end at the same length, the higher precedence wins, then the
+earlier row. A row may name a rival, a grammar token without precedence that is valid wherever the
+row's token is. `_dot_identifier`, the GNU dot name, is the rival of `_dot_float`. When the rival
+ends last, the scanner returns no token and tree-sitter's lexer reads the name, so `.5e` is a
+symbol.
+
+A join inside a number is invisible. The reader steps over a join before any character but the
+first, so `0x1\`, newline, `f` is `0x1f`, and `.0\`, newline, `L` reads as `.0L` does.
+
+The scanner reads a number where a number token is valid and the next character can start one.
+Statement words, digit words in an operand, glued text and labels read during error recovery may
+begin with a number, and the scanner reads each of them in lockstep with the number. When the word
+turns out to be none of its kinds, the scanner returns the number. A token ends at the last
+position the scanner marks, and the scanner cannot move back, so it can return the number only
+while it stands on the number's end. As a limit, a word check that marks the end of a longer word
+and then fails returns no number for the digits before it. This happens for digits followed by `$`
+and no `:` in a C macro call argument in Assembly, and for a NASM `$`-digit name followed by a join
+at a statement start that is no label.
+
 ## Error recovery
 
 During error recovery the scanner reads no label and no block closer. A name with a colon read

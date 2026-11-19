@@ -38,7 +38,7 @@ unit test enforces the width ([Repository rules](#repository-rules)).
 | Command                   | What it does                                                                                                                                                                                                                                                                                     |
 | ------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
 | `bun run test`            | every check except the sanitizers (formatting, lint, types, generated files and parsers up to date, unit and performance tests, C checks, shell checks, corpus tests, queries, fixtures)                                                                                                         |
-| `bun run build`           | writes the files generated from `languages.config.cjs` and `queries/`                                                                                                                                                                                                                            |
+| `bun run build`           | writes the files generated from `languages.config.cjs`, `queries/`, `keywords.h` and `lexical.js`                                                                                                                                                                                                |
 | `bun run generate`        | runs `build`, then regenerates all five parsers                                                                                                                                                                                                                                                  |
 | `bun run set-grammar-rev` | pins the commit Zed fetches the grammars from (`bun run set-grammar-rev <sha>`) and runs `build`                                                                                                                                                                                                 |
 | `bun run keywords`        | regenerates `tree-sitter/common/keywords.h` from the upstream sources at `/sources` (`scripts/dev --sources DIR`, see [scanner.md](scanner.md#generated-tables)), not a check                                                                                                                    |
@@ -140,9 +140,10 @@ one. Each change in cost must match the change `test/budgets.json` declares betw
 1 point plus a tenth of the declared change. An undeclared speedup fails as a slowdown does, so the
 declared costs stay exact. An input the baseline declares no cost for, or measured with other text,
 has no baseline and passes. The states, parser.c size and input hashes are the same anywhere, and a
-unit test requires them to match the tree. CI exports the push's previous head, or a pull request's
-base, with `git archive`. Locally, `git archive HEAD | tar -x -C .build/budgets-baseline` gives the
-last commit.
+unit test requires them to match the tree. Another fails when a `parser.c` is compiled with
+optimization off ([performance.md](performance.md#rules)). CI exports the push's previous head, or
+a pull request's base, with `git archive`. Locally,
+`git archive HEAD | tar -x -C .build/budgets-baseline` gives the last commit.
 
 ## Fixtures
 
@@ -176,6 +177,11 @@ exactly the offending lines. The test reads each file's parse status as well as 
 tree-sitter does not always mark a missing node in the printed tree. Operands that parse with
 errors, such as `:lo12:.LC0` in ARM (Apple) or `qword ptr fs:[0x28]` in AT&T mode, must leave the
 function around them one label block.
+
+`test/grammar/numbers.test.ts` reads every number form of each syntax in a data directive, with
+joins inside the number, and requires one `integer`, `float` or `numeric_label`, or an error.
+`test/unit/numbers.test.ts` checks the number table of each token against JavaScript's `RegExp` on
+the same form, and that the build refuses a form outside the subset it reads.
 
 `test/grammar/keywords.test.ts` checks that no grammar has a word token or a case-insensitive token
 ([arm.md](arm.md#keywords)). The typing and closing tests are in

@@ -68,9 +68,10 @@ scripts/zed                    # the docs/qa.md checks in Zed, inside Podman
 
 The hand-written sources are `languages.config.cjs`, `queries/`, `tree-sitter/common/`, `scripts/`
 and `test/`. `extension.toml`, `languages/`, `tree-sitter/tree-sitter.json`,
-`tree-sitter/common/words.h` and each grammar's `grammar.js` and `src/` are generated, and
-`bun run test` fails when any of them is out of date. `tree-sitter/common/keywords.h` is generated
-from the upstream sources ([docs/scanner.md](docs/scanner.md#generated-tables)).
+`tree-sitter/common/words.h`, `tree-sitter/common/numbers.h` and each grammar's `grammar.js` and
+`src/` are generated, and `bun run test` fails when any of them is out of date.
+`tree-sitter/common/keywords.h` is generated from the upstream sources
+([docs/scanner.md](docs/scanner.md#generated-tables)).
 
 `.git-blame-ignore-revs` lists the commits that change only layout. GitHub's blame view reads it,
 and `git blame` reads it with this setting:

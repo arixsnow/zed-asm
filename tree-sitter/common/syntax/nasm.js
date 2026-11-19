@@ -43,14 +43,13 @@ function conditionHeaders([generic, macro, raw], keyword) {
     ];
 }
 
-module.exports = (ctx) => ({
+module.exports = () => ({
     conflicts: [
         ($) => [$._parenthesized_float, $._intel_operand],
         ($) => [$._intel_parenthesized, $._intel_operand],
     ],
     rules: {
         _name: ($) => choice($._symbol, $._macro_token),
-        _digit_name: () => token(prec(-1, ctx.lexical.digitName)),
         _macro_token: ($) => choice($._macro_leaf, $.concatenation),
         _macro_leaf: ($) =>
             choice(
@@ -306,7 +305,6 @@ module.exports = (ctx) => ({
                 ),
             ),
 
-        float: () => ctx.lexical.float,
         _float_value: ($) => choice($.float, alias($._float_special, $.float)),
         _float_operand: ($) =>
             choice(

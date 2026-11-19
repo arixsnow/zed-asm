@@ -80,7 +80,9 @@ no newline follows keeps its GNU meaning, a macro argument (`\reg`) or `\()`.
 `define-grammar.js` passes every rule through `tree-sitter/common/joins.js`, which lets a join stand
 between any two characters of a terminal. A join may precede every character of a token but the
 first, so no token starts or ends with a join. A string of several characters becomes a pattern
-aliased to its own text, and `<<` keeps its node name. A join between tokens is an extra.
+aliased to its own text, and `<<` keeps its node name. A join between tokens is an extra. Numbers
+are scanner tokens, and the scanner steps over a join inside a number the same way
+([scanner.md](scanner.md#numbers)).
 
 The scanner steps over joins between tokens, in strings and in raw text. In NASM its word readers
 and line comments also step over them (`ASM_WORD_JOINS`, `ASM_COMMENT_JOINS`). At a backslash that

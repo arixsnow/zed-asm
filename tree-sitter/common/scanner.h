@@ -44,6 +44,7 @@ enum SemicolonMode {
 #define ASM_DOLLAR_IMMEDIATES      1
 #define ASM_DARWIN_LOCALS          0
 #define ASM_DARWIN_ARGUMENTS       0
+#define ASM_CLANG_INTEGERS         0
 #define ASM_COLON_TYPE_MARK        0
 #define ASM_RESERVED_NAMES         0
 #define ASM_NAMED_STATEMENTS       0
@@ -74,6 +75,7 @@ enum SemicolonMode {
 #define ASM_DOLLAR_IMMEDIATES      1
 #define ASM_DARWIN_LOCALS          0
 #define ASM_DARWIN_ARGUMENTS       0
+#define ASM_CLANG_INTEGERS         0
 #define ASM_COLON_TYPE_MARK        0
 #define ASM_RESERVED_NAMES         0
 #define ASM_NAMED_STATEMENTS       0
@@ -104,6 +106,7 @@ enum SemicolonMode {
 #define ASM_DOLLAR_IMMEDIATES      0
 #define ASM_DARWIN_LOCALS          1
 #define ASM_DARWIN_ARGUMENTS       1
+#define ASM_CLANG_INTEGERS         1
 #define ASM_COLON_TYPE_MARK        0
 #define ASM_RESERVED_NAMES         0
 #define ASM_NAMED_STATEMENTS       0
@@ -134,6 +137,7 @@ enum SemicolonMode {
 #define ASM_DOLLAR_IMMEDIATES      1
 #define ASM_DARWIN_LOCALS          0
 #define ASM_DARWIN_ARGUMENTS       0
+#define ASM_CLANG_INTEGERS         0
 #define ASM_COLON_TYPE_MARK        0
 #define ASM_RESERVED_NAMES         0
 #define ASM_NAMED_STATEMENTS       0
@@ -164,6 +168,7 @@ enum SemicolonMode {
 #define ASM_DOLLAR_IMMEDIATES      0
 #define ASM_DARWIN_LOCALS          0
 #define ASM_DARWIN_ARGUMENTS       0
+#define ASM_CLANG_INTEGERS         0
 #define ASM_COLON_TYPE_MARK        1
 #define ASM_RESERVED_NAMES         1
 #define ASM_NAMED_STATEMENTS       1
@@ -355,6 +360,11 @@ enum TokenType {
     MACRO_LOCAL,
     CONTEXT_LOCAL,
     MACRO_EXPANSION,
+    INTEGER,
+    FLOAT,
+    NUMERIC_LABEL,
+    DOT_FLOAT,
+    DIGIT_NAME,
     INSTRUCTION_NAME,
     FLAGS_INSTRUCTION,
     FIRST_LABEL_INSTRUCTION,
@@ -465,6 +475,7 @@ struct Scanner {
     uint32_t open_calls;
 };
 
+#include "numbers.h"
 #include "words.h"
 
 enum {
@@ -637,15 +648,43 @@ static bool advance_blanks(TSLexer *lexer)
     return true;
 }
 
-static bool cross_joins(TSLexer *lexer)
+struct NumberRead {
+    uint16_t state;
+    unsigned char end;
+    bool synced;
+    bool marked;
+};
+
+static void number_stops(struct NumberRead *number)
 {
-    while (ASM_WORD_JOINS && lexer->lookahead == '\\') {
+    if (number != NULL) {
+        number->synced = false;
+    }
+}
+
+static void number_passes(struct NumberRead *number)
+{
+    if (number != NULL) {
+        number->marked = false;
+    }
+}
+
+static bool pass_joins(TSLexer *lexer, struct NumberRead *number)
+{
+    while (lexer->lookahead == '\\') {
+        number_passes(number);
         advance(lexer);
         if (!joins_line(lexer, false)) {
+            number_stops(number);
             return false;
         }
     }
     return true;
+}
+
+static bool cross_joins(TSLexer *lexer, struct NumberRead *number)
+{
+    return !ASM_WORD_JOINS || pass_joins(lexer, number);
 }
 
 static bool skip_joins(TSLexer *lexer)
@@ -659,9 +698,10 @@ static bool skip_joins(TSLexer *lexer)
     return true;
 }
 
-static bool word_continues(TSLexer *lexer, bool (*part)(int32_t), bool *stray)
+static bool word_continues(TSLexer *lexer, bool (*part)(int32_t), bool *stray,
+    struct NumberRead *number)
 {
-    if (!cross_joins(lexer)) {
+    if (!cross_joins(lexer, number)) {
         *stray = true;
         return false;
     }
@@ -1670,7 +1710,7 @@ static bool token_follows(TSLexer *lexer)
     const int32_t first = lexer->lookahead;
 
     advance(lexer);
-    if (!cross_joins(lexer)) {
+    if (!cross_joins(lexer, NULL)) {
         return false;
     }
     if (first == '=' || first == '!') {
@@ -1685,19 +1725,25 @@ static bool token_follows(TSLexer *lexer)
     return is_alpha(lexer->lookahead);
 }
 
+static void record_word_char(int32_t codepoint, char *word, size_t *length)
+{
+    int32_t lower = codepoint;
+
+    if (word == NULL) {
+        return;
+    }
+    if (lower >= 'A' && lower <= 'Z') {
+        lower += 'a' - 'A';
+    }
+    if (*length + 1 < STATEMENT_WORD_CAPACITY) {
+        word[*length] = (char)lower;
+        (*length)++;
+    }
+}
+
 static void take_word_char(TSLexer *lexer, char *word, size_t *length)
 {
-    int32_t codepoint = lexer->lookahead;
-
-    if (word != NULL) {
-        if (codepoint >= 'A' && codepoint <= 'Z') {
-            codepoint += 'a' - 'A';
-        }
-        if (*length + 1 < STATEMENT_WORD_CAPACITY) {
-            word[*length] = (char)codepoint;
-            (*length)++;
-        }
-    }
+    record_word_char(lexer->lookahead, word, length);
     advance(lexer);
 }
 
@@ -1706,7 +1752,7 @@ static void read_alnum(TSLexer *lexer, char *word)
     size_t length = 0;
     bool stray = false;
 
-    while (word_continues(lexer, is_alnum, &stray)) {
+    while (word_continues(lexer, is_alnum, &stray, NULL)) {
         if (length + 1 < STATEMENT_WORD_CAPACITY) {
             word[length] = (char)lexer->lookahead;
             length++;
@@ -1795,7 +1841,7 @@ static bool pseudo_prefix_follows(TSLexer *lexer)
     size_t length = 0;
     bool stray = false;
 
-    while (word_continues(lexer, is_alnum, &stray)) {
+    while (word_continues(lexer, is_alnum, &stray, NULL)) {
         take_word_char(lexer, word, &length);
     }
     return !stray && is_pseudo_prefix(word_entry(word));
@@ -1866,6 +1912,102 @@ static bool scan_end_of_input(TSLexer *lexer, const bool *valid, bool recovering
     return false;
 }
 
+static uint16_t number_next(const struct NumberRead *read, int32_t codepoint)
+{
+    if (codepoint < 0 || (size_t)codepoint >= sizeof(NUMBER_CLASSES)) {
+        return 0;
+    }
+    return NUMBER_NEXT[read->state][NUMBER_CLASSES[codepoint]];
+}
+
+static bool number_accepts(const struct NumberRead *read, int32_t codepoint)
+{
+    return number_next(read, codepoint) != 0;
+}
+
+static bool number_starts(struct NumberRead *read, int32_t first, const bool *valid)
+{
+    unsigned tokens = 0;
+    size_t index = 0;
+
+    read->state = NUMBER_STARTS[NUMBER_ALL_TOKENS];
+    if (!number_accepts(read, first)) {
+        return false;
+    }
+    while (index < NUMBER_TOKEN_COUNT) {
+        if (valid[NUMBER_TOKENS[index]]) {
+            tokens |= 1U << index;
+        }
+        index++;
+    }
+    read->state = NUMBER_STARTS[tokens];
+    read->end = NUMBER_NO_END;
+    read->synced = true;
+    read->marked = false;
+    return number_accepts(read, first);
+}
+
+static void number_take(TSLexer *lexer, struct NumberRead *read)
+{
+    read->state = number_next(read, lexer->lookahead);
+    advance(lexer);
+    read->marked = NUMBER_ENDS[read->state] != NUMBER_NO_END;
+    if (read->marked) {
+        read->end = NUMBER_ENDS[read->state];
+        lexer->mark_end(lexer);
+    }
+}
+
+static void number_advance(TSLexer *lexer, struct NumberRead *read)
+{
+    if (read != NULL && read->synced && number_accepts(read, lexer->lookahead)) {
+        number_take(lexer, read);
+        return;
+    }
+    number_stops(read);
+    number_passes(read);
+    advance(lexer);
+}
+
+static void take_number_char(TSLexer *lexer, char *word, size_t *length, struct NumberRead *read)
+{
+    record_word_char(lexer->lookahead, word, length);
+    number_advance(lexer, read);
+}
+
+static bool number_follows(TSLexer *lexer, struct NumberRead *read)
+{
+    return pass_joins(lexer, read) && number_accepts(read, lexer->lookahead);
+}
+
+static bool number_finish(TSLexer *lexer, const struct NumberRead *read)
+{
+    if (read->end == NUMBER_NO_END || read->end == NUMBER_RIVAL_END) {
+        return false;
+    }
+    lexer->result_symbol = NUMBER_TOKENS[read->end - 1];
+    return true;
+}
+
+static bool number_rest(TSLexer *lexer, struct NumberRead *read)
+{
+    while (read->synced && number_follows(lexer, read)) {
+        number_take(lexer, read);
+    }
+    return number_finish(lexer, read);
+}
+
+static bool number_covers(const struct NumberRead *read)
+{
+    return read != NULL && read->marked;
+}
+
+static bool scan_number(TSLexer *lexer, struct NumberRead *read)
+{
+    number_take(lexer, read);
+    return number_rest(lexer, read);
+}
+
 static bool read_quoted_label(TSLexer *lexer, TSSymbol *symbol)
 {
     const char *const local_prefix = ASM_DARWIN_LOCALS ? "L" : ".L";
@@ -1896,21 +2038,22 @@ static bool read_quoted_label(TSLexer *lexer, TSSymbol *symbol)
     return true;
 }
 
-static bool read_nasm_name_start(TSLexer *lexer, char *word, size_t *length, bool *local)
+static bool read_nasm_name_start(TSLexer *lexer, char *word, size_t *length, bool *local,
+    struct NumberRead *number)
 {
     int32_t first = 0;
     unsigned dollars = 0;
 
     if (ASM_PERCENT_MACROS && lexer->lookahead == '%') {
-        take_word_char(lexer, word, length);
-        if (!cross_joins(lexer)) {
+        take_number_char(lexer, word, length, number);
+        if (!cross_joins(lexer, number)) {
             return false;
         }
     }
     while (lexer->lookahead == '$') {
         dollars++;
-        take_word_char(lexer, word, length);
-        if (!cross_joins(lexer)) {
+        take_number_char(lexer, word, length, number);
+        if (!cross_joins(lexer, number)) {
             return false;
         }
     }
@@ -1922,11 +2065,12 @@ static bool read_nasm_name_start(TSLexer *lexer, char *word, size_t *length, boo
         return false;
     }
     *local = first == '.';
-    take_word_char(lexer, word, length);
-    return cross_joins(lexer) && (first != '?' || continues_label(lexer->lookahead));
+    take_number_char(lexer, word, length, number);
+    return cross_joins(lexer, number) && (first != '?' || continues_label(lexer->lookahead));
 }
 
-static bool read_label_word(TSLexer *lexer, const bool *valid, TSSymbol *symbol, char *word)
+static bool read_label_word(TSLexer *lexer, const bool *valid, TSSymbol *symbol, char *word,
+    struct NumberRead *number)
 {
     bool local = false;
     bool stray = false;
@@ -1934,11 +2078,11 @@ static bool read_label_word(TSLexer *lexer, const bool *valid, TSSymbol *symbol,
 
     if (is_digit(lexer->lookahead)) {
         while (is_digit(lexer->lookahead)) {
-            advance(lexer);
+            number_advance(lexer, number);
         }
         *symbol = NUMERIC_LABEL_NAME;
         if (lexer->lookahead == '$' && valid[DOLLAR_LABEL_NAME]) {
-            advance(lexer);
+            number_advance(lexer, number);
             *symbol = DOLLAR_LABEL_NAME;
         }
         return true;
@@ -1947,11 +2091,11 @@ static bool read_label_word(TSLexer *lexer, const bool *valid, TSSymbol *symbol,
         return read_quoted_label(lexer, symbol);
     }
     if (!ASM_GNU_SYNTAX) {
-        if (!read_nasm_name_start(lexer, word, &length, &local)) {
+        if (!read_nasm_name_start(lexer, word, &length, &local, number)) {
             return false;
         }
     } else if (lexer->lookahead == '.') {
-        take_word_char(lexer, word, &length);
+        take_number_char(lexer, word, &length, number);
         local = !ASM_DARWIN_LOCALS && lexer->lookahead == 'L';
         if (!continues_label(lexer->lookahead)) {
             return false;
@@ -1959,8 +2103,8 @@ static bool read_label_word(TSLexer *lexer, const bool *valid, TSSymbol *symbol,
     } else {
         local = ASM_DARWIN_LOCALS && lexer->lookahead == 'L';
     }
-    while (word_continues(lexer, continues_label, &stray)) {
-        take_word_char(lexer, word, &length);
+    while (word_continues(lexer, continues_label, &stray, number)) {
+        take_number_char(lexer, word, &length, number);
     }
     if (stray) {
         return false;
@@ -1972,16 +2116,36 @@ static bool read_label_word(TSLexer *lexer, const bool *valid, TSSymbol *symbol,
     return true;
 }
 
+static struct NumberRead *number_tracking(struct NumberRead *read, int32_t first, const bool *valid)
+{
+    return number_starts(read, first, valid) ? read : NULL;
+}
+
+static bool number_after_word(TSLexer *lexer, struct NumberRead *number)
+{
+    return number != NULL && number_rest(lexer, number);
+}
+
+static void number_leaves_word(const TSLexer *lexer, struct NumberRead *number)
+{
+    if (is_blank(lexer->lookahead)) {
+        number_stops(number);
+    }
+}
+
 static bool scan_stray_label(TSLexer *lexer, const bool *valid)
 {
     TSSymbol symbol = GLOBAL_LABEL_NAME;
     char word[STATEMENT_WORD_CAPACITY] = {0};
+    struct NumberRead read;
+    struct NumberRead *number = number_tracking(&read, lexer->lookahead, valid);
 
-    if (!read_label_word(lexer, valid, &symbol, word)) {
-        return false;
+    if (!read_label_word(lexer, valid, &symbol, word, number)) {
+        return number_after_word(lexer, number);
     }
+    number_leaves_word(lexer, number);
     if (!advance_blanks(lexer) || lexer->lookahead != ':') {
-        return false;
+        return number_after_word(lexer, number);
     }
     advance(lexer);
     return finish_token(lexer, STRAY);
@@ -2754,7 +2918,7 @@ static bool scan_register_after_percent(TSLexer *lexer, const bool *valid,
     if (!advance_blanks(lexer)) {
         return false;
     }
-    while (word_continues(lexer, continues_label, &stray)) {
+    while (word_continues(lexer, continues_label, &stray, NULL)) {
         take_word_char(lexer, word, &length);
         named = true;
     }
@@ -2792,7 +2956,7 @@ static bool ptr_word_follows(TSLexer *lexer)
     if (!advance_blanks(lexer)) {
         return false;
     }
-    while (word_continues(lexer, continues_label, &stray)) {
+    while (word_continues(lexer, continues_label, &stray, NULL)) {
         cases |= letter_case(lexer->lookahead);
         take_word_char(lexer, word, &length);
     }
@@ -2860,7 +3024,7 @@ static bool read_operand_word(TSLexer *lexer, struct OperandWord *word)
     bool stray = false;
     bool underscore = false;
 
-    while (word_continues(lexer, continues_label, &stray)) {
+    while (word_continues(lexer, continues_label, &stray, NULL)) {
         word->upper_tail = word->upper_tail
             || (underscore && lexer->lookahead >= 'A' && lexer->lookahead <= 'Z');
         underscore = underscore || lexer->lookahead == '_';
@@ -3066,7 +3230,7 @@ static const struct WordEntry *read_statement_word(TSLexer *lexer, char *word, b
     size_t length = 0;
     bool stray = false;
 
-    while (word_continues(lexer, continues_label, &stray)) {
+    while (word_continues(lexer, continues_label, &stray, NULL)) {
         *upper = *upper || (lexer->lookahead >= 'A' && lexer->lookahead <= 'Z');
         take_word_char(lexer, word, &length);
     }
@@ -3106,11 +3270,11 @@ static bool labelled_statement_follows(TSLexer *lexer, const struct Scanner *sca
 static bool spaced_glue_follows(TSLexer *lexer)
 {
     advance(lexer);
-    if (!cross_joins(lexer) || lexer->lookahead != '+') {
+    if (!cross_joins(lexer, NULL) || lexer->lookahead != '+') {
         return false;
     }
     advance(lexer);
-    return cross_joins(lexer) && !is_digit(lexer->lookahead);
+    return cross_joins(lexer, NULL) && !is_digit(lexer->lookahead);
 }
 
 static bool scan_colon_label(TSLexer *lexer, const bool *valid, const struct Scanner *scanner,
@@ -3330,12 +3494,25 @@ static bool scan_statement_word(TSLexer *lexer, const bool *valid, const struct 
 {
     TSSymbol symbol = GLOBAL_LABEL_NAME;
     char word[STATEMENT_WORD_CAPACITY] = {0};
+    struct NumberRead read;
+    struct NumberRead *number = NULL;
+    bool covered = false;
 
     lexer->mark_end(lexer);
-    if (!read_label_word(lexer, valid, &symbol, word)) {
-        return false;
+    number = number_tracking(&read, lexer->lookahead, valid);
+    if (!read_label_word(lexer, valid, &symbol, word, number)) {
+        return number_after_word(lexer, number);
     }
-    return scan_word_role(lexer, valid, scanner, symbol, word);
+    if (number != NULL
+        && number->synced
+        && (lexer->lookahead == '\\' || number_accepts(number, lexer->lookahead))) {
+        return number_rest(lexer, number);
+    }
+    covered = number_covers(number);
+    if (scan_word_role(lexer, valid, scanner, symbol, word)) {
+        return true;
+    }
+    return covered && number_finish(lexer, number);
 }
 
 static bool scan_relocation_specifier(TSLexer *lexer)
@@ -3362,16 +3539,16 @@ static bool read_argument_tail(TSLexer *lexer)
         advance(lexer);
     } else if (lexer->lookahead == '*') {
         advance(lexer);
-        if (!cross_joins(lexer) || lexer->lookahead != '?') {
+        if (!cross_joins(lexer, NULL) || lexer->lookahead != '?') {
             return false;
         }
     }
-    if (!cross_joins(lexer)) {
+    if (!cross_joins(lexer, NULL)) {
         return false;
     }
     if (lexer->lookahead == '?') {
         advance(lexer);
-        if (!cross_joins(lexer)) {
+        if (!cross_joins(lexer, NULL)) {
             return false;
         }
         if (lexer->lookahead == '?') {
@@ -3382,7 +3559,7 @@ static bool read_argument_tail(TSLexer *lexer)
     if (!is_digit(lexer->lookahead)) {
         return false;
     }
-    while (word_continues(lexer, is_digit, &stray)) {
+    while (word_continues(lexer, is_digit, &stray, NULL)) {
         advance(lexer);
     }
     return !stray;
@@ -3409,13 +3586,13 @@ static bool read_percent_glue(TSLexer *lexer, const bool *valid, TSSymbol *symbo
     int32_t next = 0;
 
     advance(lexer);
-    if (!cross_joins(lexer)) {
+    if (!cross_joins(lexer, NULL)) {
         return false;
     }
     next = lexer->lookahead;
     if (next == '+') {
         advance(lexer);
-        if (!cross_joins(lexer)) {
+        if (!cross_joins(lexer, NULL)) {
             return false;
         }
         if (!is_digit(lexer->lookahead)) {
@@ -3475,12 +3652,15 @@ static bool scan_glued(TSLexer *lexer, const bool *valid, bool closing)
 {
     TSSymbol symbol = GLUED_ARGUMENT;
     bool stray = false;
+    struct NumberRead read;
+    struct NumberRead *number = NULL;
 
     if (lexer->lookahead != glue_escape()) {
-        while (word_continues(lexer, continues_label, &stray)) {
-            advance(lexer);
+        number = number_tracking(&read, lexer->lookahead, valid);
+        while (word_continues(lexer, continues_label, &stray, number)) {
+            number_advance(lexer, number);
         }
-        return !stray && finish_token(lexer, GLUED_TEXT);
+        return stray ? number_after_word(lexer, number) : finish_token(lexer, GLUED_TEXT);
     }
     lexer->mark_end(lexer);
     if (read_glued_escape(lexer, valid, &symbol)) {
@@ -3733,19 +3913,19 @@ static TSSymbol read_local_token(TSLexer *lexer, int32_t sigil)
     bool stray = false;
 
     advance(lexer);
-    if (!cross_joins(lexer)) {
+    if (!cross_joins(lexer, NULL)) {
         return STRAY;
     }
     while (sigil == '$' && lexer->lookahead == '$') {
         advance(lexer);
-        if (!cross_joins(lexer)) {
+        if (!cross_joins(lexer, NULL)) {
             return STRAY;
         }
     }
     if (!continues_label(lexer->lookahead)) {
         return STRAY;
     }
-    while (word_continues(lexer, continues_label, &stray)) {
+    while (word_continues(lexer, continues_label, &stray, NULL)) {
         advance(lexer);
     }
     if (stray) {
@@ -3763,13 +3943,13 @@ static TSSymbol read_expansion(TSLexer *lexer, int32_t next)
         return MACRO_EXPANSION;
     }
     advance(lexer);
-    if (!cross_joins(lexer)) {
+    if (!cross_joins(lexer, NULL)) {
         return STRAY;
     }
     if (is_quote(lexer->lookahead)) {
         consume_quoted(lexer);
     }
-    while (word_continues(lexer, continues_label, &stray)) {
+    while (word_continues(lexer, continues_label, &stray, NULL)) {
         advance(lexer);
     }
     return stray ? STRAY : MACRO_EXPANSION;
@@ -3779,7 +3959,7 @@ static TSSymbol read_prefixed_argument(TSLexer *lexer, int32_t next)
 {
     lexer->mark_end(lexer);
     advance(lexer);
-    if (!cross_joins(lexer)) {
+    if (!cross_joins(lexer, NULL)) {
         return STRAY;
     }
     if (next == '*') {
@@ -3843,7 +4023,7 @@ static enum ScanDecision scan_percent_word(TSLexer *lexer, const bool *valid)
     if ((!valid[MACRO_EXPANSION] && !valid[PREPROC_FUNCTION]) || valid[INSTRUCTION_NAME]) {
         return decided(closable(valid) && close_construct(lexer, valid));
     }
-    while (word_continues(lexer, continues_label, &stray)) {
+    while (word_continues(lexer, continues_label, &stray, NULL)) {
         advance(lexer);
     }
     if (stray) {
@@ -3880,7 +4060,7 @@ static enum ScanDecision scan_percent(TSLexer *lexer, const bool *valid,
     if (ASM_WORD_JOINS && lexer->lookahead == '\\') {
         joined = true;
         line_start = starts_line(lexer, gap);
-        if (!cross_joins(lexer)) {
+        if (!cross_joins(lexer, NULL)) {
             return SCAN_NOT_FOUND;
         }
     }
@@ -3903,7 +4083,7 @@ static enum ScanDecision scan_percent(TSLexer *lexer, const bool *valid,
     if (!statement_keyword_fits(valid) || !line_start) {
         return scan_percent_word(lexer, valid);
     }
-    while (word_continues(lexer, continues_label, &stray)) {
+    while (word_continues(lexer, continues_label, &stray, NULL)) {
         take_word_char(lexer, word, &length);
     }
     if (stray) {
@@ -3947,7 +4127,7 @@ static bool read_decorator_word(TSLexer *lexer, bool (*continues)(int32_t), char
     size_t length = 0;
     bool stray = false;
 
-    while (word_continues(lexer, continues, &stray)) {
+    while (word_continues(lexer, continues, &stray, NULL)) {
         *cases |= letter_case(lexer->lookahead);
         take_word_char(lexer, word, &length);
     }
@@ -4290,6 +4470,14 @@ static enum ScanDecision scan_digit_label(TSLexer *lexer, const bool *valid, boo
     return SCAN_NOT_FOUND;
 }
 
+static bool unread_word_fits(int32_t first, const bool *valid, uint32_t blanks)
+{
+    TSSymbol symbol = BLANK;
+
+    return (blanks > 0 && (blank_fits(first, valid, &symbol) || valid[OPERAND_GAP]))
+        || (closable(valid) && closes_before(first, valid));
+}
+
 static enum ScanDecision scan_digit_word(TSLexer *lexer, const bool *valid, uint32_t blanks)
 {
     char word[STATEMENT_WORD_CAPACITY] = {0};
@@ -4298,27 +4486,43 @@ static enum ScanDecision scan_digit_word(TSLexer *lexer, const bool *valid, uint
     bool dollar = false;
     unsigned char cases = 0;
     const int32_t first = lexer->lookahead;
+    struct NumberRead read;
+    struct NumberRead *number = NULL;
+    enum ScanDecision decision = SCAN_UNDECIDED;
+    bool covered = false;
 
     lexer->mark_end(lexer);
+    if (!unread_word_fits(first, valid, blanks)) {
+        number = number_tracking(&read, first, valid);
+    }
     while (is_digit(lexer->lookahead)) {
-        take_word_char(lexer, word, &length);
+        take_number_char(lexer, word, &length, number);
     }
     if (lexer->lookahead == '$' && (valid[DOLLAR_LABEL] || valid[DOLLAR_LABEL_NAME])) {
-        advance(lexer);
+        number_advance(lexer, number);
         dollar = true;
     }
     if (label_fits(valid) && (dollar || !continues_label(lexer->lookahead))) {
-        return scan_digit_label(lexer, valid, dollar);
+        covered = number_covers(number);
+        number_leaves_word(lexer, number);
+        decision = scan_digit_label(lexer, valid, dollar);
+        if (decision != SCAN_NOT_FOUND || !covered) {
+            return decision;
+        }
+        return decided(number_rest(lexer, number));
     }
     if (dollar) {
         return decided(finish_token(lexer, DOLLAR_LABEL));
     }
-    while (word_continues(lexer, continues_label, &stray)) {
+    while (word_continues(lexer, continues_label, &stray, number)) {
         cases |= letter_case(lexer->lookahead);
-        take_word_char(lexer, word, &length);
+        take_number_char(lexer, word, &length, number);
     }
     if (!stray && valid[SECTION_TYPE_WORD] && is_macho_section_type(word_entry(word), cases)) {
         return decided(finish_token(lexer, SECTION_TYPE_WORD));
+    }
+    if (number != NULL) {
+        return decided(number_rest(lexer, number));
     }
     return unread_word(lexer, valid, first, blanks);
 }
@@ -4344,7 +4548,7 @@ static bool starts_group_item(TSLexer *lexer, const struct Scanner *scanner)
 static bool bang_starts_operand(TSLexer *lexer)
 {
     advance(lexer);
-    return cross_joins(lexer) && lexer->lookahead != '=';
+    return cross_joins(lexer, NULL) && lexer->lookahead != '=';
 }
 
 static inline bool splits_run(int32_t codepoint)
@@ -4357,7 +4561,7 @@ static bool glued_operand_follows(TSLexer *lexer)
     const int32_t first = lexer->lookahead;
 
     advance(lexer);
-    return cross_joins(lexer)
+    return cross_joins(lexer, NULL)
         && !is_blank(lexer->lookahead)
         && !at_line_end(lexer)
         && !(first == '!' && lexer->lookahead == '=');
@@ -4479,7 +4683,7 @@ static enum ScanDecision scan_list_word(TSLexer *lexer, const bool *valid)
     size_t length = 0;
     bool stray = false;
 
-    while (word_continues(lexer, continues_label, &stray)) {
+    while (word_continues(lexer, continues_label, &stray, NULL)) {
         take_word_char(lexer, word, &length);
     }
     if (!stray && word_role(word_entry(word), KIND_LIST_WORDS, ANY_SCOPE, ANY_CASE) != NULL) {
@@ -4496,7 +4700,7 @@ static enum ScanDecision scan_question_mark(TSLexer *lexer, const bool *valid)
 {
     lexer->mark_end(lexer);
     advance(lexer);
-    if (!cross_joins(lexer)) {
+    if (!cross_joins(lexer, NULL)) {
         return SCAN_NOT_FOUND;
     }
     if (!continues_label(lexer->lookahead)) {
@@ -4973,6 +5177,7 @@ static bool scan_after_gap(TSLexer *lexer, const bool *valid, const struct Scann
     const bool recovering = valid[ERROR_SENTINEL];
     const bool in_call = scanner->open_calls > 0 && !recovering;
     enum ScanDecision decision = SCAN_UNDECIDED;
+    struct NumberRead number;
 
     if (in_call && valid[CALL_NEWLINE] && lexer->lookahead == '\n') {
         return scan_call_line(lexer, valid, scanner);
@@ -5002,6 +5207,9 @@ static bool scan_after_gap(TSLexer *lexer, const bool *valid, const struct Scann
     }
     if (statement_word_fits(lexer, valid)) {
         return scan_statement_word(lexer, valid, scanner);
+    }
+    if (number_starts(&number, lexer->lookahead, valid)) {
+        return scan_number(lexer, &number);
     }
     if (!scanner_dispatches(lexer->lookahead)) {
         return false;

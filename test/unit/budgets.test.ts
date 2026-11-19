@@ -2,6 +2,8 @@
 
 import { test } from 'bun:test';
 import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
+import { join } from 'node:path';
 
 import {
     BUDGETS,
@@ -11,6 +13,7 @@ import {
     type Shape,
     shape,
 } from '../../scripts/budgets.ts';
+import { ROOT } from '../../scripts/lib/files.ts';
 import { manifest } from '../../scripts/lib/manifest.ts';
 import { cyclesFromCallgrind } from '../../scripts/lib/measure.ts';
 import { assertThrowsIncluding } from '../lib/assert.ts';
@@ -35,6 +38,16 @@ test('the budget file declares the states, parser size and inputs of every gramm
             `${language.grammar}: run bun run budgets`,
         );
     }
+});
+
+test('no parser is compiled with optimization off', () => {
+    const unoptimized = manifest.languages
+        .filter(({ grammar }) =>
+            readFileSync(join(ROOT, 'tree-sitter', grammar, 'src', 'parser.c'), 'utf8')
+                .includes('#pragma clang optimize off')
+        )
+        .map(({ grammar }) => grammar);
+    assert.deepStrictEqual(unoptimized, []);
 });
 
 test('a measured change passes within 1 point plus a tenth of the declared change', () => {

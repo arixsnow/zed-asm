@@ -23,11 +23,6 @@ const CASES: [string, string[], string[]][] = [
         '$$$$',
         '$$1',
     ], [`${JOIN}eax`, `eax${JOIN}`, '?', '', '$', '$$', '$1', '$.x']],
-    [lexical.nasm.integer.source, ['0x1f', `0x1${JOIN}f`, `1${JOIN}0h`, '10'], [
-        `${JOIN}10`,
-        `10${JOIN}`,
-    ]],
-    [lexical.nasm.float.source, ['1.5', `1.${JOIN}5`, `1e${JOIN}10`], [`1.5${JOIN}`]],
     ['[0-7]{1,3}', ['7', '777', `7${JOIN}77`], ['7777', `${JOIN}7`]],
     ['x[0-9a-f]{0,2}', ['x', 'x1', `x${JOIN}1f`], [`x${JOIN}`, 'x123']],
 ];

@@ -205,7 +205,6 @@ module.exports = (ctx) => {
             _float_value: ($) => choice($._value, alias($._dot_float, $.float)),
             _string_argument: ($) =>
                 choice($.string, $._symbol, $.macro_argument, $.concatenation, $.macro_call),
-            _dot_float: () => token(prec(1, ctx.lexical.dotFloat)),
 
             assignment: ($) =>
                 prec(
@@ -245,9 +244,6 @@ module.exports = (ctx) => {
                 ),
 
             macro_argument: () => ctx.lexical.macroArgument,
-
-            numeric_label: () => ctx.lexical.numericLabel,
-            float: () => ctx.lexical.float,
 
             preproc_line: ($) =>
                 choice(

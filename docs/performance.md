@@ -10,16 +10,16 @@ the visible rows only.
 
 | Grammar         | Input    | Parse | Edit | brackets | highlights | indents | injections | outline | overrides | textobjects | States | parser.c (MB) |
 | --------------- | -------- | ----- | ---- | -------- | ---------- | ------- | ---------- | ------- | --------- | ----------- | ------ | ------------- |
-| `asm_auto`      | basics   | 57.7  | 2.1  | 21.9     | 33.4       | 27.5    | 21.8       | 25.5    | 22.6      | 24.7        | 6469   | 6.9           |
-| `asm_auto`      | fixtures | 88.0  | 1.3  | 38.1     | 50.8       | 44.3    | 35.9       | 41.1    | 37.0      | 39.4        | 6469   | 6.9           |
-| `asm_arm`       | basics   | 54.0  | 1.5  | 20.4     | 30.2       | 24.9    | 20.1       | 23.3    | 20.6      | 21.9        | 2819   | 3.0           |
-| `asm_arm`       | fixtures | 91.7  | 1.2  | 40.2     | 53.4       | 46.4    | 37.7       | 42.6    | 39.2      | 41.3        | 2819   | 3.0           |
-| `asm_arm_apple` | basics   | 53.1  | 2.4  | 20.6     | 30.8       | 25.4    | 20.5       | 23.8    | 21.2      | 22.7        | 2730   | 2.9           |
-| `asm_arm_apple` | fixtures | 84.4  | 1.2  | 36.7     | 48.9       | 43.2    | 34.5       | 39.9    | 35.7      | 38.5        | 2730   | 2.9           |
-| `asm_x86_gas`   | basics   | 59.4  | 2.1  | 22.9     | 34.0       | 28.2    | 22.4       | 26.0    | 23.2      | 24.9        | 4146   | 4.4           |
-| `asm_x86_gas`   | fixtures | 86.2  | 1.3  | 37.0     | 49.2       | 42.5    | 35.1       | 40.8    | 36.4      | 38.5        | 4146   | 4.4           |
-| `asm_x86_nasm`  | basics   | 78.2  | 4.6  | 22.9     | 31.6       | 28.1    | -          | 24.2    | 23.3      | 25.1        | 4543   | 6.3           |
-| `asm_x86_nasm`  | fixtures | 123.0 | 2.6  | 39.9     | 52.1       | 47.1    | -          | 42.3    | 38.6      | 42.6        | 4543   | 6.3           |
+| `asm_auto`      | basics   | 58.5  | 2.1  | 22.3     | 33.7       | 28.0    | 22.2       | 25.8    | 22.7      | 24.1        | 6473   | 6.9           |
+| `asm_auto`      | fixtures | 89.0  | 1.3  | 37.9     | 50.8       | 44.1    | 35.9       | 41.0    | 37.3      | 39.6        | 6473   | 6.9           |
+| `asm_arm`       | basics   | 54.6  | 1.4  | 20.4     | 29.7       | 25.1    | 20.2       | 23.5    | 21.0      | 22.4        | 2823   | 3.0           |
+| `asm_arm`       | fixtures | 92.3  | 1.2  | 40.2     | 53.0       | 46.5    | 38.0       | 42.5    | 39.0      | 41.5        | 2823   | 3.0           |
+| `asm_arm_apple` | basics   | 54.2  | 2.4  | 21.1     | 30.9       | 25.5    | 20.1       | 23.3    | 21.5      | 22.9        | 2730   | 2.9           |
+| `asm_arm_apple` | fixtures | 85.1  | 1.2  | 36.6     | 49.3       | 43.7    | 34.9       | 40.0    | 36.0      | 38.7        | 2730   | 2.9           |
+| `asm_x86_gas`   | basics   | 60.0  | 2.1  | 22.5     | 34.2       | 28.6    | 22.4       | 26.2    | 23.4      | 24.6        | 4150   | 4.4           |
+| `asm_x86_gas`   | fixtures | 86.9  | 1.4  | 37.4     | 49.5       | 42.9    | 35.3       | 40.3    | 36.6      | 38.6        | 4150   | 4.4           |
+| `asm_x86_nasm`  | basics   | 62.8  | 4.4  | 23.1     | 31.6       | 28.2    | -          | 24.7    | 23.1      | 25.3        | 4543   | 6.2           |
+| `asm_x86_nasm`  | fixtures | 93.5  | 2.7  | 40.0     | 52.0       | 47.2    | -          | 42.5    | 38.4      | 42.5        | 4543   | 6.2           |
 
 Edit is a one-character edit and its reparse. `check:budgets` holds the parse cost in CI
 ([checks.md](checks.md#budgets)).
@@ -66,6 +66,11 @@ These rules keep the parse and edit cost down:
   range, the same range that capturing every child gives. `(_)* @function.inside` keeps a
   tree-sitter candidate per child.
 - A pp-number is a number token followed by glued text, which keeps the lexers small.
+- Numbers are scanner tokens, read through generated tables ([scanner.md](scanner.md#numbers)).
+  tree-sitter generate compiles `parser.c` with optimization off (`#pragma GCC optimize ("O0")` and
+  its clang and MSVC forms) when the main lexer has more than 300 states. Without the number forms
+  the main lexers have 142 to 210 states, and `test/unit/budgets.test.ts` fails when a `parser.c`
+  holds the pragma.
 - The instruction word is a scanner token, because it tells `movl` from a macro call such as
   `SAVE_ALL`. tree-sitter allocates every token an external scanner returns on the heap.
 
@@ -93,9 +98,6 @@ The scanner rules:
 - The `gc` comment object, `(line_comment)+ @comment.around`, costs the square of one uninterrupted
   run of comment lines, about 2 ms for 1,000 lines and 0.2 s for 10,000, also in the narrow range
   Zed queries around the cursor. The comment token is per line.
-- tree-sitter generate turns off optimization for `parser.c` (`#pragma GCC optimize ("O0")` and its
-  clang and MSVC forms) when the main lexer has more than 300 states. The GNU-syntax lexers stay
-  below that, and x86 (NASM) has 415 lexer states and compiles under the pragma.
 
 The indents query is linear. Each `body` is one node that a pattern matches alone, and tree-sitter
 keeps no candidate open while it walks the lines inside a block.

@@ -25,7 +25,6 @@ const PRECEDENCE_LEVELS = {
 };
 const LEVEL_STEP = 10;
 const DARWIN_PRECEDENCE = ['ARM_APPLE'];
-const CLANG_INTEGERS = ['ARM_APPLE'];
 
 function precedence(ctx) {
     const family = ctx.syntax === 'nasm'
@@ -63,8 +62,6 @@ module.exports = (ctx) => ({
 
         identifier: () => ctx.lexical.identifier,
         _dot_identifier: () => ctx.lexical.dotIdentifier,
-        integer: () =>
-            CLANG_INTEGERS.includes(ctx.dialect) ? ctx.lexical.clangInteger : ctx.lexical.integer,
 
         escape_sequence: () => token.immediate(seq('\\', ctx.lexical.escape)),
 

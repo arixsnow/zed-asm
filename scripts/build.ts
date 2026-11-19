@@ -6,6 +6,7 @@ import { dirname, join } from 'node:path';
 import { emptyDir, filesUnder, ifExists, readTextIfExists, ROOT } from './lib/files.ts';
 import { increaseIndentPattern } from './lib/indent.ts';
 import { type Language, type Manifest, manifest, parseAuthor } from './lib/manifest.ts';
+import { numbersHeader } from './lib/numbers.ts';
 import { commonSources, type KeywordSources } from './lib/tables.ts';
 import { wordsHeader } from './lib/words.ts';
 
@@ -156,7 +157,7 @@ function treeSitterConfig({ extension, languages }: Manifest): Record<string, un
             path: language.grammar,
             'file-types': language.pathSuffixes,
             highlights: `../languages/${language.dir}/highlights.scm`,
-            'external-files': ['common/scanner.h', 'common/words.h'],
+            'external-files': ['common/scanner.h', 'common/words.h', 'common/numbers.h'],
         })),
         metadata: {
             version: extension.version,
@@ -212,6 +213,7 @@ export function renderAll(
             `${JSON.stringify(treeSitterConfig(manifest), null, 4)}\n`,
         ],
         ['tree-sitter/common/words.h', wordsHeader(sources)],
+        ['tree-sitter/common/numbers.h', numbersHeader(sources.scanner)],
     ]);
     for (const language of manifest.languages) {
         outputs.set(

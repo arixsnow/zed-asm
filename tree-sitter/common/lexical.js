@@ -44,19 +44,31 @@ module.exports = {
         dotIdentifier: new RegExp(GAS_DOT_NAME),
         dollarName: new RegExp(GAS_DOLLAR_NAME),
         localIdentifier: new RegExp(`\\.L${GAS_NAME}*`),
-        integer: new RegExp(`${GAS_INTEGER_DIGITS}${GAS_INTEGER_SUFFIX}`),
-        clangInteger: new RegExp(`${GAS_INTEGER_DIGITS}${CLANG_INTEGER_SUFFIX}`),
-        numericLabel: /[0-9]+[bf]/,
-        float: new RegExp(
-            [
-                '[0-9]+\\.[0-9]*([eE][+-]?[0-9]+)?',
-                '[0-9]+[eE][+-]?[0-9]+',
-                '0[fFdDeErRsShHpP][+-]?([0-9]+\\.?[0-9]*|\\.[0-9]+)([eE][+-]?[0-9]+)?',
-                '0[xXbB][+-]?([0-9]+\\.[0-9]*|\\.[0-9]+)([eE][+-]?[0-9]+)?',
-                '0[xX]([0-9a-fA-F]+\\.?[0-9a-fA-F]*|\\.[0-9a-fA-F]+)[pP][+-]?[0-9]+',
-            ].join('|'),
-        ),
-        dotFloat: /\.[0-9]+([eE][+-]?[0-9]+)?/,
+        numbers: ({ clangIntegers }) => [
+            {
+                token: 'integer',
+                form: `${GAS_INTEGER_DIGITS}${
+                    clangIntegers ? CLANG_INTEGER_SUFFIX : GAS_INTEGER_SUFFIX
+                }`,
+            },
+            {
+                token: 'float',
+                form: [
+                    '[0-9]+\\.[0-9]*([eE][+-]?[0-9]+)?',
+                    '[0-9]+[eE][+-]?[0-9]+',
+                    '0[fFdDeErRsShHpP][+-]?([0-9]+\\.?[0-9]*|\\.[0-9]+)([eE][+-]?[0-9]+)?',
+                    '0[xXbB][+-]?([0-9]+\\.[0-9]*|\\.[0-9]+)([eE][+-]?[0-9]+)?',
+                    '0[xX]([0-9a-fA-F]+\\.?[0-9a-fA-F]*|\\.[0-9a-fA-F]+)[pP][+-]?[0-9]+',
+                ].join('|'),
+            },
+            { token: 'numeric_label', form: '[0-9]+[bf]' },
+            {
+                token: '_dot_float',
+                form: '\\.[0-9]+([eE][+-]?[0-9]+)?',
+                precedence: 1,
+                rival: { token: '_dot_identifier', form: GAS_DOT_NAME },
+            },
+        ],
         escapedQuote: '"',
         escape: /[0-7]{1,3}|[xX][0-9a-fA-F]+|[^0-7xX\n]/,
         macroArgument: new RegExp(GAS_MACRO_ARGUMENT),
@@ -83,9 +95,42 @@ module.exports = {
         spacedJoins: false,
         nameCharacter: new RegExp(NASM_NAME),
         identifier: new RegExp(NASM_IDENTIFIER),
-        digitName: new RegExp(NASM_DIGIT_NAME),
         dotIdentifier: new RegExp(NASM_DOT_IDENTIFIER),
         nameStart: new RegExp(NASM_NAME_START),
+        numbers: () => [
+            {
+                token: 'integer',
+                form: [
+                    '0[xXhH][0-9a-fA-F_]+',
+                    '[0-9][0-9a-fA-F_]*[hHxX]',
+                    '\\$[0-9][0-9a-fA-F_]*',
+                    '0[oOqQ][0-7_]+',
+                    '[0-7][0-7_]*[oOqQ]',
+                    '0[bByY][01_]+',
+                    '[01][01_]*[bByY]',
+                    '0[dDtT][0-9_]+',
+                    '[0-9][0-9_]*[dDtT]',
+                    '[0-9][0-9_]*',
+                ].join('|'),
+            },
+            {
+                token: 'float',
+                form: [
+                    `[0-9][0-9_]*\\.[0-9_]*(${NASM_EXPONENT})?`,
+                    `[0-9][0-9_]*${NASM_EXPONENT}`,
+                    `0[dDtT]([0-9_]+\\.[0-9_]*|\\.[0-9_]+)(${NASM_EXPONENT})?`,
+                    `0[dDtT][0-9_]+${NASM_EXPONENT}`,
+                    ...nasmRadixFloats('0[xXhH]', '[0-9a-fA-F_]'),
+                    `\\$[0-9][0-9a-fA-F_]*\\.[0-9a-fA-F_]*(${NASM_BINARY_EXPONENT})?`,
+                    `\\$[0-9][0-9a-fA-F_]*${NASM_BINARY_EXPONENT}`,
+                    ...nasmRadixFloats('0[oOqQ]', '[0-7_]'),
+                    ...nasmRadixFloats('0[bByY]', '[01_]'),
+                    '[0-9][0-9_]*[pP]',
+                    '0[pP][0-9_]+',
+                ].join('|'),
+            },
+            { token: '_digit_name', form: NASM_DIGIT_NAME, precedence: -1 },
+        ],
         labelName: ({ name = NASM_PLAIN_NAME } = {}) =>
             new RegExp(
                 [
@@ -101,34 +146,5 @@ module.exports = {
         escapedQuote: '`',
         escape:
             /[0-7]{1,3}|x[0-9a-fA-F]{0,2}|u[0-9a-fA-F]{0,4}|U[0-9a-fA-F]{0,8}|\^[^\n]?|[^0-7xuU\n]/,
-        integer: new RegExp(
-            [
-                '0[xXhH][0-9a-fA-F_]+',
-                '[0-9][0-9a-fA-F_]*[hHxX]',
-                '\\$[0-9][0-9a-fA-F_]*',
-                '0[oOqQ][0-7_]+',
-                '[0-7][0-7_]*[oOqQ]',
-                '0[bByY][01_]+',
-                '[01][01_]*[bByY]',
-                '0[dDtT][0-9_]+',
-                '[0-9][0-9_]*[dDtT]',
-                '[0-9][0-9_]*',
-            ].join('|'),
-        ),
-        float: new RegExp(
-            [
-                `[0-9][0-9_]*\\.[0-9_]*(${NASM_EXPONENT})?`,
-                `[0-9][0-9_]*${NASM_EXPONENT}`,
-                `0[dDtT]([0-9_]+\\.[0-9_]*|\\.[0-9_]+)(${NASM_EXPONENT})?`,
-                `0[dDtT][0-9_]+${NASM_EXPONENT}`,
-                ...nasmRadixFloats('0[xXhH]', '[0-9a-fA-F_]'),
-                `\\$[0-9][0-9a-fA-F_]*\\.[0-9a-fA-F_]*(${NASM_BINARY_EXPONENT})?`,
-                `\\$[0-9][0-9a-fA-F_]*${NASM_BINARY_EXPONENT}`,
-                ...nasmRadixFloats('0[oOqQ]', '[0-7_]'),
-                ...nasmRadixFloats('0[bByY]', '[01_]'),
-                '[0-9][0-9_]*[pP]',
-                '0[pP][0-9_]+',
-            ].join('|'),
-        ),
     },
 };
