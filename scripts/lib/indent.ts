@@ -365,13 +365,15 @@ export function reservedNames(
     lexing: Pick<StatementLexing, 'reservedNames'>,
 ): string[] {
     const archs = dialectArchs(sources.scanner, language.dialect);
-    const names = statementWords(sources, language.dialect)
-        .filter(({ flags }) => flags.includes('WORD_RESERVED'))
-        .map(({ name }) => name);
+    const lists = [
+        statementWords(sources, language.dialect)
+            .filter(({ flags }) => flags.includes('WORD_RESERVED'))
+            .map(({ name }) => name),
+    ];
     for (const arch of archs) {
         if (sources.tables.has(`ASM_${arch}_OPERAND_WORDS`)) {
-            names.push(
-                ...tableEntries(sources, `ASM_${arch}_OPERAND_WORDS`)
+            lists.push(
+                tableEntries(sources, `ASM_${arch}_OPERAND_WORDS`)
                     .filter((entry) => entry[2]?.includes('WORD_RESERVED'))
                     .map(([word]) => word),
             );
@@ -379,17 +381,17 @@ export function reservedNames(
     }
     if (lexing.reservedNames) {
         for (const arch of archs) {
-            names.push(...tableEntries(sources, `ASM_${arch}_REGISTERS`).map(([word]) => word));
+            lists.push(tableEntries(sources, `ASM_${arch}_REGISTERS`).map(([word]) => word));
             if (sources.tables.has(`ASM_${arch}_PREFIXES`)) {
-                names.push(
-                    ...tableEntries(sources, `ASM_${arch}_PREFIXES`)
+                lists.push(
+                    tableEntries(sources, `ASM_${arch}_PREFIXES`)
                         .filter(([, flags]) => flags.includes('PREFIX_PLAIN'))
                         .map(([word]) => word),
                 );
             }
         }
     }
-    return [...new Set(names)];
+    return [...new Set(lists.flat())];
 }
 
 function unreservedName(reserved: string[], first: string[], character: RegExp): string {

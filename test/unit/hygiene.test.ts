@@ -39,11 +39,20 @@ test('every file uses LF line endings', () => {
 
 function wideProseLines(text: string): number[] {
     const wide: number[] = [];
-    let fenced = false;
+    let fence = '';
     for (const [index, line] of text.split('\n').entries()) {
-        if (line.startsWith('```')) {
-            fenced = !fenced;
-        } else if (!fenced && !line.startsWith('|') && line.length > PROSE_WIDTH) {
+        const marker = /^ *(`{3,}|~{3,})/.exec(line)?.[1];
+        if (fence === '' && marker !== undefined) {
+            fence = marker;
+        } else if (
+            fence !== '' &&
+            marker !== undefined &&
+            marker[0] === fence[0] &&
+            marker.length >= fence.length &&
+            line.trim() === marker
+        ) {
+            fence = '';
+        } else if (fence === '' && !line.startsWith('|') && line.length > PROSE_WIDTH) {
             wide.push(index + 1);
         }
     }

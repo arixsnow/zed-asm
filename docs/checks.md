@@ -254,19 +254,20 @@ The unit tests enforce these rules on every repository file:
 
 - ASCII only, LF line endings and a final newline
 - hard tabs only in test data
-- prose lines of at most 100 columns in Markdown, tables and code blocks excepted
+- prose lines of at most 100 columns in Markdown, tables and fenced code blocks excepted
 - an SPDX license line in the first two lines of every hand-written C, JavaScript, TypeScript, query
   and shell file. Config and data files carry none.
 
 ## CI
 
-CI runs `bun run test`, `bun run check:examples`, `bun run sanitize` and `bun run check:budgets` in
-the same container for every push and for pull requests from forks. Building the 3.0 GB image
-compiles tree-sitter and dprint from source, so CI saves it in the Actions cache under the image tag
-and the ISO week (`scripts/dev --image` prints the tag, a hash of the Containerfile). CI loads it
-instead of building until the Containerfile changes or the week ends, so Fedora's package updates
-reach CI within a week. The example clones are cached under a hash of the pin file. When no entry
-matches, CI fetches them with `scripts/fetch-sources` and saves them before the check runs.
+CI runs `bun run test`, `bun run sanitize`, `bun run check:budgets` and `bun run check:examples`
+in that order, in one container, for every push and for pull requests from forks. Building the
+3.0 GB image compiles tree-sitter and dprint from source, so CI saves it in the Actions cache under
+the image tag and the ISO week (`scripts/dev --image` prints the tag, a hash of the Containerfile).
+CI loads it instead of building until the Containerfile changes or the week ends, so Fedora's
+package updates reach CI within a week. The example clones are cached under a hash of the pin file
+and `scripts/fetch-sources`. When no entry matches, CI fetches them with `scripts/fetch-sources` and
+saves them before the check runs.
 
 The unit tests run their files in parallel, except the performance tests, which run alone
 afterwards, because they compare timings. Compiled parsers are cached in `.build/lib` of their tree

@@ -288,7 +288,7 @@ function wordCounts(failing: string[], errors: Map<string, number[]>): string {
     const sorted = [...groups].sort(([leftWord, left], [rightWord, right]) =>
         right.count - left.count || (leftWord < rightWord ? -1 : 1)
     );
-    const width = Math.max(...sorted.map(([word]) => word.length));
+    const width = sorted.reduce((widest, [word]) => Math.max(widest, word.length), 0);
     return [
         `${total} error line(s)`,
         ...sorted.map(([word, { count, example }]) =>

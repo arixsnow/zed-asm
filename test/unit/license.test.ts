@@ -15,6 +15,14 @@ function isScript(path: string): boolean {
     return readFileSync(join(ROOT, path), 'utf8').startsWith('#!');
 }
 
+test('no hand-written config or data file carries a license line', () => {
+    const isGenerated = generatedMatcher(ROOT);
+    const marked = repositoryFiles(ROOT)
+        .filter((path) => !CODE.test(path) && !isScript(path) && !isGenerated(path))
+        .filter((path) => readFileSync(join(ROOT, path), 'utf8').includes(SPDX));
+    assert.deepStrictEqual(marked, []);
+});
+
 test('every hand-written code file declares its license in its first two lines', () => {
     const isGenerated = generatedMatcher(ROOT);
     const missing = repositoryFiles(ROOT)

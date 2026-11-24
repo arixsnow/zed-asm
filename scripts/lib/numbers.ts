@@ -313,6 +313,16 @@ function characterClasses(automaton: Automaton): { classes: number[]; count: num
     return { classes, count: ids.size };
 }
 
+function firstIndexes(values: number[], count: number): number[] {
+    const first = Array.from({ length: count }, () => -1);
+    for (const [index, value] of values.entries()) {
+        if (first[value] === -1) {
+            first[value] = index;
+        }
+    }
+    return first;
+}
+
 function completion(
     automaton: Automaton,
     contenders: Contender[],
@@ -347,7 +357,7 @@ export function numberTables(rows: NumberRow[], scanner: string): NumberTables {
         }
     }
     const { classes, count } = characterClasses(automaton);
-    const representatives = Array.from({ length: count }, (_, id) => classes.indexOf(id));
+    const representatives = firstIndexes(classes, count);
     const ids = new Map<string, number>([['', 0]]);
     const sets: number[][] = [[]];
     const stateOf = (states: number[]) => {
@@ -381,8 +391,9 @@ export function numberTables(rows: NumberRow[], scanner: string): NumberTables {
             if (moved.length === 0) {
                 return 0;
             }
-            const precedence = Math.max(
-                ...moved.map((state) => list[automaton.owners[state]].precedence),
+            const precedence = moved.reduce(
+                (highest, state) => Math.max(highest, list[automaton.owners[state]].precedence),
+                -Infinity,
             );
             return completed !== undefined && precedence < completed.precedence
                 ? 0
@@ -398,35 +409,124 @@ export function numberTables(rows: NumberRow[], scanner: string): NumberTables {
     return minimal;
 }
 
-function renumber(signatures: string[]): number[] {
+function renumber(signatures: string[]): { blocks: number[]; count: number } {
     const ids = new Map<string, number>();
-    return signatures.map((signature) => {
+    const blocks = signatures.map((signature) => {
         if (!ids.has(signature)) {
             ids.set(signature, ids.size);
         }
         return ids.get(signature) ?? 0;
     });
+    return { blocks, count: ids.size };
 }
 
-function refine(tables: NumberTables, blocks: number[]): number[] {
-    return renumber(
-        tables.next.map((line, state) =>
-            [blocks[state], ...line.map((target) => blocks[target])].join(',')
-        ),
+interface Partition {
+    elements: number[];
+    location: number[];
+    block: number[];
+    first: number[];
+    marked: number[];
+    end: number[];
+}
+
+function partitionOf(blocks: number[], count: number): Partition {
+    const elements = blocks.map((_, state) => state).sort((left, right) =>
+        blocks[left] - blocks[right] || left - right
     );
+    const location: number[] = [];
+    const first = Array.from({ length: count }, () => elements.length);
+    const end = Array.from({ length: count }, () => 0);
+    for (const [index, state] of elements.entries()) {
+        location[state] = index;
+        first[blocks[state]] = Math.min(first[blocks[state]], index);
+        end[blocks[state]] = index + 1;
+    }
+    return { elements, location, block: [...blocks], first, marked: [...first], end };
+}
+
+function mark(partition: Partition, state: number): boolean {
+    const block = partition.block[state];
+    const index = partition.location[state];
+    const boundary = partition.marked[block];
+    if (index < boundary) {
+        return false;
+    }
+    const other = partition.elements[boundary];
+    partition.elements[boundary] = state;
+    partition.elements[index] = other;
+    partition.location[state] = boundary;
+    partition.location[other] = index;
+    partition.marked[block] = boundary + 1;
+    return boundary === partition.first[block];
+}
+
+function split(partition: Partition, block: number): number | undefined {
+    const { first, marked, end } = partition;
+    const boundary = marked[block];
+    marked[block] = first[block];
+    if (boundary === end[block] || boundary === first[block]) {
+        return undefined;
+    }
+    const created = first.length;
+    if (boundary - first[block] <= end[block] - boundary) {
+        first.push(first[block]);
+        end.push(boundary);
+        first[block] = boundary;
+    } else {
+        first.push(boundary);
+        end.push(end[block]);
+        end[block] = boundary;
+    }
+    marked.push(first[created]);
+    marked[block] = first[block];
+    for (let index = first[created]; index < end[created]; index++) {
+        partition.block[partition.elements[index]] = created;
+    }
+    return created;
 }
 
 function minimize(tables: NumberTables): NumberTables {
-    let blocks = renumber(tables.ends.map(String));
-    let refined = refine(tables, blocks);
-    while (Math.max(...refined) !== Math.max(...blocks)) {
-        blocks = refined;
-        refined = refine(tables, blocks);
-    }
-    const representatives = Array.from(
-        { length: Math.max(...blocks) + 1 },
-        (_, block) => blocks.indexOf(block),
+    const width = tables.next[0].length;
+    const inverse = Array.from(
+        { length: width },
+        () => Array.from({ length: tables.next.length }, (): number[] => []),
     );
+    for (const [state, line] of tables.next.entries()) {
+        for (const [symbol, target] of line.entries()) {
+            inverse[symbol][target].push(state);
+        }
+    }
+    const initial = renumber(tables.ends.map(String));
+    const partition = partitionOf(initial.blocks, initial.count);
+    const pending: [number, number][] = [];
+    for (let block = 0; block < initial.count; block++) {
+        for (let symbol = 0; symbol < width; symbol++) {
+            pending.push([block, symbol]);
+        }
+    }
+    for (let next = pending.pop(); next !== undefined; next = pending.pop()) {
+        const [splitter, symbol] = next;
+        const touched: number[] = [];
+        const targets = partition.elements.slice(
+            partition.first[splitter],
+            partition.end[splitter],
+        );
+        for (const target of targets) {
+            for (const state of inverse[symbol][target]) {
+                if (mark(partition, state)) {
+                    touched.push(partition.block[state]);
+                }
+            }
+        }
+        for (const block of touched) {
+            const created = split(partition, block);
+            for (let lane = 0; created !== undefined && lane < width; lane++) {
+                pending.push([created, lane]);
+            }
+        }
+    }
+    const { blocks, count } = renumber(partition.block.map(String));
+    const representatives = firstIndexes(blocks, count);
     return {
         tokens: tables.tokens,
         classes: tables.classes,

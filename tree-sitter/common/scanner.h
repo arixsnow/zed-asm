@@ -635,19 +635,6 @@ static bool joins_line(TSLexer *lexer, bool skipping)
     return true;
 }
 
-static bool advance_blanks(TSLexer *lexer)
-{
-    while (is_blank(lexer->lookahead) || (ASM_WORD_JOINS && lexer->lookahead == '\\')) {
-        const bool backslash = lexer->lookahead == '\\';
-
-        advance(lexer);
-        if (backslash && !joins_line(lexer, false)) {
-            return false;
-        }
-    }
-    return true;
-}
-
 struct NumberRead {
     uint16_t state;
     unsigned char end;
@@ -685,6 +672,22 @@ static bool pass_joins(TSLexer *lexer, struct NumberRead *number)
 static bool cross_joins(TSLexer *lexer, struct NumberRead *number)
 {
     return !ASM_WORD_JOINS || pass_joins(lexer, number);
+}
+
+static bool advance_blanks(TSLexer *lexer, struct NumberRead *number)
+{
+    while (is_blank(lexer->lookahead) || (ASM_WORD_JOINS && lexer->lookahead == '\\')) {
+        if (lexer->lookahead == '\\') {
+            if (!pass_joins(lexer, number)) {
+                return false;
+            }
+        } else {
+            number_stops(number);
+            number_passes(number);
+            advance(lexer);
+        }
+    }
+    return true;
 }
 
 static bool skip_joins(TSLexer *lexer)
@@ -1353,7 +1356,7 @@ static bool assembler_comment(TSLexer *lexer, const bool *valid, bool in_call)
 
 static bool directive_follows(TSLexer *lexer)
 {
-    if (!advance_blanks(lexer) || lexer->lookahead != '.') {
+    if (!advance_blanks(lexer, NULL) || lexer->lookahead != '.') {
         return false;
     }
     advance(lexer);
@@ -1542,7 +1545,7 @@ static inline bool starts_trailing_comment(int32_t codepoint)
 
 static bool statement_ends(TSLexer *lexer)
 {
-    while (advance_blanks(lexer)) {
+    while (advance_blanks(lexer, NULL)) {
         if (lexer->lookahead == ';' || starts_trailing_comment(lexer->lookahead)) {
             return true;
         }
@@ -1794,25 +1797,25 @@ static bool read_default_flag(TSLexer *lexer)
 
 static bool default_flags_follow(TSLexer *lexer)
 {
-    if (!advance_blanks(lexer) || lexer->lookahead != '=') {
+    if (!advance_blanks(lexer, NULL) || lexer->lookahead != '=') {
         return false;
     }
     advance(lexer);
-    if (!advance_blanks(lexer)) {
+    if (!advance_blanks(lexer, NULL)) {
         return false;
     }
     if (lexer->lookahead == '}') {
         return true;
     }
     while (read_default_flag(lexer)) {
-        if (!advance_blanks(lexer)) {
+        if (!advance_blanks(lexer, NULL)) {
             return false;
         }
         if (lexer->lookahead != ',') {
             return true;
         }
         advance(lexer);
-        if (!advance_blanks(lexer)) {
+        if (!advance_blanks(lexer, NULL)) {
             return false;
         }
     }
@@ -1951,9 +1954,12 @@ static void number_take(TSLexer *lexer, struct NumberRead *read)
 {
     read->state = number_next(read, lexer->lookahead);
     advance(lexer);
-    read->marked = NUMBER_ENDS[read->state] != NUMBER_NO_END;
-    if (read->marked) {
+    if (NUMBER_ENDS[read->state] != NUMBER_NO_END) {
         read->end = NUMBER_ENDS[read->state];
+    }
+    read->marked = NUMBER_ENDS[read->state] != NUMBER_NO_END
+        && NUMBER_ENDS[read->state] != NUMBER_RIVAL_END;
+    if (read->marked) {
         lexer->mark_end(lexer);
     }
 }
@@ -2126,13 +2132,6 @@ static bool number_after_word(TSLexer *lexer, struct NumberRead *number)
     return number != NULL && number_rest(lexer, number);
 }
 
-static void number_leaves_word(const TSLexer *lexer, struct NumberRead *number)
-{
-    if (is_blank(lexer->lookahead)) {
-        number_stops(number);
-    }
-}
-
 static bool scan_stray_label(TSLexer *lexer, const bool *valid)
 {
     TSSymbol symbol = GLOBAL_LABEL_NAME;
@@ -2143,8 +2142,7 @@ static bool scan_stray_label(TSLexer *lexer, const bool *valid)
     if (!read_label_word(lexer, valid, &symbol, word, number)) {
         return number_after_word(lexer, number);
     }
-    number_leaves_word(lexer, number);
-    if (!advance_blanks(lexer) || lexer->lookahead != ':') {
+    if (!advance_blanks(lexer, number) || lexer->lookahead != ':') {
         return number_after_word(lexer, number);
     }
     advance(lexer);
@@ -2155,7 +2153,7 @@ static const struct WordRole *cpp_directive(TSLexer *lexer)
 {
     char word[STATEMENT_WORD_CAPACITY] = {0};
 
-    if (!advance_blanks(lexer)) {
+    if (!advance_blanks(lexer, NULL)) {
         return NULL;
     }
     read_alnum(lexer, word);
@@ -2695,11 +2693,11 @@ static void take_register_index(TSLexer *lexer, unsigned indexes)
     size_t length = 0;
     unsigned value = 0;
 
-    if (!advance_blanks(lexer) || lexer->lookahead != '(') {
+    if (!advance_blanks(lexer, NULL) || lexer->lookahead != '(') {
         return;
     }
     advance(lexer);
-    if (!advance_blanks(lexer)) {
+    if (!advance_blanks(lexer, NULL)) {
         return;
     }
     while (is_word_char(lexer->lookahead)) {
@@ -2708,7 +2706,7 @@ static void take_register_index(TSLexer *lexer, unsigned indexes)
     if (!integer_value(CLANG_INTEGER, text, indexes, &value) || value >= indexes) {
         return;
     }
-    if (advance_blanks(lexer) && lexer->lookahead == ')') {
+    if (advance_blanks(lexer, NULL) && lexer->lookahead == ')') {
         advance(lexer);
         lexer->mark_end(lexer);
     }
@@ -2915,7 +2913,7 @@ static bool scan_register_after_percent(TSLexer *lexer, const bool *valid,
     const struct WordRole *entry = NULL;
 
     lexer->mark_end(lexer);
-    if (!advance_blanks(lexer)) {
+    if (!advance_blanks(lexer, NULL)) {
         return false;
     }
     while (word_continues(lexer, continues_label, &stray, NULL)) {
@@ -2953,7 +2951,7 @@ static bool ptr_word_follows(TSLexer *lexer)
     unsigned char cases = 0;
     const struct WordRole *entry = NULL;
 
-    if (!advance_blanks(lexer)) {
+    if (!advance_blanks(lexer, NULL)) {
         return false;
     }
     while (word_continues(lexer, continues_label, &stray, NULL)) {
@@ -2966,7 +2964,7 @@ static bool ptr_word_follows(TSLexer *lexer)
 
 static bool operand_after(TSLexer *lexer)
 {
-    if (!advance_blanks(lexer) || at_line_end(lexer)) {
+    if (!advance_blanks(lexer, NULL) || at_line_end(lexer)) {
         return false;
     }
     switch (lexer->lookahead) {
@@ -2983,7 +2981,7 @@ static bool operand_after(TSLexer *lexer)
 
 static bool keyword_follows(TSLexer *lexer)
 {
-    if (!advance_blanks(lexer) || lexer->lookahead != '=') {
+    if (!advance_blanks(lexer, NULL) || lexer->lookahead != '=') {
         return false;
     }
     advance(lexer);
@@ -2992,7 +2990,7 @@ static bool keyword_follows(TSLexer *lexer)
 
 static bool shift_amount_follows(TSLexer *lexer)
 {
-    return advance_blanks(lexer)
+    return advance_blanks(lexer, NULL)
         && ((ASM_HASH_IMMEDIATES && lexer->lookahead == '#') || starts_element(lexer->lookahead));
 }
 
@@ -3213,7 +3211,7 @@ static bool ends_inner_block(TSSymbol closer, const bool *valid)
 
 static bool skip_macro_parentheses(TSLexer *lexer)
 {
-    return skip_call_parentheses(lexer) && advance_blanks(lexer);
+    return skip_call_parentheses(lexer) && advance_blanks(lexer, NULL);
 }
 
 static bool reserved_name(const char *word, const struct WordEntry *entry, unsigned char x86_syntax)
@@ -3248,7 +3246,7 @@ static bool names_assignment(const struct WordRole *entry, bool upper)
 
 static bool argument_follows(TSLexer *lexer, const char *word)
 {
-    return word[0] != '\0' && advance_blanks(lexer) && lexer->lookahead == ',';
+    return word[0] != '\0' && advance_blanks(lexer, NULL) && lexer->lookahead == ',';
 }
 
 static bool labelled_statement_follows(TSLexer *lexer, const struct Scanner *scanner)
@@ -3288,7 +3286,7 @@ static bool scan_colon_label(TSLexer *lexer, const bool *valid, const struct Sca
     }
     if (ASM_NAMED_STATEMENTS) {
         advance(lexer);
-        if (advance_blanks(lexer)
+        if (advance_blanks(lexer, NULL)
             && names_assignment(statement_word(read_statement_word(lexer, next, &upper)), upper)) {
             return false;
         }
@@ -3451,7 +3449,7 @@ static bool scan_word_role(TSLexer *lexer, const bool *valid, const struct Scann
     bool attached = false;
 
     if (keyword != NULL && ends_inner_block(keyword->symbol, valid)) {
-        if (advance_blanks(lexer) && lexer->lookahead == ':') {
+        if (advance_blanks(lexer, NULL) && lexer->lookahead == ':') {
             return false;
         }
         lexer->result_symbol = BLOCK_END;
@@ -3463,7 +3461,7 @@ static bool scan_word_role(TSLexer *lexer, const bool *valid, const struct Scann
     }
     glued = lexer->lookahead == glue_escape();
     attached = lexer->lookahead == '(';
-    stray = !advance_blanks(lexer);
+    stray = !advance_blanks(lexer, NULL);
     if (!stray && lexer->lookahead == '(' && valid[MACRO_LABEL_NAME]) {
         return scan_parenthesized_word(lexer, valid, scanner, symbol, word, entry, keyword,
             attached);
@@ -3703,12 +3701,12 @@ enum ParenthesisContent {
 
 static bool memory_name_ends(TSLexer *lexer)
 {
-    if (!advance_blanks(lexer)) {
+    if (!advance_blanks(lexer, NULL)) {
         return false;
     }
     if (lexer->lookahead == ')') {
         advance(lexer);
-        return advance_blanks(lexer)
+        return advance_blanks(lexer, NULL)
             && lexer->lookahead != '('
             && lexer->lookahead != '%'
             && !starts_operator(lexer->lookahead);
@@ -3733,7 +3731,7 @@ static bool memory_argument_follows(TSLexer *lexer)
 static bool memory_index_follows(TSLexer *lexer)
 {
     advance(lexer);
-    if (!advance_blanks(lexer)) {
+    if (!advance_blanks(lexer, NULL)) {
         return false;
     }
     if (lexer->lookahead == '%' || is_digit(lexer->lookahead)) {
@@ -3755,7 +3753,7 @@ static enum ParenthesisContent parenthesis_content(TSLexer *lexer, unsigned char
     const bool bare_register = att && (x86_syntax & X86_NOPREFIX) != 0;
     const struct WordEntry *entry = NULL;
 
-    if (!advance_blanks(lexer)) {
+    if (!advance_blanks(lexer, NULL)) {
         return CONTENT_OTHER;
     }
     if (att && lexer->lookahead == '%') {
@@ -4030,7 +4028,7 @@ static enum ScanDecision scan_percent_word(TSLexer *lexer, const bool *valid)
         return SCAN_NOT_FOUND;
     }
     lexer->mark_end(lexer);
-    if (valid[PREPROC_FUNCTION] && advance_blanks(lexer) && lexer->lookahead == '(') {
+    if (valid[PREPROC_FUNCTION] && advance_blanks(lexer, NULL) && lexer->lookahead == '(') {
         lexer->result_symbol = PREPROC_FUNCTION;
         return SCAN_FOUND;
     }
@@ -4066,7 +4064,7 @@ static enum ScanDecision scan_percent(TSLexer *lexer, const bool *valid,
     }
     if (valid[LIST_OPEN] && (lexer->lookahead == '(' || is_blank(lexer->lookahead))) {
         spaced = is_blank(lexer->lookahead);
-        if (advance_blanks(lexer) && lexer->lookahead == '(') {
+        if (advance_blanks(lexer, NULL) && lexer->lookahead == '(') {
             advance(lexer);
             return decided(finish_token(lexer, LIST_OPEN));
         }
@@ -4216,7 +4214,7 @@ static enum BracedBody decorator_body(TSLexer *lexer)
     }
     if (lexer->lookahead == '%') {
         advance(lexer);
-        return word_body(advance_blanks(lexer)
+        return word_body(advance_blanks(lexer, NULL)
             && read_decorator_word(lexer, is_alnum, word, &cases)
             && is_mask_register(word, word_entry(word)));
     }
@@ -4232,7 +4230,7 @@ static enum BracedBody decorator_body(TSLexer *lexer)
         return word_body(default_flags_follow(lexer));
     }
     spaced = is_blank(lexer->lookahead);
-    if (!advance_blanks(lexer)) {
+    if (!advance_blanks(lexer, NULL)) {
         return BRACED_NONE;
     }
     if (lexer->lookahead != '-') {
@@ -4243,7 +4241,7 @@ static enum BracedBody decorator_body(TSLexer *lexer)
     }
     advance(lexer);
     spaced = spaced || is_blank(lexer->lookahead);
-    if (!advance_blanks(lexer) || !read_decorator_word(lexer, is_alnum, tail, &tail_cases)) {
+    if (!advance_blanks(lexer, NULL) || !read_decorator_word(lexer, is_alnum, tail, &tail_cases)) {
         return BRACED_NONE;
     }
     return word_body(has_flag(entry, DECORATOR_DASHED)
@@ -4273,7 +4271,7 @@ static enum BracedBody braced_body(TSLexer *lexer, TSSymbol symbol, bool mark_op
     if (mark_open) {
         lexer->mark_end(lexer);
     }
-    if (!advance_blanks(lexer)) {
+    if (!advance_blanks(lexer, NULL)) {
         return BRACED_NONE;
     }
     if (symbol == PSEUDO_PREFIX) {
@@ -4283,7 +4281,7 @@ static enum BracedBody braced_body(TSLexer *lexer, TSSymbol symbol, bool mark_op
     } else {
         body = decorator_body(lexer);
     }
-    if (body == BRACED_NONE || !advance_blanks(lexer) || lexer->lookahead != '}') {
+    if (body == BRACED_NONE || !advance_blanks(lexer, NULL) || lexer->lookahead != '}') {
         return BRACED_NONE;
     }
     advance(lexer);
@@ -4347,7 +4345,7 @@ static enum ScanDecision scan_type_colon(TSLexer *lexer, uint32_t blanks)
     }
     lexer->mark_end(lexer);
     lexer->result_symbol = TYPE_MARK;
-    return decided(advance_blanks(lexer)
+    return decided(advance_blanks(lexer, NULL)
         && (is_alpha(lexer->lookahead) || is_digit(lexer->lookahead) || lexer->lookahead == '('));
 }
 
@@ -4355,7 +4353,7 @@ static enum ScanDecision scan_bracket_colon(TSLexer *lexer, const bool *valid)
 {
     lexer->mark_end(lexer);
     if (ASM_RELOCATION_OPERATORS && valid[MISSING_ELEMENT]) {
-        if (!advance_blanks(lexer) || !is_digit(lexer->lookahead)) {
+        if (!advance_blanks(lexer, NULL) || !is_digit(lexer->lookahead)) {
             return SCAN_NOT_FOUND;
         }
     }
@@ -4375,7 +4373,8 @@ static enum ScanDecision scan_colon(TSLexer *lexer, const bool *valid, uint32_t 
         plain = first_valid(valid, PLAIN_COLONS, sizeof(PLAIN_COLONS) / sizeof(PLAIN_COLONS[0]),
             &symbol);
         if (!plain
-            || (advance_blanks(lexer) && (lexer->lookahead == '(' || lexer->lookahead == ':'))) {
+            || (advance_blanks(lexer, NULL)
+                && (lexer->lookahead == '(' || lexer->lookahead == ':'))) {
             symbol = REFERENCE_COLON;
         }
         lexer->result_symbol = symbol;
@@ -4412,7 +4411,7 @@ static enum ScanDecision scan_word_label(TSLexer *lexer, const bool *valid,
     struct OperandRole role = {0, FOLLOW_NOTHING, NULL};
 
     lexer->mark_end(lexer);
-    if (advance_blanks(lexer)
+    if (advance_blanks(lexer, NULL)
         && lexer->lookahead == ':'
         && scan_colon_label(lexer, valid, scanner, symbol, word->text, word->entry)) {
         return SCAN_FOUND;
@@ -4454,12 +4453,13 @@ static enum ScanDecision scan_word_token(TSLexer *lexer, const bool *valid,
     return decided(finish_operand_word(lexer, &role));
 }
 
-static enum ScanDecision scan_digit_label(TSLexer *lexer, const bool *valid, bool dollar)
+static enum ScanDecision scan_digit_label(TSLexer *lexer, const bool *valid, bool dollar,
+    struct NumberRead *number)
 {
     const TSSymbol symbol = dollar ? DOLLAR_LABEL_NAME : NUMERIC_LABEL_NAME;
 
     lexer->mark_end(lexer);
-    if (advance_blanks(lexer) && lexer->lookahead == ':' && valid[symbol]) {
+    if (advance_blanks(lexer, number) && lexer->lookahead == ':' && valid[symbol]) {
         lexer->result_symbol = symbol;
         return SCAN_FOUND;
     }
@@ -4504,8 +4504,7 @@ static enum ScanDecision scan_digit_word(TSLexer *lexer, const bool *valid, uint
     }
     if (label_fits(valid) && (dollar || !continues_label(lexer->lookahead))) {
         covered = number_covers(number);
-        number_leaves_word(lexer, number);
-        decision = scan_digit_label(lexer, valid, dollar);
+        decision = scan_digit_label(lexer, valid, dollar, number);
         if (decision != SCAN_NOT_FOUND || !covered) {
             return decision;
         }
@@ -4720,7 +4719,7 @@ static bool skip_decorators(TSLexer *lexer)
             advance(lexer);
         }
         advance(lexer);
-        if (!advance_blanks(lexer)) {
+        if (!advance_blanks(lexer, NULL)) {
             return false;
         }
     }
@@ -4863,7 +4862,7 @@ static enum ScanDecision scan_dollar(TSLexer *lexer, const bool *valid,
     }
     lexer->mark_end(lexer);
     if (label
-        && advance_blanks(lexer)
+        && advance_blanks(lexer, NULL)
         && lexer->lookahead == ':'
         && scan_colon_label(lexer, valid, scanner, GLOBAL_LABEL_NAME, word, word_entry(word))) {
         return SCAN_FOUND;

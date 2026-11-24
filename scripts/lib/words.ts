@@ -264,7 +264,7 @@ function dictionariesOf(sources: KeywordSources, tables: WordTable[]): Dictionar
             dialect,
             words: sorted,
             ...perfectHash(sorted.map(({ name }) => name)),
-            length: Math.max(...sorted.map(({ name }) => name.length)),
+            length: sorted.reduce((longest, { name }) => Math.max(longest, name.length), 0),
             symbols: symbolMasks(sources, dialect, defines),
         };
         for (const word of sorted) {
