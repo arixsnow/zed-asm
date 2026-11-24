@@ -7204,6 +7204,10 @@
     },
     {
       "type": "SYMBOL",
+      "name": "_unclosed_call"
+    },
+    {
+      "type": "SYMBOL",
       "name": "_global_label_name"
     },
     {

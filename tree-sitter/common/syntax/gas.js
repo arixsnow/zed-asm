@@ -65,7 +65,7 @@ function cppArguments($, marker, argument) {
         '(',
         slot,
         repeat(seq(',', slot)),
-        choice(alias($._call_close, ')'), $._unclosed_arguments),
+        choice(alias($._call_close, ')'), $._unclosed_call),
     );
 }
 

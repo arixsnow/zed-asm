@@ -21,6 +21,15 @@ The state serializes to zero bytes while all four values are initial, to one byt
 open, and to five bytes while a call is open. Incremental reparsing reuses any subtree before the
 first mode line, open call or end of input.
 
+After an edit, tree-sitter lexes the token after a reused node in the parse state that follows the
+node's reduction, where a fresh parse lexes it in the state before that reduction. The scanner
+returns the same token in both. Its state changes only with the tokens it returns, and the
+open-call count, not the tokens the parser expects, says whether a line is inside a C call. A call
+closes with its own zero-width token, `_unclosed_call`, apart from the `_unclosed_arguments` of an
+argument group. Joins are crossed before a glued token is decided, and a blank before `/`, `#`,
+`@` or `;` leaves the decision to the reader of that character. `test/grammar/incremental.test.ts`
+checks the result with random edits.
+
 ## Comments and separators
 
 The assemblers read these characters as follows (GNU as 2.46.1 for x86-64 and AArch64, 2.45 for

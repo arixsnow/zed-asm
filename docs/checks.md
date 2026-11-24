@@ -178,6 +178,10 @@ tree-sitter does not always mark a missing node in the printed tree. Operands th
 errors, such as `:lo12:.LC0` in ARM (Apple) or `qword ptr fs:[0x28]` in AT&T mode, must leave the
 function around them one label block.
 
+The incremental test applies two seeded sequences of ten random edits to every fixture with
+`tree-sitter parse --edits` and requires the tree that a fresh parse of the edited text gives
+([scanner.md](scanner.md#state)).
+
 `test/grammar/numbers.test.ts` reads every number form of each syntax in a data directive, with
 joins inside the number, and requires one `integer`, `float` or `numeric_label`, or an error.
 `test/unit/numbers.test.ts` checks the number table of each token against JavaScript's `RegExp` on

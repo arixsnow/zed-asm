@@ -56,6 +56,7 @@ const EXTERNALS = [
     '_unclosed_memory',
     '_unclosed_address',
     '_unclosed_arguments',
+    '_unclosed_call',
     '_global_label_name',
     '_local_label_name',
     '_numeric_label_name',
