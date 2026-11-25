@@ -8457,6 +8457,10 @@
       "name": "_call_newline"
     },
     {
+      "type": "SYMBOL",
+      "name": "_call_reset"
+    },
+    {
       "type": "PATTERN",
       "value": "\\\\[ \\t\\f\\v\\r]*\\n"
     }
@@ -8476,10 +8480,6 @@
     {
       "type": "SYMBOL",
       "name": "line_comment"
-    },
-    {
-      "type": "SYMBOL",
-      "name": "preproc_directive"
     },
     {
       "type": "SYMBOL",
@@ -8531,27 +8531,7 @@
     },
     {
       "type": "SYMBOL",
-      "name": "_preproc_include"
-    },
-    {
-      "type": "SYMBOL",
       "name": "_header_name"
-    },
-    {
-      "type": "SYMBOL",
-      "name": "_preproc_define"
-    },
-    {
-      "type": "SYMBOL",
-      "name": "_preproc_set"
-    },
-    {
-      "type": "SYMBOL",
-      "name": "_preproc_assign"
-    },
-    {
-      "type": "SYMBOL",
-      "name": "_preproc_macro"
     },
     {
       "type": "SYMBOL",
@@ -8707,83 +8687,11 @@
     },
     {
       "type": "SYMBOL",
-      "name": "_macro_open"
-    },
-    {
-      "type": "SYMBOL",
-      "name": "_if_open"
-    },
-    {
-      "type": "SYMBOL",
-      "name": "_if_macro_open"
-    },
-    {
-      "type": "SYMBOL",
-      "name": "_if_raw_open"
-    },
-    {
-      "type": "SYMBOL",
-      "name": "_rept_open"
-    },
-    {
-      "type": "SYMBOL",
-      "name": "_irp_open"
-    },
-    {
-      "type": "SYMBOL",
-      "name": "_irpc_open"
-    },
-    {
-      "type": "SYMBOL",
-      "name": "_struc_open"
-    },
-    {
-      "type": "SYMBOL",
-      "name": "_istruc_open"
-    },
-    {
-      "type": "SYMBOL",
-      "name": "_blank_separated_directive"
-    },
-    {
-      "type": "SYMBOL",
-      "name": "_float_data_directive"
-    },
-    {
-      "type": "SYMBOL",
-      "name": "_float_space_directive"
-    },
-    {
-      "type": "SYMBOL",
-      "name": "_string_directive"
-    },
-    {
-      "type": "SYMBOL",
-      "name": "_altmacro"
-    },
-    {
-      "type": "SYMBOL",
-      "name": "_noaltmacro"
-    },
-    {
-      "type": "SYMBOL",
       "name": "_altmacro_percent"
     },
     {
       "type": "SYMBOL",
       "name": "_altmacro_string"
-    },
-    {
-      "type": "SYMBOL",
-      "name": "_cfi_register_directive"
-    },
-    {
-      "type": "SYMBOL",
-      "name": "_unwind_register_directive"
-    },
-    {
-      "type": "SYMBOL",
-      "name": "_linker_hint_directive"
     },
     {
       "type": "SYMBOL",
@@ -8808,14 +8716,6 @@
     {
       "type": "SYMBOL",
       "name": "_neon_alias_word"
-    },
-    {
-      "type": "SYMBOL",
-      "name": "_intel_syntax"
-    },
-    {
-      "type": "SYMBOL",
-      "name": "_att_syntax"
     },
     {
       "type": "SYMBOL",
@@ -8963,6 +8863,10 @@
     },
     {
       "type": "SYMBOL",
+      "name": "_call_reset"
+    },
+    {
+      "type": "SYMBOL",
       "name": "_call_mnemonic"
     },
     {
@@ -8996,26 +8900,6 @@
     {
       "type": "SYMBOL",
       "name": "_decorator_open"
-    },
-    {
-      "type": "SYMBOL",
-      "name": "_macro_close"
-    },
-    {
-      "type": "SYMBOL",
-      "name": "_conditional_close"
-    },
-    {
-      "type": "SYMBOL",
-      "name": "_repeat_close"
-    },
-    {
-      "type": "SYMBOL",
-      "name": "_struc_close"
-    },
-    {
-      "type": "SYMBOL",
-      "name": "_istruc_close"
     },
     {
       "type": "SYMBOL",
@@ -9064,50 +8948,6 @@
     {
       "type": "SYMBOL",
       "name": "special_symbol"
-    },
-    {
-      "type": "SYMBOL",
-      "name": "_generic_directive"
-    },
-    {
-      "type": "SYMBOL",
-      "name": "_section_directive"
-    },
-    {
-      "type": "SYMBOL",
-      "name": "_declaration_directive"
-    },
-    {
-      "type": "SYMBOL",
-      "name": "_common_directive"
-    },
-    {
-      "type": "SYMBOL",
-      "name": "_bracket_directive"
-    },
-    {
-      "type": "SYMBOL",
-      "name": "_data_directive"
-    },
-    {
-      "type": "SYMBOL",
-      "name": "_align_directive"
-    },
-    {
-      "type": "SYMBOL",
-      "name": "_use_directive"
-    },
-    {
-      "type": "SYMBOL",
-      "name": "_times"
-    },
-    {
-      "type": "SYMBOL",
-      "name": "_equ"
-    },
-    {
-      "type": "SYMBOL",
-      "name": "_at_word"
     },
     {
       "type": "SYMBOL",
@@ -9180,6 +9020,174 @@
     {
       "type": "SYMBOL",
       "name": "_digit_name"
+    },
+    {
+      "type": "SYMBOL",
+      "name": "_macro_close"
+    },
+    {
+      "type": "SYMBOL",
+      "name": "_conditional_close"
+    },
+    {
+      "type": "SYMBOL",
+      "name": "_repeat_close"
+    },
+    {
+      "type": "SYMBOL",
+      "name": "_macro_open"
+    },
+    {
+      "type": "SYMBOL",
+      "name": "_if_open"
+    },
+    {
+      "type": "SYMBOL",
+      "name": "_rept_open"
+    },
+    {
+      "type": "SYMBOL",
+      "name": "_irp_open"
+    },
+    {
+      "type": "SYMBOL",
+      "name": "_irpc_open"
+    },
+    {
+      "type": "SYMBOL",
+      "name": "_blank_separated_directive"
+    },
+    {
+      "type": "SYMBOL",
+      "name": "_float_data_directive"
+    },
+    {
+      "type": "SYMBOL",
+      "name": "_float_space_directive"
+    },
+    {
+      "type": "SYMBOL",
+      "name": "_string_directive"
+    },
+    {
+      "type": "SYMBOL",
+      "name": "_altmacro"
+    },
+    {
+      "type": "SYMBOL",
+      "name": "_noaltmacro"
+    },
+    {
+      "type": "SYMBOL",
+      "name": "_cfi_register_directive"
+    },
+    {
+      "type": "SYMBOL",
+      "name": "_unwind_register_directive"
+    },
+    {
+      "type": "SYMBOL",
+      "name": "_linker_hint_directive"
+    },
+    {
+      "type": "SYMBOL",
+      "name": "_intel_syntax"
+    },
+    {
+      "type": "SYMBOL",
+      "name": "_att_syntax"
+    },
+    {
+      "type": "SYMBOL",
+      "name": "_generic_directive"
+    },
+    {
+      "type": "SYMBOL",
+      "name": "_section_directive"
+    },
+    {
+      "type": "SYMBOL",
+      "name": "_declaration_directive"
+    },
+    {
+      "type": "SYMBOL",
+      "name": "_common_directive"
+    },
+    {
+      "type": "SYMBOL",
+      "name": "_bracket_directive"
+    },
+    {
+      "type": "SYMBOL",
+      "name": "_data_directive"
+    },
+    {
+      "type": "SYMBOL",
+      "name": "_align_directive"
+    },
+    {
+      "type": "SYMBOL",
+      "name": "_use_directive"
+    },
+    {
+      "type": "SYMBOL",
+      "name": "_times"
+    },
+    {
+      "type": "SYMBOL",
+      "name": "_equ"
+    },
+    {
+      "type": "SYMBOL",
+      "name": "_if_macro_open"
+    },
+    {
+      "type": "SYMBOL",
+      "name": "_if_raw_open"
+    },
+    {
+      "type": "SYMBOL",
+      "name": "preproc_directive"
+    },
+    {
+      "type": "SYMBOL",
+      "name": "_preproc_include"
+    },
+    {
+      "type": "SYMBOL",
+      "name": "_preproc_define"
+    },
+    {
+      "type": "SYMBOL",
+      "name": "_preproc_set"
+    },
+    {
+      "type": "SYMBOL",
+      "name": "_preproc_assign"
+    },
+    {
+      "type": "SYMBOL",
+      "name": "_preproc_macro"
+    },
+    {
+      "type": "SYMBOL",
+      "name": "_struc_open"
+    },
+    {
+      "type": "SYMBOL",
+      "name": "_istruc_open"
+    },
+    {
+      "type": "SYMBOL",
+      "name": "_struc_close"
+    },
+    {
+      "type": "SYMBOL",
+      "name": "_istruc_close"
+    },
+    {
+      "type": "SYMBOL",
+      "name": "_at_word"
     },
     {
       "type": "SYMBOL",

@@ -609,9 +609,17 @@ expression.
 
 The scanner state holds the number of open calls. A call marker raises it. The call's `)`, read by
 the scanner, and the call's zero-width closing token lower it. While the count is positive a line
-end is a blank before the next item of a run, and otherwise a hidden extra token. Error recovery
-writes no such token, and a statement start resets the count to zero. An unclosed call takes the
-following lines as arguments up to the next `)`, as an unclosed `/*` takes them as a comment.
+end is a blank before the next item of a run, and otherwise a hidden extra token.
+
+Error recovery can pop the parser back before a call marker while tree-sitter keeps the scanner
+state of a later token, so the count can stay positive at the top level. The top-level tokens are
+`_end`, the mnemonics, the macro name and the directive keywords, and none of them is valid inside
+a call. Where one is valid while the count is positive, the scanner returns `_call_reset`, a
+zero-width hidden extra token that sets the count to zero. A mnemonic, a macro name or a directive
+keyword read during error recovery sets it to zero as well. `test/c/calls.c` walks the parse table
+of each GNU grammar from every call marker to its closing tokens and checks that no top-level token
+is valid there. An unclosed call takes the following lines as arguments up to the next `)`, as an
+unclosed `/*` takes them as a comment.
 
 Limits:
 

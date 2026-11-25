@@ -11,7 +11,7 @@ import { fixtures } from './verify-fixtures.ts';
 
 const RUNS = 7;
 const TARGET_BYTES = 600_000;
-const BASICS: Record<string, string> = {
+export const BASICS: Record<string, string> = {
     asm_auto: 'x86-att/basics.s',
     asm_arm: 'a64-gnu/basics.s',
     asm_arm_apple: 'a64-apple/basics.s',

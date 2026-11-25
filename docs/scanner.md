@@ -23,9 +23,10 @@ first mode line, open call or end of input.
 
 After an edit, tree-sitter lexes the token after a reused node in the parse state that follows the
 node's reduction, where a fresh parse lexes it in the state before that reduction. The scanner
-returns the same token in both. Its state changes only with the tokens it returns, and the
-open-call count, not the tokens the parser expects, says whether a line is inside a C call. A call
-closes with its own zero-width token, `_unclosed_call`, apart from the `_unclosed_arguments` of an
+returns the same token in both. Its state changes only with the tokens it returns. The open-call
+count says whether a line is inside a C call, and the zero-width `_call_reset` clears a count that
+error recovery left behind ([grammar.md](grammar.md#c-macro-calls)). A call closes with its own
+zero-width token, `_unclosed_call`, apart from the `_unclosed_arguments` of an
 argument group. Joins are crossed before a glued token is decided, and a blank before `/`, `#`,
 `@` or `;` leaves the decision to the reader of that character. `test/grammar/incremental.test.ts`
 checks the result with random edits.

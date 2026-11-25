@@ -504,7 +504,7 @@ module.exports = (ctx) => {
                 ($) => $.concatenation,
             ],
         },
-        extras: [($) => $.block_comment, ($) => $._call_newline],
+        extras: [($) => $.block_comment, ($) => $._call_newline, ($) => $._call_reset],
         conflicts: [($) => [$.parenthesized_expression, $._call_item]],
     };
 };

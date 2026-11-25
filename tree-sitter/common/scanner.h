@@ -190,7 +190,6 @@ enum SemicolonMode {
 
 enum TokenType {
     LINE_COMMENT,
-    PREPROC_DIRECTIVE,
     HASH,
     DOLLAR,
     DOLLAR_NAME,
@@ -203,12 +202,7 @@ enum TokenType {
     RAW_WORD,
     TRAILING_ARGUMENT,
     PREPROC_LINE_END,
-    PREPROC_INCLUDE,
     HEADER_NAME,
-    PREPROC_DEFINE,
-    PREPROC_SET,
-    PREPROC_ASSIGN,
-    PREPROC_MACRO,
     PREPROC_CONDITION,
     PREPROC_PARAMS_OPEN,
     MISSING_OPERAND,
@@ -247,34 +241,14 @@ enum TokenType {
     KEYWORD_WORD,
     PREFIX_WORD,
     PREFIX_SEMICOLON,
-    MACRO_OPEN,
-    IF_OPEN,
-    IF_MACRO_OPEN,
-    IF_RAW_OPEN,
-    REPT_OPEN,
-    IRP_OPEN,
-    IRPC_OPEN,
-    STRUC_OPEN,
-    ISTRUC_OPEN,
-    BLANK_SEPARATED_DIRECTIVE,
-    FLOAT_DATA_DIRECTIVE,
-    FLOAT_SPACE_DIRECTIVE,
-    STRING_DIRECTIVE,
-    ALTMACRO,
-    NOALTMACRO,
     ALTMACRO_PERCENT,
     ALTMACRO_STRING,
-    CFI_REGISTER_DIRECTIVE,
-    UNWIND_REGISTER_DIRECTIVE,
-    LINKER_HINT_DIRECTIVE,
     SUFFIX_RELOCATION_NAME,
     RELOCATION_SPECIFIER,
     RELOCATION_NAME,
     RELOCATION_COLON,
     REGISTER_ALIAS_WORD,
     NEON_ALIAS_WORD,
-    INTEL_SYNTAX,
-    ATT_SYNTAX,
     SYNTAX_PREFIX,
     SYNTAX_NOPREFIX,
     REGISTER,
@@ -311,6 +285,7 @@ enum TokenType {
     LIST_CARET,
     CALL_CLOSE,
     CALL_NEWLINE,
+    CALL_RESET,
     CALL_MNEMONIC,
     PERCENT_CALL,
     PROBE_AT,
@@ -320,11 +295,6 @@ enum TokenType {
     PSEUDO_PREFIX,
     DECORATOR,
     DECORATOR_OPEN,
-    MACRO_CLOSE,
-    CONDITIONAL_CLOSE,
-    REPEAT_CLOSE,
-    STRUC_CLOSE,
-    ISTRUC_CLOSE,
     ELSEIF,
     ELSEIF_MACRO,
     ELSEIF_RAW,
@@ -337,17 +307,6 @@ enum TokenType {
     WRT_WORD,
     TO_WORD,
     SPECIAL_SYMBOL,
-    GENERIC_DIRECTIVE,
-    SECTION_DIRECTIVE,
-    DECLARATION_DIRECTIVE,
-    COMMON_DIRECTIVE,
-    BRACKET_DIRECTIVE,
-    DATA_DIRECTIVE,
-    ALIGN_DIRECTIVE,
-    USE_DIRECTIVE,
-    TIMES,
-    EQU,
-    AT_WORD,
     ALIGNMENT_COLON,
     DUP_WORD,
     FLOAT_SPECIAL,
@@ -366,6 +325,48 @@ enum TokenType {
     NUMERIC_LABEL,
     DOT_FLOAT,
     DIGIT_NAME,
+    MACRO_CLOSE,
+    CONDITIONAL_CLOSE,
+    REPEAT_CLOSE,
+    MACRO_OPEN,
+    IF_OPEN,
+    REPT_OPEN,
+    IRP_OPEN,
+    IRPC_OPEN,
+    BLANK_SEPARATED_DIRECTIVE,
+    FLOAT_DATA_DIRECTIVE,
+    FLOAT_SPACE_DIRECTIVE,
+    STRING_DIRECTIVE,
+    ALTMACRO,
+    NOALTMACRO,
+    CFI_REGISTER_DIRECTIVE,
+    UNWIND_REGISTER_DIRECTIVE,
+    LINKER_HINT_DIRECTIVE,
+    INTEL_SYNTAX,
+    ATT_SYNTAX,
+    GENERIC_DIRECTIVE,
+    SECTION_DIRECTIVE,
+    DECLARATION_DIRECTIVE,
+    COMMON_DIRECTIVE,
+    BRACKET_DIRECTIVE,
+    DATA_DIRECTIVE,
+    ALIGN_DIRECTIVE,
+    USE_DIRECTIVE,
+    TIMES,
+    EQU,
+    IF_MACRO_OPEN,
+    IF_RAW_OPEN,
+    PREPROC_DIRECTIVE,
+    PREPROC_INCLUDE,
+    PREPROC_DEFINE,
+    PREPROC_SET,
+    PREPROC_ASSIGN,
+    PREPROC_MACRO,
+    STRUC_OPEN,
+    ISTRUC_OPEN,
+    STRUC_CLOSE,
+    ISTRUC_CLOSE,
+    AT_WORD,
     INSTRUCTION_NAME,
     FLAGS_INSTRUCTION,
     FIRST_LABEL_INSTRUCTION,
@@ -389,6 +390,11 @@ enum TokenType {
     MACRO_NAME,
     STRAY,
     ERROR_SENTINEL,
+};
+
+enum {
+    FIRST_STATEMENT_KEYWORD = MACRO_CLOSE,
+    LAST_STATEMENT_KEYWORD = AT_WORD,
 };
 
 #define X86_INTEL          0x01U
@@ -1027,50 +1033,60 @@ static inline bool continues_label(int32_t codepoint)
         || codepoint == '?';
 }
 
+static bool any_valid(const bool *valid, const TSSymbol *symbols, size_t count)
+{
+    size_t index = 0;
+
+    while (index < count) {
+        if (valid[symbols[index]]) {
+            return true;
+        }
+        index++;
+    }
+    return false;
+}
+
+static bool first_valid(const bool *valid, const TSSymbol *symbols, size_t count, TSSymbol *symbol)
+{
+    size_t index = 0;
+
+    while (index < count) {
+        if (valid[symbols[index]]) {
+            *symbol = symbols[index];
+            return true;
+        }
+        index++;
+    }
+    return false;
+}
+
+static inline __attribute__((always_inline)) bool range_valid(const bool *valid, TSSymbol first,
+    TSSymbol last)
+{
+    uint64_t word = 0;
+    uint64_t seen = 0;
+    size_t index = first;
+
+    while (index + sizeof(word) <= (size_t)last + 1) {
+        memcpy(&word, &valid[index], sizeof(word));
+        seen |= word;
+        index += sizeof(word);
+    }
+    while (index <= last) {
+        seen |= valid[index];
+        index++;
+    }
+    return seen != 0;
+}
+
 static inline bool statement_keyword_fits(const bool *valid)
 {
-    return valid[MACRO_CLOSE]
-        || valid[CONDITIONAL_CLOSE]
-        || valid[REPEAT_CLOSE]
-        || valid[MACRO_OPEN]
-        || valid[IF_OPEN]
-        || valid[REPT_OPEN]
-        || valid[IRP_OPEN]
-        || valid[IRPC_OPEN]
-        || valid[BLANK_SEPARATED_DIRECTIVE]
-        || valid[FLOAT_DATA_DIRECTIVE]
-        || valid[FLOAT_SPACE_DIRECTIVE]
-        || valid[STRING_DIRECTIVE]
-        || valid[ALTMACRO]
-        || valid[NOALTMACRO]
-        || valid[CFI_REGISTER_DIRECTIVE]
-        || valid[UNWIND_REGISTER_DIRECTIVE]
-        || valid[LINKER_HINT_DIRECTIVE]
-        || valid[INTEL_SYNTAX]
-        || valid[ATT_SYNTAX]
-        || valid[GENERIC_DIRECTIVE]
-        || valid[SECTION_DIRECTIVE]
-        || valid[DECLARATION_DIRECTIVE]
-        || valid[COMMON_DIRECTIVE]
-        || valid[BRACKET_DIRECTIVE]
-        || valid[DATA_DIRECTIVE]
-        || valid[ALIGN_DIRECTIVE]
-        || valid[USE_DIRECTIVE]
-        || valid[TIMES]
-        || valid[EQU]
-        || valid[IF_MACRO_OPEN]
-        || valid[IF_RAW_OPEN]
-        || valid[PREPROC_DIRECTIVE]
-        || valid[PREPROC_INCLUDE]
-        || valid[PREPROC_DEFINE]
-        || valid[PREPROC_SET]
-        || valid[PREPROC_ASSIGN]
-        || valid[PREPROC_MACRO]
-        || valid[STRUC_OPEN]
-        || valid[ISTRUC_OPEN]
-        || valid[STRUC_CLOSE]
-        || valid[ISTRUC_CLOSE]
-        || valid[AT_WORD];
+    return range_valid(valid, FIRST_STATEMENT_KEYWORD, LAST_STATEMENT_KEYWORD);
+}
+
+static inline bool starts_statement(TSSymbol symbol)
+{
+    return symbol >= FIRST_STATEMENT_KEYWORD && symbol <= MACRO_NAME;
 }
 
 static inline bool scanner_dispatches(int32_t codepoint)
@@ -1111,24 +1127,20 @@ static const TSSymbol PLAIN_COLONS[] = {
     SEGMENT_COLON,
 };
 
-static bool first_valid(const bool *valid, const TSSymbol *symbols, size_t count, TSSymbol *symbol)
-{
-    size_t index = 0;
-
-    while (index < count) {
-        if (valid[symbols[index]]) {
-            *symbol = symbols[index];
-            return true;
-        }
-        index++;
-    }
-    return false;
-}
-
 static bool closing_token(const bool *valid, TSSymbol *symbol)
 {
     return first_valid(valid, CLOSING_TOKENS, sizeof(CLOSING_TOKENS) / sizeof(CLOSING_TOKENS[0]),
         symbol);
+}
+
+static inline bool top_level_token(TSSymbol symbol)
+{
+    return symbol == END || starts_statement(symbol);
+}
+
+static inline bool top_level(const bool *valid)
+{
+    return valid[END] || range_valid(valid, FIRST_STATEMENT_KEYWORD, MACRO_NAME);
 }
 
 static inline bool call_statement_fits(const bool *valid, bool in_call)
@@ -1138,11 +1150,9 @@ static inline bool call_statement_fits(const bool *valid, bool in_call)
 
 static inline bool closable(const bool *valid, const struct Scanner *scanner)
 {
-    TSSymbol symbol = UNCLOSED;
-
     return !valid[ERROR_SENTINEL]
         && (!valid[SEPARATOR] || call_statement_fits(valid, scanner->open_calls > 0))
-        && closing_token(valid, &symbol);
+        && any_valid(valid, CLOSING_TOKENS, sizeof(CLOSING_TOKENS) / sizeof(CLOSING_TOKENS[0]));
 }
 
 static inline bool starts_operator(int32_t codepoint)
@@ -1898,7 +1908,7 @@ static bool label_fits(const bool *valid)
 
 static bool statement_role_fits(const bool *valid)
 {
-    return statement_keyword_fits(valid) || valid[MACRO_NAME] || valid[INSTRUCTION_NAME];
+    return valid[INSTRUCTION_NAME] || valid[MACRO_NAME] || statement_keyword_fits(valid);
 }
 
 static bool statement_word_fits(TSLexer *lexer, const bool *valid)
@@ -4348,12 +4358,9 @@ static enum ScanDecision scan_braced(TSLexer *lexer, const bool *valid,
 
 static bool colon_fits(const bool *valid)
 {
-    TSSymbol symbol = BRACKET_COLON;
-
     return (ASM_COLON_TYPE_MARK && valid[TYPE_MARK])
         || valid[BRACKET_COLON]
-        || first_valid(valid, PLAIN_COLONS, sizeof(PLAIN_COLONS) / sizeof(PLAIN_COLONS[0]),
-            &symbol);
+        || any_valid(valid, PLAIN_COLONS, sizeof(PLAIN_COLONS) / sizeof(PLAIN_COLONS[0]));
 }
 
 static enum ScanDecision scan_type_colon(TSLexer *lexer, uint32_t blanks)
@@ -5042,8 +5049,8 @@ static enum ScanDecision scan_operand_token(TSLexer *lexer, const bool *valid,
     return scan_expected_token(lexer, valid, scanner, blanks);
 }
 
-static enum ScanDecision scan_open_content(TSLexer *lexer, const bool *valid, bool closing,
-    bool past_joins)
+static inline __attribute__((always_inline)) enum ScanDecision scan_open_content(TSLexer *lexer,
+    const bool *valid, bool closing, bool past_joins)
 {
     bool glued = !is_blank(lexer->lookahead);
 
@@ -5075,6 +5082,12 @@ static enum ScanDecision scan_open_content(TSLexer *lexer, const bool *valid, bo
         return decided(scan_glued(lexer, valid, closing));
     }
     return SCAN_UNDECIDED;
+}
+
+static __attribute__((cold, noinline)) enum ScanDecision scan_joined_content(TSLexer *lexer,
+    const bool *valid, bool closing)
+{
+    return scan_open_content(lexer, valid, closing, true);
 }
 
 static enum ScanDecision scan_line_token(TSLexer *lexer, const bool *valid,
@@ -5317,7 +5330,7 @@ static bool scan(TSLexer *lexer, const bool *valid, const struct Scanner *scanne
     if (!recovering
         && gap.blanks == 0
         && (pushed == NULL ? gap.joined : gap.backslash_columns == 1)) {
-        decision = scan_open_content(source, valid, closing, true);
+        decision = scan_joined_content(source, valid, closing);
     }
     found = decision == SCAN_UNDECIDED
         ? scan_after_gap(source, valid, scanner, closes_input, &gap, closing)
@@ -5400,7 +5413,24 @@ static void follow_calls(struct Scanner *scanner, TSSymbol symbol)
     }
     if (scanner->open_calls > 0 && (symbol == CALL_CLOSE || symbol == UNCLOSED_CALL)) {
         scanner->open_calls--;
+        return;
     }
+    if (symbol == CALL_RESET || starts_statement(symbol)) {
+        scanner->open_calls = 0;
+    }
+}
+
+static bool scan_call_reset(TSLexer *lexer, const bool *valid, const struct Scanner *scanner)
+{
+    if (scanner->open_calls == 0
+        || valid[ERROR_SENTINEL]
+        || !valid[CALL_RESET]
+        || !top_level(valid)) {
+        return false;
+    }
+    lexer->mark_end(lexer);
+    lexer->result_symbol = CALL_RESET;
+    return true;
 }
 
 bool ASM_EXPORT(_external_scanner_scan)(void *payload, TSLexer *lexer, const bool *valid_symbols)
@@ -5409,13 +5439,8 @@ bool ASM_EXPORT(_external_scanner_scan)(void *payload, TSLexer *lexer, const boo
     bool closes_input = false;
     bool found = false;
 
-    if (ASM_GNU_SYNTAX
-        && scanner->open_calls > 0
-        && !valid_symbols[ERROR_SENTINEL]
-        && statement_role_fits(valid_symbols)) {
-        scanner->open_calls = 0;
-    }
-    found = scan(lexer, valid_symbols, scanner, &closes_input);
+    found = scan_call_reset(lexer, valid_symbols, scanner)
+        || scan(lexer, valid_symbols, scanner, &closes_input);
     scanner->closed_input = closes_input;
     if (found) {
         follow_x86_syntax(scanner, lexer->result_symbol);

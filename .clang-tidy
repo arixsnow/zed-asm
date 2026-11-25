@@ -8,6 +8,7 @@ Checks: >-
     performance-*,
     portability-*,
     readability-*,
-    -readability-implicit-bool-conversion
+    -readability-implicit-bool-conversion,
+    -clang-analyzer-security.insecureAPI.DeprecatedOrUnsafeBufferHandling
 WarningsAsErrors: '*'
 HeaderFilterRegex: '.*common/scanner\.h'

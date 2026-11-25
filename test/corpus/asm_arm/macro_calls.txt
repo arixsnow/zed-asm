@@ -219,3 +219,25 @@ push {r4, CALL(r5), r6}
         arguments: (argument_list
           argument: (register)))
       element: (register))))
+
+================================================================================
+Statements after a call that error recovery dropped are not read into it
+================================================================================
+
+F(.endm()
+x = 1
+y = 2
+
+--------------------------------------------------------------------------------
+
+(source_file
+  (macro_call
+    function: (identifier))
+  (ERROR
+    (identifier))
+  (assignment
+    name: (identifier)
+    value: (integer))
+  (assignment
+    name: (identifier)
+    value: (integer)))

@@ -1,46 +1,34 @@
 // SPDX-License-Identifier: MIT
 
-import { type ChildProcess, spawn, spawnSync } from 'node:child_process';
-import { once } from 'node:events';
-import {
-    copyFileSync,
-    cpSync,
-    existsSync,
-    mkdirSync,
-    readFileSync,
-    rmSync,
-    writeFileSync,
-} from 'node:fs';
+import { spawnSync } from 'node:child_process';
+import { copyFileSync, existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 
 import { emptyDir, ROOT } from './lib/files.ts';
-import { run, runOrThrow } from './lib/grammars.ts';
-import { manifest } from './lib/manifest.ts';
-import { foreignFunctions, wasmArgs } from './lib/wasm.ts';
+import { runOrThrow } from './lib/grammars.ts';
+import {
+    changedClipboard,
+    clipboard,
+    CONFIG,
+    DISPLAY,
+    focusZed,
+    installExtension,
+    LOG,
+    OPEN_DELAY,
+    perform,
+    SETTINGS,
+    sleep,
+    startDisplay,
+    startZed,
+    type Step,
+    stop,
+    waitFor,
+    WORK,
+    writeSettings,
+    zedVersion,
+} from './lib/zed.ts';
 
-export const HOME = '/home/qa';
-const DISPLAY = ':99';
-const SCREEN = '1400x900x24';
 const OUT = join(ROOT, '.build', 'zed-qa');
-const WORK = join(HOME, 'work');
-const ZED_DATA = join(HOME, '.local', 'share', 'zed');
-const EXTENSION = join(ZED_DATA, 'extensions', 'installed', 'asm');
-const LOG = join(ZED_DATA, 'logs', 'Zed.log');
-const OPEN_DELAY = 2500;
-const TIMEOUT = 15000;
-
-export const SETTINGS = {
-    telemetry: { diagnostics: false, metrics: false },
-    auto_update: false,
-    auto_install_extensions: { html: false },
-    session: { trust_all_worktrees: true },
-    theme: 'One Dark',
-    buffer_font_size: 16,
-    remove_trailing_whitespace_on_save: false,
-    ensure_final_newline_on_save: false,
-};
-
-export type Step = { type: string } | { keys: string[] } | { pause: number };
 
 export interface Check {
     id: string;
@@ -763,55 +751,6 @@ export function logErrors(log: string): string[] {
     );
 }
 
-function sleep(milliseconds: number): Promise<void> {
-    return new Promise((resolve) => setTimeout(resolve, milliseconds));
-}
-
-async function waitFor<T>(what: string, probe: () => T | undefined): Promise<T> {
-    const deadline = Date.now() + TIMEOUT;
-    while (Date.now() < deadline) {
-        const value = probe();
-        if (value !== undefined) {
-            return value;
-        }
-        await sleep(100);
-    }
-    throw new Error(`timed out waiting for ${what}`);
-}
-
-async function background(command: string, args: string[]): Promise<ChildProcess> {
-    const child = spawn(command, args, { stdio: 'ignore' });
-    await once(child, 'spawn');
-    return child;
-}
-
-async function stop(child: ChildProcess): Promise<void> {
-    if (child.exitCode !== null || child.signalCode !== null) {
-        return;
-    }
-    const exited = once(child, 'exit');
-    child.kill('SIGTERM');
-    await exited;
-}
-
-function installExtension() {
-    mkdirSync(join(EXTENSION, 'grammars'), { recursive: true });
-    for (const { grammar } of manifest.languages) {
-        const output = join(EXTENSION, 'grammars', `${grammar}.wasm`);
-        runOrThrow('clang', wasmArgs(grammar, output));
-        const foreign = foreignFunctions(readFileSync(output));
-        if (foreign.length > 0) {
-            throw new Error(
-                `${grammar}.wasm imports functions tree-sitter's wasm runtime lacks: ${
-                    foreign.join(', ')
-                }`,
-            );
-        }
-    }
-    copyFileSync(join(ROOT, 'extension.toml'), join(EXTENSION, 'extension.toml'));
-    cpSync(join(ROOT, 'languages'), join(EXTENSION, 'languages'), { recursive: true });
-}
-
 function convert(command: string, args: string[], input?: Buffer): Buffer {
     const result = spawnSync(command, args, {
         input,
@@ -834,46 +773,6 @@ function savePng(name: string): string {
     rmSync(raw);
     writeFileSync(join(OUT, `${name}.png`), png);
     return `${name}.png`;
-}
-
-function focusZed() {
-    const windows = runOrThrow('xdotool', ['search', '--onlyvisible', '--class', 'zed']).trim()
-        .split(
-            '\n',
-        );
-    runOrThrow('xdotool', ['windowfocus', '--sync', windows[0]]);
-}
-
-async function perform(step: Step) {
-    if ('pause' in step) {
-        await sleep(step.pause);
-    } else if ('type' in step) {
-        runOrThrow('xdotool', ['type', '--delay', '60', '--clearmodifiers', '--', step.type]);
-    } else {
-        runOrThrow('xdotool', ['key', '--delay', '120', '--clearmodifiers', ...step.keys]);
-    }
-}
-
-function clipboard(): string | undefined {
-    const { ok, output } = run('xclip', ['-o', '-selection', 'clipboard']);
-    return ok ? output : undefined;
-}
-
-async function changedClipboard(before: string | undefined): Promise<string | undefined> {
-    const deadline = Date.now() + TIMEOUT;
-    let current = clipboard();
-    while (current === before && Date.now() < deadline) {
-        await sleep(100);
-        current = clipboard();
-    }
-    return current;
-}
-
-function writeSettings(settings: Record<string, unknown>) {
-    writeFileSync(
-        join(HOME, '.config', 'zed', 'settings.json'),
-        `${JSON.stringify(settings, null, 4)}\n`,
-    );
 }
 
 async function runCheck(check: Check): Promise<Result> {
@@ -931,23 +830,18 @@ async function attempt(check: Check): Promise<Result> {
 async function main() {
     emptyDir(OUT);
     mkdirSync(WORK, { recursive: true });
-    mkdirSync(join(HOME, '.config', 'zed'), { recursive: true });
+    mkdirSync(CONFIG, { recursive: true });
     writeSettings(SETTINGS);
     console.log('building the grammars');
     installExtension();
-    const version = runOrThrow('zed', ['--version']).split(/\s+/).slice(0, 2).join(' ');
+    const version = zedVersion();
     const width = Math.max(...CHECKS.map(({ id }) => id.length), String(LOG_ROW).length);
     console.log(`${version}, ${CHECKS.length + 1} checks`);
 
-    const display = await background('Xvfb', [DISPLAY, '-screen', '0', SCREEN, '-nolisten', 'tcp']);
-    await waitFor('the display', () => run('xdotool', ['getdisplaygeometry']).ok || undefined);
-    const zed = await background('dbus-run-session', ['--', 'zed', '--foreground', WORK]);
+    const display = await startDisplay();
+    const zed = await startZed([WORK]);
     const results: Result[] = [];
     try {
-        await waitFor(
-            'the Zed window',
-            () => run('xdotool', ['search', '--onlyvisible', '--class', 'zed']).ok || undefined,
-        );
         await sleep(OPEN_DELAY);
         let vim = false;
         for (const check of runOrder(CHECKS)) {

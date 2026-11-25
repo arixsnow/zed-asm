@@ -60,9 +60,24 @@ const $ = new Proxy({}, {
     get: (_target, name): RuleNode => ({ type: 'SYMBOL', name: String(name) }),
 });
 
-const SCANNER_TOKENS = /enum TokenType \{([^}]*)\}/.exec(
-    readFileSync(new URL('../../tree-sitter/common/scanner.h', import.meta.url), 'utf8'),
-)![1].split(',').map((name) => name.trim()).filter((name) => name !== '');
+const { INSTRUCTION_TOKENS } = createRequire(import.meta.url)('../../tree-sitter/common/roles.js');
+const SCANNER = readFileSync(
+    new URL('../../tree-sitter/common/scanner.h', import.meta.url),
+    'utf8',
+);
+const SCANNER_TOKENS = /enum TokenType \{([^}]*)\}/.exec(SCANNER)![1].split(',').map((name) =>
+    name.trim()
+).filter((name) => name !== '');
+
+function scannerName(external: string): string {
+    return external.replace(/^_/, '').toUpperCase();
+}
+
+function scannerIndex(bound: string): number {
+    const match = new RegExp(`\\b${bound} = (\\w+),`).exec(SCANNER);
+    assert.ok(match !== null, `scanner.h defines no ${bound}`);
+    return SCANNER_TOKENS.indexOf(match[1]);
+}
 
 function rulesOf(grammarName: string): string[] {
     return Object.keys(defineGrammar(grammarName).rules);
@@ -74,12 +89,23 @@ test('every language composes a grammar named after it that starts at source_fil
         assert.deepStrictEqual(composed.name, grammar);
         assert.deepStrictEqual(Object.keys(composed.rules)[0], 'source_file');
         assert.deepStrictEqual(
-            composed.externals($).map((symbol: RuleNode) =>
-                String(symbol.name).replace(/^_/, '').toUpperCase()
-            ),
+            composed.externals($).map((symbol: RuleNode) => scannerName(String(symbol.name))),
             SCANNER_TOKENS,
         );
     }
+});
+
+test('the scanner reads statement keywords, instruction tokens and the macro name as one range', () => {
+    const first = scannerIndex('FIRST_STATEMENT_KEYWORD');
+    const last = scannerIndex('LAST_STATEMENT_KEYWORD');
+    assert.deepStrictEqual(
+        SCANNER_TOKENS.slice(first, last + 1),
+        defineGrammar.STATEMENT_KEYWORDS.map(scannerName),
+    );
+    assert.deepStrictEqual(
+        SCANNER_TOKENS.slice(last + 1, SCANNER_TOKENS.indexOf('MACRO_NAME') + 1),
+        [...INSTRUCTION_TOKENS, '_macro_name'].map(scannerName),
+    );
 });
 
 test('modules contribute rules only to the languages that include them', () => {

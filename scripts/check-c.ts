@@ -11,9 +11,11 @@ import { foreignFunctions, wasmArgs } from './lib/wasm.ts';
 
 const WASM = join(ROOT, '.build', 'wasm');
 const LOOKUPS = join(ROOT, '.build', 'words');
+const CALLS = join(ROOT, '.build', 'calls');
 
 const SCANNER = 'tree-sitter/common/scanner.h';
 const LOOKUP_TEST = 'test/c/words.c';
+const CALL_TEST = 'test/c/calls.c';
 
 const WARNINGS = [
     '-std=c11',
@@ -47,12 +49,19 @@ function main(args: string[]): number {
     const report = new Report();
     emptyDir(WASM);
     emptyDir(LOOKUPS);
+    emptyDir(CALLS);
     const check = (label: string, command: string, commandArgs: string[], quiet = false) => {
         const { ok, output } = run(command, commandArgs);
         report.record(label, ok && !(quiet && output.trim() !== ''), output);
     };
 
-    check('clang-format', 'clang-format', ['--dry-run', '--Werror', SCANNER, LOOKUP_TEST]);
+    check('clang-format', 'clang-format', [
+        '--dry-run',
+        '--Werror',
+        SCANNER,
+        LOOKUP_TEST,
+        CALL_TEST,
+    ]);
     check('clang-tidy (dictionary lookups)', 'clang-tidy', [
         '--quiet',
         LOOKUP_TEST,
@@ -82,7 +91,7 @@ function main(args: string[]): number {
         ]);
         report.record(`scanner.h ${label}`, !ok && output.includes(dialectError), output);
     }
-    for (const { grammar, dialect } of manifest.languages) {
+    for (const { grammar, dialect, syntax } of manifest.languages) {
         const source = join('tree-sitter', grammar, 'src', 'scanner.c');
         const include = ['-isystem', join('tree-sitter', grammar, 'src')];
         const lookups = join(LOOKUPS, grammar);
@@ -99,6 +108,38 @@ function main(args: string[]): number {
         ]);
         const lookupRun = lookupBuild.ok ? run(lookups, []) : lookupBuild;
         report.record(`dictionary lookups (${grammar})`, lookupRun.ok, lookupRun.output);
+        if (syntax === 'gas') {
+            const parser = join(CALLS, `${grammar}.o`);
+            const calls = join(CALLS, grammar);
+            const parserBuild = run('gcc', [
+                '-std=c11',
+                '-O2',
+                '-c',
+                '-o',
+                parser,
+                join('tree-sitter', grammar, 'src', 'parser.c'),
+            ]);
+            const callBuild = parserBuild.ok
+                ? run('gcc', [
+                    ...WARNINGS,
+                    '-Wno-unused-function',
+                    '-O2',
+                    `-DASM_GRAMMAR_NAME=${grammar}`,
+                    `-DASM_DIALECT_${dialect}`,
+                    ...include,
+                    '-o',
+                    calls,
+                    CALL_TEST,
+                    parser,
+                ])
+                : parserBuild;
+            const callRun = callBuild.ok ? run(calls, []) : callBuild;
+            report.record(
+                `no top-level token inside a call (${grammar})`,
+                callRun.ok,
+                callRun.output,
+            );
+        }
         check(`gcc warnings (${grammar})`, 'gcc', [
             ...WARNINGS,
             '-fsyntax-only',

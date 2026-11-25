@@ -89,6 +89,11 @@ The scanner rules:
   the word has, and the entry is passed to each check that needs it.
 - A word is looked up only where a check applies to it. ARM (Apple), which has no suffix relocations
   and no x86 registers, reads no word after a `(`.
+- The statement keywords, the instruction tokens and `_macro_name` are one run of `EXTERNALS`
+  (`STATEMENT_KEYWORDS` in `define-grammar.js`). Whether a statement keyword fits is one read of
+  that run of the valid array, 8 bytes at a time, and whether a token starts a statement is a
+  range compare. A new statement keyword goes in `STATEMENT_KEYWORDS`, and
+  `test/unit/define-grammar.test.ts` fails if the scanner's range differs.
 
 ## Limits
 

@@ -20,7 +20,10 @@ tty=false
 if [ -t 0 ] && [ -t 1 ]; then
     tty=true
 fi
-if [ "$#" -eq 0 ]; then
+if [ "${1:-}" = --latency ]; then
+    shift
+    set -- bun run zed:latency "$@"
+elif [ "$#" -eq 0 ]; then
     set -- bun run zed:qa
 fi
 

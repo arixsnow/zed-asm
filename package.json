@@ -7,7 +7,7 @@
         "generate": "bun run build && bun scripts/tree-sitter.ts generate",
         "set-grammar-rev": "bun scripts/build.ts set-grammar-rev",
         "keywords": "bun scripts/keywords.ts",
-        "fmt": "dprint fmt && clang-format -i tree-sitter/common/scanner.h",
+        "fmt": "dprint fmt && clang-format -i tree-sitter/common/scanner.h test/c/*.c",
         "lint": "oxlint",
         "check:types": "tsc",
         "check:generated": "bun scripts/build.ts check && bun scripts/tree-sitter.ts check",
@@ -23,6 +23,7 @@
         "bench": "bun scripts/bench.ts",
         "budgets": "bun scripts/budgets.ts write",
         "check:budgets": "bun scripts/budgets.ts check",
+        "zed:latency": "bun scripts/zed-latency.ts",
         "zed:qa": "bun scripts/zed-qa.ts",
         "test": "dprint check && bun run lint && bun run check:types && bun run check:generated && bun run test:unit && bun run check:c && bun run check:shell && bun run test:corpus && bun run check:queries && bun run check:fixtures"
     }
