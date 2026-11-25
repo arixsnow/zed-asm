@@ -65,3 +65,18 @@ nop;
     mnemonic: (mnemonic))
   (instruction
     mnemonic: (mnemonic)))
+
+================================================================================
+A # after a C macro call starts a comment
+================================================================================
+
+W(svc) #0
+
+--------------------------------------------------------------------------------
+
+(source_file
+  (macro_call
+    function: (identifier)
+    arguments: (argument_list
+      argument: (identifier)))
+  (line_comment))

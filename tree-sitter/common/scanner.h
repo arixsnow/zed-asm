@@ -848,6 +848,11 @@ static inline bool starts_value(int32_t codepoint)
     return starts_expression(codepoint) || codepoint == ':';
 }
 
+static inline bool hash_starts_immediate(int32_t next)
+{
+    return ASM_HASH_IMMEDIATES && (!ASM_HASH_NEEDS_VALUE || starts_value(next));
+}
+
 static inline bool starts_argument(int32_t codepoint)
 {
     if (starts_expression(codepoint)) {
@@ -1556,35 +1561,6 @@ static bool skip_call_parentheses(TSLexer *lexer)
     return true;
 }
 
-static inline bool starts_trailing_comment(int32_t codepoint)
-{
-    return (ASM_GNU_SYNTAX && codepoint == '#') || (ASM_AT_COMMENTS && codepoint == '@');
-}
-
-static bool statement_ends(TSLexer *lexer)
-{
-    while (advance_blanks(lexer, NULL)) {
-        if (lexer->lookahead == ';' || starts_trailing_comment(lexer->lookahead)) {
-            return true;
-        }
-        if (ASM_PERCENT_SEPARATOR && lexer->lookahead == '%') {
-            advance(lexer);
-            return lexer->lookahead == '%';
-        }
-        if (!ASM_GNU_SYNTAX || lexer->lookahead != '/') {
-            return at_line_end(lexer);
-        }
-        advance(lexer);
-        if (lexer->lookahead == '/') {
-            return true;
-        }
-        if (lexer->lookahead != '*' || !skip_block_comment(lexer)) {
-            return false;
-        }
-    }
-    return false;
-}
-
 static bool preproc_line_comment(TSLexer *lexer, const bool *valid)
 {
     if (!valid[LINE_COMMENT]) {
@@ -2185,10 +2161,8 @@ static bool scan_hash(TSLexer *lexer, const bool *valid, bool recovering, const 
 
     advance(lexer);
     if (ASM_HASH_IMMEDIATES && valid[HASH] && !recovering) {
-        if (ASM_HASH_NEEDS_VALUE && !starts_value(lexer->lookahead)) {
-            return assembler_comment(lexer, valid, in_call);
-        }
-        return finish_token(lexer, HASH);
+        return hash_starts_immediate(lexer->lookahead) ? finish_token(lexer, HASH)
+                                                       : assembler_comment(lexer, valid, in_call);
     }
     if (valid[PREPROC_DIRECTIVE] && !recovering && starts_line(lexer, gap)) {
         directive = cpp_directive(lexer);
@@ -3428,6 +3402,63 @@ static bool scan_hyphenated(TSLexer *lexer, const bool *valid, TSSymbol symbol, 
     return scan_named_word(lexer, valid, symbol, word, instruction_role(word, entry));
 }
 
+static bool starts_item(int32_t codepoint, const struct Scanner *scanner)
+{
+    if (ASM_X86_OPERANDS && (scanner->x86_syntax & X86_INTEL) != 0) {
+        return starts_intel_expression(codepoint);
+    }
+    return starts_operand(codepoint) || (ASM_X86_OPERANDS && ASM_GNU_SYNTAX && codepoint == '%');
+}
+
+enum Follower {
+    FOLLOWER_END,
+    FOLLOWER_ITEM,
+    FOLLOWER_OTHER,
+};
+
+static inline bool is_follower_mark(int32_t codepoint)
+{
+    return (ASM_GNU_SYNTAX && (codepoint == '#' || codepoint == '/'))
+        || (ASM_PERCENT_SEPARATOR && codepoint == '%');
+}
+
+static enum Follower follower_after_mark(const TSLexer *lexer, const struct Scanner *scanner,
+    int32_t mark)
+{
+    if (mark == '#') {
+        return hash_starts_immediate(lexer->lookahead) ? FOLLOWER_ITEM : FOLLOWER_END;
+    }
+    if (mark == '%' && lexer->lookahead != '%') {
+        return starts_item('%', scanner) ? FOLLOWER_ITEM : FOLLOWER_OTHER;
+    }
+    return lexer->lookahead == mark ? FOLLOWER_END : FOLLOWER_OTHER;
+}
+
+static enum Follower what_follows(TSLexer *lexer, const struct Scanner *scanner)
+{
+    int32_t mark = 0;
+
+    while (advance_blanks(lexer, NULL)) {
+        if (lexer->lookahead == ';'
+            || (ASM_AT_COMMENTS && lexer->lookahead == '@')
+            || at_line_end(lexer)) {
+            return FOLLOWER_END;
+        }
+        if (!is_follower_mark(lexer->lookahead)) {
+            return starts_item(lexer->lookahead, scanner) ? FOLLOWER_ITEM : FOLLOWER_OTHER;
+        }
+        mark = lexer->lookahead;
+        advance(lexer);
+        if (mark != '/' || lexer->lookahead != '*') {
+            return follower_after_mark(lexer, scanner, mark);
+        }
+        if (!skip_block_comment(lexer)) {
+            return FOLLOWER_OTHER;
+        }
+    }
+    return starts_item(lexer->lookahead, scanner) ? FOLLOWER_ITEM : FOLLOWER_OTHER;
+}
+
 static bool scan_parenthesized_word(TSLexer *lexer, const bool *valid,
     const struct Scanner *scanner, TSSymbol symbol, const char *word, const struct WordEntry *entry,
     const struct WordRole *keyword, bool attached)
@@ -3443,7 +3474,7 @@ static bool scan_parenthesized_word(TSLexer *lexer, const bool *valid,
         && attached
         && instruction != NULL
         && valid[MACRO_NAME]
-        && (!closed || statement_ends(lexer))) {
+        && (!closed || what_follows(lexer, scanner) == FOLLOWER_END)) {
         lexer->result_symbol = MACRO_NAME;
         return true;
     }
@@ -4314,14 +4345,6 @@ static enum BracedBody braced_body(TSLexer *lexer, TSSymbol symbol, bool mark_op
     return body;
 }
 
-static bool starts_item(int32_t codepoint, const struct Scanner *scanner)
-{
-    if (ASM_X86_OPERANDS && (scanner->x86_syntax & X86_INTEL) != 0) {
-        return starts_intel_expression(codepoint);
-    }
-    return starts_operand(codepoint) || (ASM_X86_OPERANDS && ASM_GNU_SYNTAX && codepoint == '%');
-}
-
 static enum ScanDecision scan_braced(TSLexer *lexer, const bool *valid,
     const struct Scanner *scanner, uint32_t blanks)
 {
@@ -4768,19 +4791,22 @@ enum CallForm {
 static enum CallForm statement_call_form(TSLexer *lexer, const struct Scanner *scanner)
 {
     bool spaced = false;
+    enum Follower follower = FOLLOWER_OTHER;
 
     if (!skip_call_parentheses(lexer)) {
         return CALL_FORM_STATEMENT;
     }
     if (ASM_X86_OPERANDS && lexer->lookahead == '{') {
-        return skip_decorators(lexer) && statement_ends(lexer) ? CALL_FORM_STATEMENT
-                                                               : CALL_FORM_NONE;
+        return skip_decorators(lexer) && what_follows(lexer, scanner) == FOLLOWER_END
+            ? CALL_FORM_STATEMENT
+            : CALL_FORM_NONE;
     }
     spaced = is_blank(lexer->lookahead);
-    if (statement_ends(lexer)) {
+    follower = what_follows(lexer, scanner);
+    if (follower == FOLLOWER_END) {
         return CALL_FORM_STATEMENT;
     }
-    return spaced && starts_item(lexer->lookahead, scanner) ? CALL_FORM_MNEMONIC : CALL_FORM_NONE;
+    return spaced && follower == FOLLOWER_ITEM ? CALL_FORM_MNEMONIC : CALL_FORM_NONE;
 }
 
 static enum ScanDecision scan_open_parenthesis(TSLexer *lexer, const bool *valid,

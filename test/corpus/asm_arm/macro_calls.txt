@@ -241,3 +241,29 @@ y = 2
   (assignment
     name: (identifier)
     value: (integer)))
+
+================================================================================
+A C macro call before a # immediate is the instruction mnemonic
+================================================================================
+
+W(svc) #0
+W(mov) x0, #1
+
+--------------------------------------------------------------------------------
+
+(source_file
+  (instruction
+    mnemonic: (macro_call
+      function: (identifier)
+      arguments: (argument_list
+        argument: (identifier)))
+    operand: (immediate
+      value: (integer)))
+  (instruction
+    mnemonic: (macro_call
+      function: (identifier)
+      arguments: (argument_list
+        argument: (identifier)))
+    operand: (register)
+    operand: (immediate
+      value: (integer))))

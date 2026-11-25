@@ -47,3 +47,26 @@ m x0 #1
     arguments: (argument_list
       argument: (register)))
   (line_comment))
+
+================================================================================
+A C macro call before # and a value is the mnemonic, before # alone a statement
+================================================================================
+
+W(svc) #0
+W(svc) # note
+
+--------------------------------------------------------------------------------
+
+(source_file
+  (instruction
+    mnemonic: (macro_call
+      function: (identifier)
+      arguments: (argument_list
+        argument: (identifier)))
+    operand: (immediate
+      value: (integer)))
+  (macro_call
+    function: (identifier)
+    arguments: (argument_list
+      argument: (identifier)))
+  (line_comment))

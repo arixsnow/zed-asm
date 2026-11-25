@@ -5,11 +5,11 @@
         "inputs": {
             "basics": {
                 "sha256": "5b535b2258bf3b16b42cb8b66836e7e10ccc515ad5cd0cdc1908b4f17887113f",
-                "cycles": 316162
+                "cycles": 315892
             },
             "fixtures": {
                 "sha256": "c4f75407f7798af38679a01a8b680df60b411f53aed7559373fbb71b8072b72f",
-                "cycles": 40654894
+                "cycles": 40638375
             }
         }
     },
@@ -19,11 +19,11 @@
         "inputs": {
             "basics": {
                 "sha256": "59ac6e338a3acd90fe14217ced1d4bea5bfc7401fa11a96030897db6c5072706",
-                "cycles": 387405
+                "cycles": 386269
             },
             "fixtures": {
                 "sha256": "817b98d8f742a62b7de67771fff0b8877a6e06022c16e5d50101463df498b938",
-                "cycles": 21612435
+                "cycles": 21520502
             }
         }
     },
@@ -33,11 +33,11 @@
         "inputs": {
             "basics": {
                 "sha256": "5c0f0a74f6c85309b219c57876a0e5efb1b9889798b40373d5bb26e361c556fc",
-                "cycles": 442457
+                "cycles": 441007
             },
             "fixtures": {
                 "sha256": "86b09593ea680776b95d0ed28b31fcefb866cfcaf188078cae9d63c51b38ea18",
-                "cycles": 6298846
+                "cycles": 6280356
             }
         }
     },
@@ -47,11 +47,11 @@
         "inputs": {
             "basics": {
                 "sha256": "5b535b2258bf3b16b42cb8b66836e7e10ccc515ad5cd0cdc1908b4f17887113f",
-                "cycles": 321623
+                "cycles": 320865
             },
             "fixtures": {
                 "sha256": "fbcdd776e64890c8704cc3fcdf3954d8e122e59e040777f2d6bcd0515c72aeb2",
-                "cycles": 12540528
+                "cycles": 12498095
             }
         }
     },
@@ -61,11 +61,11 @@
         "inputs": {
             "basics": {
                 "sha256": "d3e6ac7d9f280469f08d06cf461725c5285dbb96aed86c91220440b156d726ce",
-                "cycles": 196059
+                "cycles": 196077
             },
             "fixtures": {
                 "sha256": "cb5a14e6332ca13e759edd773b95bd1989eb0a91c20bc443b3ddd3999a3b12f2",
-                "cycles": 12106264
+                "cycles": 12105018
             }
         }
     }
